@@ -37,8 +37,8 @@ omit =
     tm_real_purchase.py
     venue_scanner.py
     # Modulos red-dependent
-    cookie_warmer.py
-    proxy_health.py
+#    cookie_warmer.py
+#    proxy_health.py
     sms_receiver.py
 
 [report]
