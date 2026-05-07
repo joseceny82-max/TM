@@ -10,7 +10,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 PORT  = int(sys.argv[1]) if len(sys.argv) > 1 else 57448
 ALIAS = sys.argv[2] if len(sys.argv) > 2 else 'coping.fiesta3h@icloud.com'
 MADRE = sys.argv[3] if len(sys.argv) > 3 else 'johnlockperdidos@icloud.com'
-PWD   = sys.argv[4] if len(sys.argv) > 4 else 'jzny-tfyh-qtuq-feou'
+PWD   = sys.argv[4] if len(sys.argv) > 4 else __import__('os').environ.get('TM_IMAP_MADRE_PWD', '')
 
 print(f'═══ OTP FAST — alias={ALIAS} madre={MADRE} port={PORT} ═══')
 
