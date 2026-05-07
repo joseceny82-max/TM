@@ -39,6 +39,7 @@ from typing import Dict, List, Optional, Any
 
 import config
 import json_atomic
+import sqlite_store
 
 
 _DATASET_KEY = "ml_validator_dataset.json"
@@ -142,12 +143,12 @@ def extract_features(payload: dict, sensor_length: int = 0) -> Dict[str, float]:
 #  DATASET (acumulador)
 # ═══════════════════════════════════════════════════════════
 def _load_dataset() -> dict:
-    return json_atomic.load(config.ruta(_DATASET_KEY),
+    return sqlite_store.load(config.ruta(_DATASET_KEY),
                               default={"samples": [], "labels_count": {}})
 
 
 def _save_dataset(d: dict):
-    json_atomic.save(config.ruta(_DATASET_KEY), d)
+    sqlite_store.save(config.ruta(_DATASET_KEY), d)
 
 
 def add_to_dataset(payload: dict,

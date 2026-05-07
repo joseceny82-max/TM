@@ -41,6 +41,7 @@ from typing import Dict, List, Optional, Any
 
 import config
 import json_atomic
+import sqlite_store
 
 _CACHE_KEY = "venue_cache.json"
 _VENUES_DIR = os.path.join(os.path.dirname(__file__), "datos", "venues")
@@ -69,12 +70,12 @@ def venue_id_from_meta(name: str, city: str = "") -> str:
 
 
 def _load() -> Dict[str, Any]:
-    return json_atomic.load(config.ruta(_CACHE_KEY),
+    return sqlite_store.load(config.ruta(_CACHE_KEY),
                             default={"venues": {}, "by_event": {}})
 
 
 def _save(d: Dict[str, Any]) -> None:
-    json_atomic.save(config.ruta(_CACHE_KEY), d)
+    sqlite_store.save(config.ruta(_CACHE_KEY), d)
 
 
 def get_venue(venue_id: str) -> Optional[Dict[str, Any]]:

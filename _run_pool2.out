@@ -1,0 +1,5 @@
+[2026-05-02 21:14:15] === START pool2 target=7 start_rows=102 ===
+[2026-05-02 21:14:15] LAUNCH #1 slot=a pid=2140 → _pool_1.log
+[2026-05-02 21:14:23] LAUNCH #2 slot=b pid=2145 → _pool_2.log
+[2026-05-02 21:29:13] DONE  slot=b pid=2145 rc=0 archived=0/7
+[2026-05-02 21:29:13] LAUNCH #3 slot=b pid=2683 → _pool_3.log

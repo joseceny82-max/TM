@@ -18,7 +18,8 @@ import os
 from datetime import datetime
 from typing import Optional, List, Dict
 import config
-import json_atomic
+import json_atomic  # mantener para compat con otros módulos
+import sqlite_store
 
 
 # Estados válidos
@@ -111,7 +112,7 @@ def _calc_total(p: dict) -> float:
 
 
 def list_purchases() -> List[dict]:
-    d = json_atomic.load(_path(), default={"purchases": []})
+    d = sqlite_store.load(_path(), default={"purchases": []})
     items = [_migrate(p) for p in d.get("purchases", [])]
     # añadir total calculado
     for p in items:
@@ -127,7 +128,7 @@ def get_purchase(pid: str) -> Optional[dict]:
 
 
 def add_purchase(purchase: dict) -> dict:
-    d = json_atomic.load(_path(), default={"purchases": []})
+    d = sqlite_store.load(_path(), default={"purchases": []})
     p = _migrate(dict(purchase))
     # Compatibilidad retroactiva: si venía 'price' usarlo como unit_price
     if "price" in purchase and not p.get("unit_price"):
@@ -156,7 +157,7 @@ def add_purchase(purchase: dict) -> dict:
     if isinstance(p.get("tags"), str):
         p["tags"] = [t.strip() for t in p["tags"].split(",") if t.strip()]
     d["purchases"].append(p)
-    json_atomic.save(_path(), d)
+    sqlite_store.save(_path(), d)
     p["total_price"] = _calc_total(p)
     return p
 
@@ -172,7 +173,7 @@ def update_purchase(pid: str, patch: dict) -> Optional[dict]:
                "browser_engine", "proxy_used", "flow_id",
                "status", "tags", "notes",
                "image_url", "tm_url", "event_id"}
-    d = json_atomic.load(_path(), default={"purchases": []})
+    d = sqlite_store.load(_path(), default={"purchases": []})
     for p in d["purchases"]:
         if p.get("id") == pid:
             for k, v in (patch or {}).items():
@@ -181,7 +182,7 @@ def update_purchase(pid: str, patch: dict) -> Optional[dict]:
             if p.get("status") not in STATUS_CHOICES:
                 p["status"] = "confirmed"
             p["updated_at"] = datetime.now().isoformat()
-            json_atomic.save(_path(), d)
+            sqlite_store.save(_path(), d)
             p2 = _migrate(dict(p))
             p2["total_price"] = _calc_total(p2)
             return p2
@@ -189,10 +190,10 @@ def update_purchase(pid: str, patch: dict) -> Optional[dict]:
 
 
 def delete_purchase(pid: str) -> bool:
-    d = json_atomic.load(_path(), default={"purchases": []})
+    d = sqlite_store.load(_path(), default={"purchases": []})
     before = len(d["purchases"])
     d["purchases"] = [p for p in d["purchases"] if p.get("id") != pid]
-    json_atomic.save(_path(), d)
+    sqlite_store.save(_path(), d)
     return len(d["purchases"]) < before
 
 

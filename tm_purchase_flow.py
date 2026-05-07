@@ -43,6 +43,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import config
 import json_atomic
+import sqlite_store
 import compliance_gate
 
 
@@ -69,15 +70,15 @@ def _log_path():
 
 def _append_log(flow_id: str, entry: dict):
     with _lock:
-        d = json_atomic.load(_log_path(), default={"flows": {}})
+        d = sqlite_store.load(_log_path(), default={"flows": {}})
         f = d["flows"].setdefault(flow_id, {"steps": [], "started_at": datetime.now().isoformat()})
         f["steps"].append(entry)
         f["steps"] = f["steps"][-100:]  # cap
-        json_atomic.save(_log_path(), d)
+        sqlite_store.save(_log_path(), d)
 
 
 def get_log(flow_id: Optional[str] = None, limit: int = 20) -> Dict:
-    d = json_atomic.load(_log_path(), default={"flows": {}})
+    d = sqlite_store.load(_log_path(), default={"flows": {}})
     if flow_id:
         return {"ok": True, "flow": d["flows"].get(flow_id, {})}
     flows = list(d.get("flows", {}).items())

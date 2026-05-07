@@ -24,6 +24,7 @@ from collections import deque
 
 import config
 import json_atomic
+import sqlite_store
 
 
 _PATH_KEY = "audit_log.json"
@@ -45,7 +46,7 @@ def _load_initial():
     """Carga los eventos del disco al arrancar."""
     global _ring
     try:
-        d = json_atomic.load(_path(), default={"entries": []})
+        d = sqlite_store.load(_path(), default={"entries": []})
         entries = d.get("entries", [])[-_MAX_ENTRIES:]
         _ring = deque(entries, maxlen=_MAX_ENTRIES)
     except Exception:
@@ -82,7 +83,7 @@ def _flush():
     """Persiste el ring a disco."""
     global _dirty_count
     try:
-        json_atomic.save(_path(), {"entries": list(_ring)})
+        sqlite_store.save(_path(), {"entries": list(_ring)})
         _dirty_count = 0
     except Exception:
         pass

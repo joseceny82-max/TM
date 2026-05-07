@@ -1,0 +1,102 @@
+# ═══════════════════════════════════════════════════════════════════
+#  TM PERROS — Stack distribuido
+#  Uso:
+#    docker compose up -d                 ← arranca todo
+#    docker compose up -d --scale worker=5  ← 5 workers paralelos
+#    docker compose logs -f dashboard
+#    docker compose down                  ← para todo
+# ═══════════════════════════════════════════════════════════════════
+services:
+
+  # ────────────────────────────────────────
+  #  Redis: estado compartido cluster-wide
+  # ────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: tm-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --save 60 1
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ────────────────────────────────────────
+  #  Dashboard (único, UI + API)
+  # ────────────────────────────────────────
+  dashboard:
+    build: .
+    image: tm-perros:latest
+    container_name: tm-dashboard
+    restart: unless-stopped
+    environment:
+      INSTANCE_ID: tm-dashboard
+      REDIS_URL: redis://redis:6379/0
+      DASHBOARD_PORT: 5055
+      DASHBOARD_HOST: 0.0.0.0
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    env_file: [.env]
+    ports:
+      - "${DASHBOARD_PORT:-5055}:5055"
+    volumes:
+      - tm_data:/app/data
+      - tm_logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5055/api/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ────────────────────────────────────────
+  #  Worker (escalable, compartimiento Redis)
+  #  docker compose up -d --scale worker=5
+  # ────────────────────────────────────────
+  worker:
+    image: tm-perros:latest
+    build: .
+    restart: unless-stopped
+    command: ["python", "worker.py"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    env_file: [.env]
+    volumes:
+      - tm_data:/app/data      # comparte tarjetas/cuentas con dashboard
+      - tm_logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      dashboard:
+        condition: service_healthy
+    deploy:
+      replicas: 1              # cambiable con --scale worker=N
+
+  # ────────────────────────────────────────
+  #  Nginx reverse-proxy opcional (TLS + rate-limit edge)
+  # ────────────────────────────────────────
+  # nginx:
+  #   image: nginx:alpine
+  #   ports: ["80:80", "443:443"]
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./certs:/etc/nginx/certs:ro
+  #   depends_on: [dashboard]
+
+volumes:
+  redis_data:
+  tm_data:
+  tm_logs:

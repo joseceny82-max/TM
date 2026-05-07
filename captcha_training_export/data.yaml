@@ -1,0 +1,6 @@
+# YOLOv8 dataset config (auto-generated)
+path: C:\Users\user\TM\proyecto\captcha_training_export
+train: images/train
+val: images/val
+nc: 1
+names: ['test_label']

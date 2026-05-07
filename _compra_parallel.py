@@ -625,6 +625,17 @@ def pick_morelogin_profile(slot):
             exp_ip = p.get('exportIp') or ''
             if exp_ip and exp_ip in used_ips: continue
             _add_active_profile(name)
+            # P1: registra sticky session para tracking dashboard
+            try:
+                import proxy_sticky as _ps
+                worker_id = f"slot_{name}"
+                _ps.get_session(worker_id=worker_id, domain="ticketmaster.es",
+                                  ttl_s=1800)
+                if exp_ip:
+                    _ps.report_ip(worker_id=worker_id, ip=exp_ip,
+                                    domain="ticketmaster.es")
+            except Exception:
+                pass
             return {'profile': name, 'env_id': it['id'], 'ip': exp_ip,
                     'proxy_username': user, 'proxy_country': cc}
     return None
@@ -1000,11 +1011,42 @@ def main():
                         log(slot, "waiting_queue_it_max_3min")
                         # Esperar hasta 3 min a que queue-it termine
                         deadline_q = time.time() + 180
+                        # P1: queue_monitor.report cada 10s mientras esperamos
+                        try:
+                            import queue_monitor as _qm
+                        except Exception:
+                            _qm = None
+                        last_report_ts = 0
                         while time.time() < deadline_q:
                             page.wait_for_timeout(5000)
                             txt2 = page.evaluate("() => document.body.innerText.toLowerCase()")
+                            # Reportar posición (si vemos número en texto queue-it)
+                            if _qm and (time.time() - last_report_ts) >= 10:
+                                try:
+                                    import re as _re
+                                    m = _re.search(r'(?:posici[oó]n|position|number)[^0-9]{0,40}(\d{1,7})', txt2)
+                                    pos = int(m.group(1)) if m else 0
+                                    _qm.report(
+                                        worker_id=f"slot_{slot}",
+                                        domain=(page.url.split('/')[2] if '://' in page.url else 'ticketmaster.es'),
+                                        position=pos,
+                                        profile_id=str(it.get('profileId', '')),
+                                        event_id=str(args.event_url.split('/event/')[-1].split('?')[0] if '/event/' in args.event_url else ''),
+                                        status="queued")
+                                    last_report_ts = time.time()
+                                except Exception:
+                                    pass
                             if 'queue-it' not in txt2 and 'estamos comprobando' not in txt2:
                                 log(slot, "queue_it_passed")
+                                if _qm:
+                                    try:
+                                        _qm.report(worker_id=f"slot_{slot}",
+                                                    domain=(page.url.split('/')[2] if '://' in page.url else 'ticketmaster.es'),
+                                                    position=0,
+                                                    event_id=str(args.event_url.split('/event/')[-1].split('?')[0] if '/event/' in args.event_url else ''),
+                                                    status="passed")
+                                    except Exception:
+                                        pass
                                 break
 
                 # Si la URL ya no es la del evento, hemos avanzado

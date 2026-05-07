@@ -231,17 +231,33 @@ def _default_check(ev: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _default_fire(ev: Dict[str, Any]) -> Dict[str, Any]:
-    """Fallback fire: envía a tm_purchase_flow.run."""
+    """Fallback fire: envía a tm_purchase_flow.run_flow.
+
+    Llama con la signature correcta (event_id, quantity, mode, ...).
+    Default mode='simulate' por seguridad — el caller debe pasar
+    `metadata={'mode': 'live'}` si quiere compra real.
+    """
     try:
         import tm_purchase_flow
-        return tm_purchase_flow.run({
-            "event_id": ev.get("event_id"),
-            "url": ev.get("url"),
-            "mode": "live",
-            "from_polling_rotate": True,
-        })
+        meta = ev.get("metadata") or {}
+        mode = meta.get("mode", "simulate")
+        quantity = int(meta.get("quantity") or 2)
+        r = tm_purchase_flow.run_flow(
+            event_id=str(ev.get("event_id") or ""),
+            quantity=quantity,
+            mode=mode,
+        )
+        # run_flow puede devolver dict o ID; normalizamos
+        if isinstance(r, dict):
+            return {
+                "ok": r.get("ok", bool(r.get("flow_id"))),
+                "flow_id": r.get("flow_id") or r.get("run_id"),
+                "status": r.get("status") or r.get("error"),
+                "from_polling_rotate": True,
+            }
+        return {"ok": True, "flow_id": str(r), "from_polling_rotate": True}
     except Exception as e:
-        return {"ok": False, "error": str(e)[:200]}
+        return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
 
 
 def _worker_loop(worker_id: str, stop_evt: threading.Event):
