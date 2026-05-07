@@ -5734,6 +5734,45 @@ def api_ddvm_diff_history():
                     "history": dd_vm_trace.get_diff_history(limit)})
 
 
+# ─── Honest Dashboard — clasificación de módulos ──────────────────────────
+@app.route("/api/honest-dashboard", methods=["GET"])
+@login_required
+def api_honest_dashboard():
+    """Clasifica los 176 módulos del proyecto en 5 categorías:
+    pipeline / dashboard_only / auxiliary / scaffold / orphan.
+    """
+    try:
+        import honest_dashboard
+        return jsonify({"ok": True, "result": honest_dashboard.classify_modules()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
+
+
+@app.route("/api/honest-dashboard/<module_name>", methods=["GET"])
+@login_required
+def api_honest_dashboard_module(module_name):
+    try:
+        import honest_dashboard
+        return jsonify(honest_dashboard.get_classification(module_name))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
+
+
+@app.route("/api/test-coverage", methods=["GET"])
+@login_required
+def api_test_coverage():
+    """Métrica de cobertura por self_test."""
+    try:
+        import test_coverage_metric
+        since = request.args.get("since_days", type=int)
+        only_module = request.args.get("module")
+        return jsonify({"ok": True,
+                        "result": test_coverage_metric.run_audit(
+                            since_days=since, only_module=only_module)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
+
+
 # --- 11. TM Mobile SDK impersonation ---
 @app.route("/api/tm-mobile/config", methods=["GET", "POST"])
 @login_required

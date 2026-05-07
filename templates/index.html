@@ -7427,6 +7427,33 @@ popheads</textarea>
                 <button class="btn btn-accent" style="margin-top:12px" onclick="saveSettings()" data-i18n="btn.save">Guardar cambios</button>
             </div>
 
+            <!-- ═══ HONEST DASHBOARD — clasificación módulos ═══ -->
+            <details class="card dash-pane" style="margin-top:14px;padding:0" id="hd-panel" ontoggle="if(this.open) loadHonestDashboard()">
+                <summary style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;list-style:none;user-select:none;border-radius:8px">
+                    <div class="dash-pane-icon" style="background:linear-gradient(135deg,#0ea5e9,#0369a1);box-shadow:0 6px 18px rgba(14,165,233,.45),0 0 0 1px rgba(255,255,255,.08) inset">📊</div>
+                    <div class="dash-pane-title">
+                        <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">Honest Dashboard — Módulos cableados al pipeline real</h3>
+                        <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Clasifica los 176 módulos en pipeline / dashboard_only / auxiliary / scaffold / orphan · Ayuda a saber qué se está usando de verdad</p>
+                    </div>
+                    <span id="hd-summary" style="margin-left:auto;font-size:11px;color:var(--text-muted)">— sin datos</span>
+                    <span style="font-size:11px;color:var(--text-muted);margin-left:8px;transition:transform .2s;display:inline-block" class="hd-chev">▶</span>
+                </summary>
+                <div style="padding:0 16px 16px 16px">
+                    <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px">
+                        <button class="btn btn-sm" onclick="event.preventDefault();loadHonestDashboard()">🔄</button>
+                        <button class="btn btn-sm" onclick="event.preventDefault();loadCoverageMetric()">📈 Cobertura test</button>
+                    </div>
+                    <div class="ev-hero" id="hd-hero" style="margin-bottom:10px"></div>
+                    <div id="hd-categories" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+                    <div id="hd-coverage-result" style="margin-top:14px"></div>
+                </div>
+                <style>
+                    details#hd-panel > summary > .hd-chev { transform: rotate(0deg); }
+                    details#hd-panel[open] > summary > .hd-chev { transform: rotate(90deg); }
+                    details#hd-panel > summary::-webkit-details-marker { display: none; }
+                </style>
+            </details>
+
             <!-- ──────────── DFA Compliance Gate ──────────── -->
             <div class="card dash-pane" style="border-left:5px solid #ef4444">
                 <div class="dash-pane-head">
@@ -18055,6 +18082,89 @@ function showTurnstileDomAlertBanner(payload){
     };
     if(!tryWire()) setTimeout(tryWire, 1500);
 })();
+
+// ─── HONEST DASHBOARD — clasificación de módulos ─────────────────────────
+async function loadHonestDashboard(){
+    try {
+        const r = await api('/api/honest-dashboard');
+        if(!r?.ok) return;
+        renderHonestDashboard(r.result || {});
+    } catch(e){ console.error('loadHonestDashboard', e); }
+}
+function renderHonestDashboard(d){
+    const t = d.totals || {};
+    const cats = t.by_category || {};
+    const sum = document.getElementById('hd-summary');
+    if(sum){
+        const pl = cats.pipeline || {count:0, loc_pct:0};
+        sum.innerHTML = `<span style="color:#22c55e">●</span> ${t.modules||0} mods · pipeline real ${pl.loc_pct||0}% LOC`;
+    }
+    const hero = document.getElementById('hd-hero');
+    if(hero){
+        const colors = {pipeline:'#22c55e', dashboard_only:'#0ea5e9',
+                         auxiliary:'#a855f7', scaffold:'#f59e0b', orphan:'#ef4444'};
+        const labels = {pipeline:'🔧 Pipeline', dashboard_only:'🖥 Dashboard',
+                         auxiliary:'🧩 Auxiliary', scaffold:'⚠ Scaffold', orphan:'🚮 Orphan'};
+        hero.innerHTML = ['pipeline','dashboard_only','auxiliary','scaffold','orphan'].map(cat => {
+            const st = cats[cat] || {count:0, loc:0, loc_pct:0};
+            const c = colors[cat];
+            return `<div class="pc-stat" style="border-left:3px solid ${c}">
+                <div class="pc-icon">${labels[cat].split(' ')[0]}</div>
+                <div class="pc-label">${labels[cat].split(' ').slice(1).join(' ')}</div>
+                <div class="pc-value" style="color:${c}">${st.count}</div>
+                <div style="font-size:10px;color:var(--text-muted)">${(st.loc/1000).toFixed(1)}K LOC · ${st.loc_pct}%</div>
+            </div>`;
+        }).join('');
+    }
+    const ccats = document.getElementById('hd-categories');
+    if(ccats){
+        const order = [
+            ['pipeline','#22c55e','🔧 Pipeline real (cableado al bot)'],
+            ['scaffold','#f59e0b','⚠ Scaffolds (incompletos por diseño)'],
+            ['dashboard_only','#0ea5e9','🖥 Dashboard-only (UI features)'],
+            ['orphan','#ef4444','🚮 Orphans (sin importadores — candidatos a borrar)'],
+        ];
+        ccats.innerHTML = order.map(([cat, color, title]) => {
+            const items = (d.by_category||{})[cat] || [];
+            if(!items.length){
+                return `<div class="card" style="border-left:3px solid ${color}"><h3 style="margin:0 0 8px;font-size:13px">${esc(title)}</h3><span style="color:var(--text-muted);font-size:11px">(0)</span></div>`;
+            }
+            const rows = items.slice(0, 12).map(m => {
+                const tflag = m.has_self_test ? '<span title="self_test ✓" style="color:#22c55e">●</span>' : '<span title="sin self_test" style="color:#ef4444">○</span>';
+                return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--border);font-size:11px">
+                    <span>${tflag} <code>${esc(m.file)}</code></span>
+                    <span style="color:var(--text-muted)">${m.loc} LOC · ${m.importers_count} imp</span>
+                </div>`;
+            }).join('');
+            return `<div class="card" style="border-left:3px solid ${color}">
+                <h3 style="margin:0 0 8px;font-size:13px">${esc(title)} <span style="color:var(--text-muted);font-size:10px">(${items.length})</span></h3>
+                ${rows}
+                ${items.length>12 ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px">... y ${items.length-12} más</div>` : ''}
+            </div>`;
+        }).join('');
+    }
+}
+async function loadCoverageMetric(){
+    const out = document.getElementById('hd-coverage-result');
+    if(out) out.innerHTML = '<div style="color:var(--text-muted)">⏳ Calculando cobertura por self_test...</div>';
+    const r = await api('/api/test-coverage?since_days=30');
+    if(!r?.ok){
+        if(out) out.innerHTML = `<div style="color:#ef4444">❌ ${esc(r?.error||'?')}</div>`;
+        return;
+    }
+    const t = r.result?.totals || {};
+    if(out){
+        out.innerHTML = `<div class="card" style="border-left:3px solid #22c55e">
+            <h3 style="margin:0 0 8px;font-size:13px">📈 Cobertura por self_test (últimos 30 días)</h3>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px">
+                <div><div style="font-size:10px;color:var(--text-muted)">Módulos analizados</div><b style="font-size:18px">${t.modules||0}</b></div>
+                <div><div style="font-size:10px;color:var(--text-muted)">Con self_test</div><b style="font-size:18px;color:#22c55e">${t.with_self_test||0}</b><span style="color:var(--text-muted)"> (${t.with_self_test_pct||0}%)</span></div>
+                <div><div style="font-size:10px;color:var(--text-muted)">Funciones cubiertas</div><b style="font-size:18px;color:#0ea5e9">${t.fn_coverage_pct||0}%</b><span style="color:var(--text-muted)"> (${t.covered_fns||0}/${t.total_fns||0})</span></div>
+                <div><div style="font-size:10px;color:var(--text-muted)">LOC cubierto</div><b style="font-size:18px;color:#a855f7">${t.loc_coverage_pct||0}%</b></div>
+            </div>
+        </div>`;
+    }
+}
 
 // ─── CAPTCHA Cost Dashboard ─────────────────────────────────────────────
 async function loadCaptchaCost(){
