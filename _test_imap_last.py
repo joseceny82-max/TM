@@ -1,10 +1,13 @@
 """Muestra el ultimo correo del INBOX de la madre."""
-import sys, socket
+import os, sys, socket
 from imap_tools import MailBox
 
-EMAIL = "johnlockperdidos@icloud.com"
-PWD = "jzny-tfyh-qtuq-feou"
-HOST = "imap.mail.me.com"
+EMAIL = os.environ.get("TM_IMAP_MADRE_EMAIL", "johnlockperdidos@icloud.com")
+PWD = os.environ.get("TM_IMAP_MADRE_PWD", "")
+HOST = os.environ.get("TM_IMAP_MADRE_HOST", "imap.mail.me.com")
+if not PWD:
+    print("ERROR: set env var TM_IMAP_MADRE_PWD before running this script.")
+    sys.exit(2)
 
 socket.setdefaulttimeout(30)
 with MailBox(HOST).login(EMAIL, PWD) as mb:
