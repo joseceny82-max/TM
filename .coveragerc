@@ -26,7 +26,7 @@ omit =
     kasada_vm_solver.py
     tm_mobile_reverse.py
     # Modulos browser-dependent — requieren Playwright/red para tests reales
-    tm_browser_engine.py
+#    tm_browser_engine.py
     tm_camoufox_purchase.py
     tm_purchase_clean.py
     register_account.py
