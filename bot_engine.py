@@ -133,6 +133,21 @@ class Worker:
         self.status = "in_queue"
         self.log("En Queue-it, esperando posicion...")
 
+        # Derivar prefer_offer_indices / selected_sections / strict_targets
+        # ANTES de usarlas en cualquier orquestador (fix F821).
+        _secs = self.params.get("selected_sections") or []
+        _strict = self.params.get("strict_targets")
+        if _strict is None and _secs:
+            _strict = True
+        _multi = self.params.get("selected_offer_indices") or []
+        _oi = self.params.get("offer_index")
+        if _multi:
+            _prefer = [int(x) for x in _multi]
+        elif _oi is not None:
+            _prefer = [int(_oi)]
+        else:
+            _prefer = None
+
         # Hook real BROWSER-BASED: orquestador integrado venue/ticket/cart/queue.
         try:
             import bot_orchestrator
@@ -167,22 +182,7 @@ class Worker:
         # Hook fallback simulate: si bot_orchestrator no disponible o falla, prueba flow simulate.
         try:
             import tm_purchase_flow
-            # Determinar strict_targets default: True si user marcó sectores
-            _secs = self.params.get("selected_sections") or []
-            _strict = self.params.get("strict_targets")
-            if _strict is None and _secs: _strict = True
-            # Derivar prefer_offer_indices: prioridad
-            #   1) selected_offer_indices (multi-select del nuevo grid) — orden de prioridad explícito.
-            #   2) offer_index (legacy single-select) — convertido a [oi]
-            #   3) None → orden natural en el smart (Pista → Reservado → Vis.Red.)
-            _multi = self.params.get("selected_offer_indices") or []
-            _oi = self.params.get("offer_index")
-            if _multi:
-                _prefer = [int(x) for x in _multi]
-            elif _oi is not None:
-                _prefer = [int(_oi)]
-            else:
-                _prefer = None
+            # _prefer / _secs / _strict ya derivados arriba (línea ~125)
             run_kwargs = {
                 "event_id": self.event_id,
                 "url": self.params.get("url"),

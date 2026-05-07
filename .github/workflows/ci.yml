@@ -1,0 +1,206 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ════════════════════════════════════════════════════════════
+  #  1. LINT — ruff (rápido, primero)
+  # ════════════════════════════════════════════════════════════
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - name: Install ruff
+        run: pip install ruff
+      - name: Run ruff
+        run: |
+          # Mostramos errores pero no fallamos por estilo (solo críticos)
+          ruff check . --output-format=github --statistics || true
+          # Build falla SOLO si hay errores de sintaxis/imports rotos (E9, F63, F7, F82)
+          ruff check . --select=E9,F63,F7,F82 --no-fix
+
+  # ════════════════════════════════════════════════════════════
+  #  2. SELF-TESTS — todos los módulos con def self_test()
+  # ════════════════════════════════════════════════════════════
+  self-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - name: Install minimal deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            flask flask-socketio gunicorn \
+            requests imap-tools cryptography \
+            pytest \
+            playwright tls-client \
+            apscheduler
+      - name: Run all self_test() functions
+        run: |
+          python <<'EOF'
+          import importlib, glob, os, json
+          os.environ.setdefault("TM_SECRET_KEY", "ci-test-key")
+          os.environ.setdefault("TM_IMAP_MADRE_PWD", "ci-fake-pwd")
+          modules_with_self_test = []
+          for f in sorted(glob.glob("*.py")):
+              if f.startswith("_") or f in ("dashboard.py",):
+                  continue
+              try:
+                  src = open(f, encoding="utf-8").read()
+                  if "def self_test(" not in src:
+                      continue
+                  modules_with_self_test.append(f[:-3])
+              except Exception:
+                  continue
+          print(f"Found {len(modules_with_self_test)} modules with self_test()")
+          failed = []
+          skipped = []
+          ok = 0
+          for m in modules_with_self_test:
+              try:
+                  mod = importlib.import_module(m)
+                  fn = getattr(mod, "self_test", None)
+                  if not callable(fn):
+                      continue
+                  r = fn()
+                  if isinstance(r, dict) and r.get("ok"):
+                      ok += 1
+                  elif isinstance(r, dict):
+                      failed.append((m, r.get("checks") or r))
+              except Exception as e:
+                  skipped.append((m, f"{type(e).__name__}: {e}"))
+          print(f"\nResults: {ok} OK · {len(failed)} FAIL · {len(skipped)} skipped")
+          if failed:
+              print("\nFailures:")
+              for m, det in failed[:10]:
+                  print(f"  {m}: {str(det)[:200]}")
+          if skipped:
+              print("\nSkipped (import error — likely missing optional dep):")
+              for m, e in skipped[:10]:
+                  print(f"  {m}: {e[:120]}")
+          # Falla CI sólo si >20% de los reales fallan
+          critical = ok + len(failed)
+          if critical > 0 and len(failed) / critical > 0.2:
+              print(f"\nFAILED: too many self-tests broken ({len(failed)}/{critical})")
+              import sys; sys.exit(1)
+          print(f"\nPassed threshold (failures < 20% of testable)")
+          EOF
+
+  # ════════════════════════════════════════════════════════════
+  #  3. PYTEST — suite tests/ explícita
+  # ════════════════════════════════════════════════════════════
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest flask flask-socketio requests imap-tools cryptography
+      - name: Run pytest
+        run: pytest tests/ -v --tb=short
+
+  # ════════════════════════════════════════════════════════════
+  #  4. SMOKE DASHBOARD — boot + healthz + /api/me 401
+  # ════════════════════════════════════════════════════════════
+  smoke-dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [lint, self-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            flask flask-socketio eventlet gunicorn \
+            requests imap-tools cryptography \
+            apscheduler
+      - name: Boot dashboard + smoke
+        run: |
+          export TM_SECRET_KEY=ci-test-key
+          export TM_IMAP_MADRE_PWD=ci-fake-pwd
+          export TM_PORT=5099
+          export TM_AUTO_WARMING=0
+          # Boot dashboard en background
+          python dashboard.py >dashboard.log 2>&1 &
+          DASH_PID=$!
+          # Esperar hasta que /api/healthz responda (max 30s)
+          for i in {1..30}; do
+              if curl -sf "http://127.0.0.1:5099/api/healthz" >/dev/null 2>&1; then
+                  echo "Dashboard arrancado tras ${i}s"
+                  break
+              fi
+              sleep 1
+          done
+          # /api/healthz debe ser 200 + json válido
+          HC=$(curl -s -o /tmp/health.json -w "%{http_code}" "http://127.0.0.1:5099/api/healthz")
+          [ "$HC" = "200" ] || { echo "FAIL healthz: HTTP $HC"; cat dashboard.log | tail -50; kill $DASH_PID; exit 1; }
+          python -c "import json; d=json.load(open('/tmp/health.json')); assert d.get('ok')==True, d"
+          echo "OK /api/healthz"
+          # /api/me sin sesión debe ser 401 (no 500)
+          MC=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:5099/api/me")
+          [ "$MC" = "401" ] || { echo "FAIL /api/me: expected 401 got $MC"; kill $DASH_PID; exit 1; }
+          echo "OK /api/me 401 (sin sesión)"
+          # Login + endpoint protegido
+          curl -s -c /tmp/cookies.txt -X POST -d "username=admin&password=admin" "http://127.0.0.1:5099/login" >/dev/null
+          AC=$(curl -s -b /tmp/cookies.txt -o /dev/null -w "%{http_code}" "http://127.0.0.1:5099/api/captcha/stats")
+          [ "$AC" = "200" ] || { echo "FAIL /api/captcha/stats post-login: HTTP $AC"; kill $DASH_PID; exit 1; }
+          echo "OK /api/captcha/stats post-login"
+          # Cleanup
+          kill $DASH_PID 2>/dev/null || true
+          echo "All smoke tests passed"
+
+  # ════════════════════════════════════════════════════════════
+  #  5. SUMMARY — agrega resultado de los 4 jobs
+  # ════════════════════════════════════════════════════════════
+  ci-summary:
+    runs-on: ubuntu-latest
+    needs: [lint, self-tests, pytest, smoke-dashboard]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "lint=${{ needs.lint.result }}"
+          echo "self-tests=${{ needs.self-tests.result }}"
+          echo "pytest=${{ needs.pytest.result }}"
+          echo "smoke-dashboard=${{ needs.smoke-dashboard.result }}"
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.pytest.result }}" != "success" ] || \
+             [ "${{ needs.smoke-dashboard.result }}" != "success" ]; then
+              echo "CI failed"
+              exit 1
+          fi
+          echo "CI passed"

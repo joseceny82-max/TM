@@ -509,7 +509,7 @@ def main():
 
         # 9) OTP — esperar hasta 15s a que aparezca el campo OTP, polling IMAP largo
         log("otp_check_start")
-        from datetime import datetime
+        # datetime ya importado al top (línea 19) — sin re-import local
         otp_appeared = False
         otp_locator = None
         for attempt in range(5):  # 5 retries x 3s = 15s

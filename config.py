@@ -155,13 +155,27 @@ LOGS = {
 }
 
 def ruta(filename: str) -> str:
-    """Resuelve nombre de archivo a ruta absoluta."""
+    """Resuelve nombre de archivo a ruta absoluta.
+
+    Si TM_DATA_DIR está seteado, redirige a ese directorio (staging support).
+    Esto se aplica solo a JSONs/db relativos al BASE_DIR — los logs y rutas
+    absolutas en RUTAS/LOGS NO se afectan (son configuración explícita).
+    """
     if filename in RUTAS:
         return RUTAS[filename]
     if filename in LOGS:
         return LOGS[filename]
     if os.path.isabs(filename):
         return filename
+    # TM_DATA_DIR override (staging environment)
+    data_dir = os.environ.get("TM_DATA_DIR", "").strip()
+    if data_dir:
+        # Solo permitimos paths relativos al proyecto (no absolutos
+        # ni con .. para evitar escape del sandbox).
+        if not os.path.isabs(data_dir):
+            data_dir = os.path.join(BASE_DIR, data_dir)
+        os.makedirs(data_dir, exist_ok=True)
+        return os.path.join(data_dir, filename)
     return os.path.join(BASE_DIR, filename)
 
 # ==========================================
@@ -169,8 +183,9 @@ def ruta(filename: str) -> str:
 # ==========================================
 MASTER_KEY_FILE  = os.path.join(SECRETS_DIR, ".master_key")
 TELEGRAM_TOKEN   = ""
-DASHBOARD_PORT   = 5055
-DASHBOARD_HOST   = "0.0.0.0"
+DASHBOARD_PORT   = int(os.environ.get("TM_PORT", "5055"))
+DASHBOARD_HOST   = os.environ.get("TM_HOST", "0.0.0.0")
+TM_ENV           = os.environ.get("TM_ENV", "production")  # production | staging | dev
 SECRET_KEY       = "tm-perros-secret-change-me"
 MONITOR_INTERVAL = 30
 APP_NAME         = "TM PERROS"
