@@ -42,7 +42,7 @@ PLANTILLA = os.path.join(ROOT, 'plantilla_tm.csv')
 RUNS_DIR = os.path.join(ROOT, 'datos', 'buy', 'runs')
 COOKIES_DIR = os.path.join(ROOT, 'datos', 'cookies')
 SESSIONS_DIR = os.path.join(ROOT, 'datos', 'sessions')
-SMS_TIMEOUT_S = 70   # antes 50s — TM/proveedores tardan 30-60s, 50s timeoutea SMS legítimos
+SMS_TIMEOUT_S = 120  # antes 70s — TM Spain tarda 60-120s con virtual4/SMSPool, 70s perdía legítimos
 PENDING_ORDERS_RECHECK = []  # órdenes timeoutadas que mantenemos vivas en background por si llega SMS tarde
 MAX_PHONE_CYCLES = 6
 BUY_NO_STOCK_RETRIES = 30
@@ -1013,29 +1013,51 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
             log(f'  imap login err: {e}')
         return None
 
-    # Loop persistente: HASTA 12 ciclos × 90s + re-envío entre cada uno.
-    # Total max ~22 min antes de rendir. NUNCA cerrar navegador antes de agotar todos los reintentos.
-    N_CYCLES = 12
+    # Loop persistente: HASTA 24 ciclos × 30s + re-envío AGRESIVO TRAS CADA ciclo.
+    # Total max ~12 min antes de rendir. Ciclos cortos = más reenvíos = más probabilidad
+    # de que TM acabe enviando uno (TM a veces ignora silenciosamente el primer envío).
+    N_CYCLES = 24
+    CICLO_S = 30      # antes 60 — el user pidió aún más rápido
+    POST_RESEND_WAIT_MS = 3000   # antes 6000 — iCloud digesta en 3s, acelerar
     for cycle in range(1, N_CYCLES + 1):
         effective_sent_at = first_sent_at  # filtro siempre relajado al primer click
-        ciclo_s = 90
-        log(f'  ⏳ polling email OTP ciclo {cycle}/{N_CYCLES} ({ciclo_s}s, since=first_click)')
-        otp = _poll_imap_until(time.time() + ciclo_s, effective_sent_at)
+        log(f'  ⏳ polling email OTP ciclo {cycle}/{N_CYCLES} ({CICLO_S}s, since=first_click)')
+        otp = _poll_imap_until(time.time() + CICLO_S, effective_sent_at)
         if otp: break
         if cycle < N_CYCLES:
-            log(f'  🔁 OTP no llegó en {ciclo_s}s — solicitando nuevo código (con lock anti-throttle)')
+            log(f'  🔁 OTP no llegó en {CICLO_S}s — solicitando nuevo código (lock anti-throttle)')
             got_resend_lock = _acquire_email_otp_lock()
             try:
-                clicked = js_click(page,
-                    r'solicita(r)? un nuevo c[oó]digo|solicitar nuevo c[oó]digo|reenviar c[oó]digo|resend(\s+code)?|enviar de nuevo',
-                    exact=False)
-                if clicked:
-                    log(f'    ✓ click "{clicked}"')
+                # JS unificado: prueba TODOS los selectores de reenvío en 1 round-trip
+                # Prioridad:
+                #  1. "Solicitar nuevo código" / "Reenviar código" (botón explícito)
+                #  2. "Verificar mi correo" / "Verify my email" (re-emite envío)
+                #  3. Cualquier botón con texto "reenviar"/"resend"/"de nuevo"
+                clicked_text = page.evaluate("""() => {
+                    const btns = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+                    const patterns = [
+                        /^solicita(r)? un nuevo c[oó]digo$|^solicitar nuevo c[oó]digo$|^reenviar c[oó]digo$|^resend code$|^enviar de nuevo$/i,
+                        /solicitar.*nuevo|reenviar|resend|enviar de nuevo/i,
+                        /^verificar mi correo$|^verify my email$/i,
+                        /verificar.*correo|verify.*email/i,
+                    ];
+                    for (const pat of patterns) {
+                        for (const b of btns) {
+                            const t = (b.innerText||b.textContent||'').trim();
+                            if (pat.test(t) && !b.disabled) {
+                                b.scrollIntoView({block:'center'});
+                                b.click();
+                                return t;
+                            }
+                        }
+                    }
+                    return null;
+                }""")
+                if clicked_text:
+                    log(f'    ✓ click "{clicked_text}"')
                 else:
-                    clicked = js_click(page, r'verificar mi correo|verify my email', exact=False)
-                    if clicked: log(f'    ✓ click fallback "{clicked}"')
-                    else: log('    ⚠ ningún botón de re-envío encontrado')
-                page.wait_for_timeout(12000)   # iCloud digesta antes de soltar lock
+                    log('    ⚠ ningún botón de re-envío encontrado')
+                page.wait_for_timeout(POST_RESEND_WAIT_MS)
             finally:
                 if got_resend_lock: _release_email_otp_lock()
             sent_at = datetime.now(timezone.utc)
@@ -1048,7 +1070,7 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
                                 datetime.now(timezone.utc) - timedelta(minutes=10))
 
     if not otp:
-        log(f'  ❌ email OTP timeout tras {N_CYCLES} ciclos + last-chance ({N_CYCLES*90}s+)'); return False
+        log(f'  ❌ email OTP timeout tras {N_CYCLES} ciclos × {CICLO_S}s + last-chance'); return False
     log(f'  📧 OTP={otp}')
 
     # Buscar input OTP RÁPIDO — el modal suele estar visible cuando llega el OTP
@@ -1068,15 +1090,54 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     if not inp:
         log('  ❌ no input OTP'); screenshot_on_error(page, run, 'no_input_otp')
         return False
-    # ROBUST paste con verificación post-fill (3 estrategias + value check)
-    pasted = paste_otp_robust(page, inp, otp, label='email OTP')
+    # ULTRAFAST paste — JS unificado en 1 round-trip + click confirmar inline (~30-50ms total)
+    paste_t0 = time.time()
+    pasted = False
+    confirm_clicked = None
+    try:
+        r = page.evaluate("""(args) => {
+            const sel = args.input_sel;
+            const code = args.code;
+            const inp = document.querySelector(sel);
+            if (!inp) return {ok:false, reason:'no_input'};
+            inp.focus();
+            const proto = Object.getPrototypeOf(inp);
+            const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+            if (setter) setter.call(inp, code);
+            else inp.value = code;
+            inp.dispatchEvent(new Event('input', {bubbles:true}));
+            inp.dispatchEvent(new Event('change', {bubbles:true}));
+            // Click confirmar EN EL MISMO frame
+            const btns = Array.from(document.querySelectorAll('button'));
+            const target = btns.find(b => {
+                const t = (b.innerText||'').trim().toLowerCase();
+                return /^(confirmar c[oó]digo|confirmar|verify|verificar c[oó]digo|confirm)$/.test(t)
+                       && !b.disabled;
+            });
+            let confirmed = false;
+            if (target) { target.click(); confirmed = true; }
+            return {ok:true, value:inp.value, confirmed, btn:target?(target.innerText||'').trim():null};
+        }""", {"input_sel": 'input[autocomplete="one-time-code"], input[inputmode="numeric"], input[type="tel"], input[name*="code" i], input[name*="otp" i], input[type="text"]', "code": str(otp)})
+        if r and r.get('ok') and (r.get('value') or '').strip() == str(otp):
+            pasted = True
+            log(f'  ⚡ email OTP pegado vía JS @ {(time.time()-paste_t0)*1000:.0f}ms — value="{r["value"]}" confirm_inline={r.get("confirmed")}')
+            if r.get('confirmed'):
+                confirm_clicked = r.get('btn') or 'Confirmar (inline)'
+    except Exception as e:
+        log(f'  ⚠ ultrafast JS path err: {e}')
+
+    # Fallback: estrategia robusta (3 sub-estrategias Playwright)
+    if not pasted:
+        pasted = paste_otp_robust(page, inp, otp, label='email OTP')
     if not pasted:
         log('  ❌ email OTP no se pudo pegar correctamente — abortando')
         screenshot_on_error(page, run, 'email_otp_paste_failed')
         return False
 
-    page.wait_for_timeout(300)
-    confirm_clicked = js_click(page, r'confirmar c[oó]digo|confirmar|verify|verificar c[oó]digo|confirm', exact=True)
+    # Si NO se hizo click inline en JS path, intentar click separado
+    if not confirm_clicked:
+        page.wait_for_timeout(150)   # antes 300ms
+        confirm_clicked = js_click(page, r'confirmar c[oó]digo|confirmar|verify|verificar c[oó]digo|confirm', exact=True)
     log(f'  click confirmar email OTP: "{confirm_clicked}"')
     # Si no encontró botón, fallback con Enter en el input
     if not confirm_clicked:
@@ -1285,10 +1346,11 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
         sms_code, sms_text = None, None
         deadline = time.time() + SMS_TIMEOUT_S
         # Re-check ROBUSTO: además de la orden actual, verificar las anteriores aún vivas.
-        # SMS provider a veces entrega 30-90s tarde; recapturar en background evita perderlo.
+        # SMS provider a veces entrega 60-180s tarde; recapturar en background evita perderlo.
+        # Ventana extendida 5 min (antes 3 min) por casos TM Spain lentos.
         all_orders_to_check = [order]
         for prev in list(PENDING_ORDERS_RECHECK):
-            if (time.time() - prev.get('ts', 0)) < 180:   # válidas hasta 3 min
+            if (time.time() - prev.get('ts', 0)) < 300:   # 5 min antes 3 min
                 all_orders_to_check.append(prev['order'])
             else:
                 PENDING_ORDERS_RECHECK.remove(prev)
@@ -1354,29 +1416,80 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             screenshot_on_error(page, run, f'no_input_sms_cycle{cycle}')
             sms_receiver.cancel_order(order); blocked.add(phone); save_blocked_phones(blocked); continue
 
-        # FAST paste — primero fill() directo (más rápido), fallback robusto solo si falla
+        # ULTRAFAST paste — JS directo en 1 round-trip + click confirm JS en mismo frame
+        # Antes: ~155ms (click + fill + 80ms wait + verify).
+        # Ahora: ~30-50ms (1 evaluate dispara value+input+change+click confirm).
         paste_t0 = time.time()
         pasted = False
         try:
-            code_inp.click()
-            code_inp.fill('')
-            code_inp.fill(str(sms_code))
-            page.wait_for_timeout(80)   # antes 300ms — verify casi inmediato
-            actual = (code_inp.input_value() or '').strip()
-            if actual == sms_code or ''.join(c for c in actual if c.isdigit()) == sms_code:
+            # Estrategia 0: JS UNIFICADO — set value + dispatch events + click confirm
+            # en una sola llamada page.evaluate (1 round-trip a CDP).
+            # React/Vue lee el value del fiber tras el input event, así que basta con
+            # nativeInputValueSetter para forzar synthetic events React.
+            r = page.evaluate("""(args) => {
+                const sel_input = args.input_sel;
+                const code = args.code;
+                const inp = document.querySelector(sel_input);
+                if (!inp) return {ok:false, reason:'no_input'};
+                inp.focus();
+                // React strict mode: usar el setter nativo para que React detecte el cambio
+                const proto = Object.getPrototypeOf(inp);
+                const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+                if (setter) setter.call(inp, code);
+                else inp.value = code;
+                inp.dispatchEvent(new Event('input', {bubbles:true}));
+                inp.dispatchEvent(new Event('change', {bubbles:true}));
+                // Click confirmar SIN esperar — botón debería estar en el mismo modal
+                let confirmed = false;
+                const btns = Array.from(document.querySelectorAll('button'));
+                const targets = btns.filter(b => {
+                    const t = (b.innerText||'').trim().toLowerCase();
+                    return /^(confirmar c[oó]digo|confirmar|verify|verificar c[oó]digo|confirm)$/.test(t);
+                });
+                if (targets.length && !targets[0].disabled) {
+                    targets[0].click();
+                    confirmed = true;
+                }
+                return {ok:true, value:inp.value, confirmed};
+            }""", {"input_sel": 'input[autocomplete="one-time-code"], input[inputmode="numeric"], input[type="text"], input[type="tel"]', "code": str(sms_code)})
+
+            if r and r.get('ok') and (r.get('value') or '').strip() == sms_code:
                 pasted = True
-                log(f'  ✓ SMS pegado @ {(time.time()-paste_t0)*1000:.0f}ms — value="{actual}"')
-        except Exception: pass
+                log(f'  ⚡ SMS pegado vía JS @ {(time.time()-paste_t0)*1000:.0f}ms — value="{r["value"]}" confirm_inline={r.get("confirmed")}')
+                if r.get('confirmed'):
+                    # Skip el click confirmar separado más abajo
+                    confirm_clicked = "Confirmar código (inline)"
+        except Exception as e:
+            log(f'  ⚠ ultrafast JS path err: {e} — fallback Playwright')
+
+        # Fallback 1: fill() directo Playwright (era el path principal)
         if not pasted:
-            # Fallback: estrategia robusta (más lenta, intenta press_sequentially + char-by-char)
+            try:
+                code_inp.click()
+                code_inp.fill('')
+                code_inp.fill(str(sms_code))
+                page.wait_for_timeout(50)
+                actual = (code_inp.input_value() or '').strip()
+                if actual == sms_code or ''.join(c for c in actual if c.isdigit()) == sms_code:
+                    pasted = True
+                    log(f'  ✓ SMS pegado vía fill @ {(time.time()-paste_t0)*1000:.0f}ms — value="{actual}"')
+            except Exception: pass
+
+        # Fallback 2: estrategia robusta (más lenta, press_sequentially + char-by-char)
+        if not pasted:
             pasted = paste_otp_robust(page, code_inp, sms_code, label='SMS code')
         if not pasted:
             log('  ❌ SMS code no se pudo pegar — cancel + retry cycle')
             screenshot_on_error(page, run, f'sms_paste_failed_cycle{cycle}')
             sms_receiver.cancel_order(order); blocked.add(phone); save_blocked_phones(blocked); continue
 
-        # Click confirmar INMEDIATO — antes esperaba 300ms
-        confirm_clicked = js_click(page, r'confirmar c[oó]digo|confirmar|verify|verificar c[oó]digo|confirm', exact=True)
+        # Click confirmar (solo si NO se hizo inline en JS path)
+        try:
+            _ = confirm_clicked  # vino del JS path?
+        except NameError:
+            confirm_clicked = None
+        if not confirm_clicked:
+            confirm_clicked = js_click(page, r'confirmar c[oó]digo|confirmar|verify|verificar c[oó]digo|confirm', exact=True)
         log(f'  click confirmar SMS: "{confirm_clicked}"')
         if not confirm_clicked:
             try:
@@ -1944,15 +2057,33 @@ def email_already_registered(email: str) -> bool:
     return any((a.get('tm_email') or '').lower() == em
                for a in am.account_manager.list_accounts())
 
-def imap_health_check(madre: str, pwd: str) -> bool:
-    """Valida que el IMAP madre responde antes de gastar recursos en signup."""
-    try:
-        socket.setdefaulttimeout(15)
-        with MailBox('imap.mail.me.com').login(madre, pwd):
-            return True
-    except Exception as e:
-        log(f'  ⚠ IMAP health check fail: {e}', level='ERROR')
-        return False
+def imap_health_check(madre: str, pwd: str, max_retries: int = 3) -> bool:
+    """Valida que el IMAP madre responde antes de gastar recursos en signup.
+
+    iCloud IMAP a veces tiene timeouts transitorios — reintenta hasta 3 veces
+    con backoff exponencial (3s, 6s, 12s) antes de rendirse.
+    """
+    for attempt in range(1, max_retries + 1):
+        try:
+            socket.setdefaulttimeout(30)   # antes 15s — iCloud a veces tarda 20s
+            with MailBox('imap.mail.me.com').login(madre, pwd):
+                if attempt > 1:
+                    log(f'  ✓ IMAP madre OK tras retry {attempt}')
+                return True
+        except Exception as e:
+            err_str = str(e)
+            is_transient = any(t in err_str.lower() for t in
+                                ('timed out', 'timeout', 'eof',
+                                 'connectionreset', 'broken pipe',
+                                 'temporarily unavailable'))
+            if attempt < max_retries and is_transient:
+                wait_s = 3 * (2 ** (attempt - 1))   # 3s, 6s, 12s
+                log(f'  ⚠ IMAP health fail (retry {attempt}/{max_retries}): {err_str[:80]} — esperando {wait_s}s')
+                time.sleep(wait_s)
+                continue
+            log(f'  ⚠ IMAP health check fail tras {attempt} intentos: {err_str[:120]}', level='ERROR')
+            return False
+    return False
 
 USED_IPS_PATH = os.path.join(RUNS_DIR, 'used_ips.json')
 

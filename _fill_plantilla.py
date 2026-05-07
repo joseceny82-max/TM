@@ -45,13 +45,20 @@ def gen_phone():
     return '+346' + str(random.randint(10, 99)) + ''.join(str(random.randint(0,9)) for _ in range(6))
 
 def luhn_checksum(card):
+    """Calcula el check digit Luhn para `card` (dígitos sin el check final).
+
+    Recorre derecha→izquierda; en posiciones 0-indexed PARES desde la derecha
+    duplica el dígito (porque al añadir el check, esos quedarán en posiciones
+    impares 1-indexed desde el final, que es lo que dobla Luhn).
+    """
     digs = [int(d) for d in card]
     total = 0
     for i, d in enumerate(digs[::-1]):
-        if i % 2 == 0: total += d
-        else:
+        if i % 2 == 0:
             x = d * 2
             total += x if x < 10 else x - 9
+        else:
+            total += d
     return (10 - (total % 10)) % 10
 
 def gen_card():
