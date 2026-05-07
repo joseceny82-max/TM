@@ -1,0 +1,97 @@
+name: Turnstile E2E test
+
+# Ejecuta el test end-to-end de Turnstile en cada push a main + nightly cron.
+# Requiere: secret CAPSOLVER_API_KEY (o 2CAPTCHA_API_KEY) en repo settings.
+# Si el solve falla, postea a Slack via webhook (SLACK_WEBHOOK secret).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'turnstile_solver.py'
+      - 'captcha_manager.py'
+      - 'tm_browser_engine.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'turnstile_solver.py'
+      - 'captcha_manager.py'
+  schedule:
+    # Cada noche a las 04:00 UTC para detectar cambios DOM Cloudflare temprano
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      site_key:
+        description: 'Demo site key (visible/invisible/fail)'
+        required: false
+        default: '1x00000000000000000000AA'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright requests imap-tools cryptography flask flask-socketio
+          playwright install chromium --with-deps
+
+      - name: Run unit self-tests (offline)
+        run: |
+          python -c "import turnstile_solver; r=turnstile_solver.self_test(); assert r['ok'], r"
+          python -c "import dd_vm_trace; r=dd_vm_trace.self_test(); assert r['ok'], r"
+
+      - name: Configure CAPTCHA solver
+        env:
+          CAPSOLVER_API_KEY: ${{ secrets.CAPSOLVER_API_KEY }}
+          TWOCAPTCHA_API_KEY: ${{ secrets.TWOCAPTCHA_API_KEY }}
+        run: |
+          python -c "
+          import captcha_manager, os
+          cfg = captcha_manager.get_config()
+          if os.environ.get('CAPSOLVER_API_KEY'):
+              cfg['services']['capsolver'] = {'enabled': True,
+                  'api_key': os.environ['CAPSOLVER_API_KEY']}
+          if os.environ.get('TWOCAPTCHA_API_KEY'):
+              cfg['services']['2captcha'] = {'enabled': True,
+                  'api_key': os.environ['TWOCAPTCHA_API_KEY']}
+          captcha_manager.save_config(cfg)
+          print('configured services:', list(captcha_manager.get_available_methods()))
+          "
+
+      - name: Run E2E test (real Playwright + Cloudflare demo)
+        id: e2e
+        run: |
+          python -c "
+          import turnstile_solver, json, sys
+          r = turnstile_solver.test_e2e_playwright(
+              demo_url='https://www.turnstile-demo.com/',
+              headless=True, submit_form=True, timeout_s=90)
+          print(json.dumps(r, indent=2))
+          if not r.get('ok'):
+              print('::error::E2E test failed: ' + str(r.get('error') or r))
+              sys.exit(1)
+          if not r.get('input_has_token'):
+              print('::warning::Token not injected into input')
+          "
+
+      - name: Notify Slack on failure
+        if: failure() && env.SLACK_WEBHOOK != ''
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"❌ Turnstile E2E test failed on '${GITHUB_REF}' — '${GITHUB_RUN_ID}'"}' \
+            "$SLACK_WEBHOOK" || true

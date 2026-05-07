@@ -1,0 +1,80 @@
+# ─── Datos / persistencia (NO versionar) ──────────────────────
+*.json
+*.json.bak.*
+!package.json
+!.github/**/*.json
+
+# Permitir archivos de config TEMPLATE (sin credenciales)
+!*.template.json
+
+# ─── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+
+# ─── Backups y rescue ──────────────────────────────────────────
+backups/
+*.bak
+*.bak.*
+*.bak_*
+*.rescue.*
+*.rescue_*
+*.bk
+
+# ─── Secrets ───────────────────────────────────────────────────
+secrets/
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+session_key
+.session_key
+
+# ─── Datos de cuentas / compras ────────────────────────────────
+datos/
+plantilla_tm.csv
+plantilla_tm.csv.*
+cuentas_tarjetas.csv
+*.csv.bak.*
+
+# ─── Cache / artefactos navegador ──────────────────────────────
+storage_states/
+screenshots/
+*.png
+*.jpg
+*.gif
+
+# ─── Python ────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ─── IDE / editor ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Build / dist ──────────────────────────────────────────────
+build/
+dist/
+*.egg-info/
+
+# ─── SQLite (si migramos en P1) ───────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Lock / state files ────────────────────────────────────────
+*.lock
+*.pid
+.locks/

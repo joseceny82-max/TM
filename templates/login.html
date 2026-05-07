@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} — Login</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=2">
+    <link rel="apple-touch-icon" href="/static/favicon.svg?v=2">
+    <link rel="shortcut icon" href="/static/favicon.svg?v=2">
+    <style>
+        :root{
+            --bg:#0a0e1a;--card:#0f1729;--border:#1e293b;
+            --accent:#026CDF;--accent2:#0052b4;
+            --text:#e6e8ec;--text-muted:#64748b;
+            --danger:#ef4444;--success:#22c55e;
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{
+            font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+            background:var(--bg);color:var(--text);
+            min-height:100vh;display:flex;align-items:center;justify-content:center;
+            background-image:radial-gradient(circle at 20% 30%,rgba(2,108,223,.18),transparent 50%),
+                             radial-gradient(circle at 80% 70%,rgba(2,108,223,.12),transparent 50%);
+        }
+        .login-box{
+            background:var(--card);border:1px solid var(--border);
+            border-radius:14px;padding:36px 32px;width:400px;max-width:94vw;
+            box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 1px rgba(2,108,223,.1);
+        }
+        .logo{text-align:center;margin-bottom:28px}
+        .logo h1{
+            font-size:32px;letter-spacing:2px;font-weight:800;
+            background:linear-gradient(135deg,#2b86e8,#026CDF);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+        }
+        .logo p{color:var(--text-muted);font-size:12px;margin-top:4px;letter-spacing:1px;text-transform:uppercase}
+        .form-group{margin-bottom:16px}
+        .form-group label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+        .form-group input{
+            width:100%;padding:12px 14px;background:var(--bg);
+            border:1px solid var(--border);border-radius:8px;
+            color:var(--text);font-size:14px;outline:2px solid transparent;outline-offset:2px;
+            transition:border-color .2s, box-shadow .2s, outline-color .2s;
+        }
+        .form-group input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(2,108,223,.15)}
+        .form-group input:focus-visible{outline-color:var(--accent)}
+        .btn{
+            width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+            color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;
+            cursor:pointer;margin-top:10px;letter-spacing:.5px;
+            transition:transform .2s, box-shadow .2s, opacity .2s;
+        }
+        .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(2,108,223,.4)}
+        .btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+        .error{color:var(--danger);font-size:13px;margin-top:10px;text-align:center;min-height:18px}
+        .hint{color:var(--text-muted);font-size:11px;text-align:center;margin-top:16px}
+        @media (prefers-reduced-motion: reduce){
+            *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important;animation-iteration-count:1 !important}
+        }
+    </style>
+</head>
+<body>
+    <form class="login-box" onsubmit="doLogin(event)">
+        <div class="logo">
+            <h1>{{ app_name }}</h1>
+            <p>Ticketmaster Multi-Domain</p>
+        </div>
+        <div class="form-group">
+            <label for="username" data-i18n="login.user">Usuario</label>
+            <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+        </div>
+        <div class="form-group">
+            <label for="password" data-i18n="login.password">Contraseña</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn" data-i18n="login.submit">INICIAR SESIÓN</button>
+        <div id="err" class="error"></div>
+        <div class="hint"><span data-i18n="login.default_hint">Usuario por defecto</span>: <b>admin</b> / <b>admin</b></div>
+        <div style="display:flex;justify-content:center;gap:6px;margin-top:14px">
+            <button type="button" class="lang-btn" data-lang="es" onclick="setLoginLang('es')" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px">🇪🇸 ES</button>
+            <button type="button" class="lang-btn" data-lang="en" onclick="setLoginLang('en')" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px">🇬🇧 EN</button>
+        </div>
+    </form>
+    <script>
+        const I18N_LOGIN = {
+            "login.user":         {es:"Usuario",            en:"Username"},
+            "login.password":     {es:"Contraseña",         en:"Password"},
+            "login.submit":       {es:"INICIAR SESIÓN",     en:"SIGN IN"},
+            "login.bad_creds":    {es:"Credenciales incorrectas", en:"Invalid credentials"},
+            "login.default_hint": {es:"Usuario por defecto", en:"Default account"}
+        };
+        let LANG = localStorage.getItem('tm_lang') ||
+                   ((navigator.language||'es').toLowerCase().startsWith('en') ? 'en' : 'es');
+        function tt(k){ const e=I18N_LOGIN[k]; return e ? (e[LANG]||e.es||k) : k; }
+        function applyLoginI18n(){
+            document.documentElement.lang = LANG;
+            document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = tt(el.dataset.i18n); });
+            document.querySelectorAll('.lang-btn').forEach(b=>{
+                b.style.borderColor = b.dataset.lang===LANG ? 'var(--accent)' : 'var(--border)';
+                b.style.color = b.dataset.lang===LANG ? 'var(--accent)' : 'var(--text-muted)';
+            });
+        }
+        function setLoginLang(l){ LANG=l; localStorage.setItem('tm_lang', l); applyLoginI18n(); }
+        applyLoginI18n();
+
+        async function doLogin(e){
+            e.preventDefault();
+            document.getElementById('err').textContent='';
+            const u=document.getElementById('username').value;
+            const p=document.getElementById('password').value;
+            const r=await fetch('/login',{
+                method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({username:u,password:p})
+            });
+            const j=await r.json();
+            if(j.ok){ location.href='/'; }
+            else{ document.getElementById('err').textContent=tt('login.bad_creds'); }
+        }
+    </script>
+</body>
+</html>
