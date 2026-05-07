@@ -33,6 +33,7 @@ session_key
 
 # ─── Datos de cuentas / compras ────────────────────────────────
 datos/
+staging_data/
 plantilla_tm.csv
 plantilla_tm.csv.*
 cuentas_tarjetas.csv
