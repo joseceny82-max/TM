@@ -70,8 +70,11 @@ build/
 dist/
 *.egg-info/
 
-# ─── SQLite (si migramos en P1) ───────────────────────────────
+# ─── SQLite (datos persistentes, NO versionar) ────────────────
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 *.sqlite
 *.sqlite3
 
