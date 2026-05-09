@@ -960,9 +960,29 @@ def _click_verificar_with_lock(page: Page) -> datetime:
 
 
 def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
-    body = page.evaluate('()=>document.body.innerText.slice(0,500)').lower()
-    if 'verifica' not in body and 'verify' not in page.title().lower():
-        log('email-OTP no requerido'); return True
+    # FIX 2026-05-09 (restaurado tras rollback): TM puede tardar hasta 6s en
+    # renderizar el botón "Verificar mi correo" tras el click Siguiente. Antes
+    # de declarar "no requerido", esperar hasta 6s para que la página termine
+    # de cargar. Sin esto, el bot saltaba directo al teléfono dejando el email
+    # SIN verificar (cuentas creadas a medias). Memoria: feedback_email_before_phone_order.
+    button_seen = False
+    for _ in range(12):  # 12 × 0.5s = 6s
+        try:
+            body = page.evaluate('()=>document.body.innerText.slice(0,800)').lower()
+            title = (page.title() or '').lower()
+            if 'verifica' in body or 'verify' in title or 'verifica' in title:
+                button_seen = True; break
+            # También detectar el botón explícitamente
+            has_btn = page.evaluate(r"""() => {
+              const btns = Array.from(document.querySelectorAll('button, a'));
+              return btns.some(b => /verificar mi correo|verify my email/i.test((b.innerText||'').trim()));
+            }""")
+            if has_btn:
+                button_seen = True; break
+        except Exception: pass
+        page.wait_for_timeout(500)
+    if not button_seen:
+        log('email-OTP no requerido (tras 6s sin botón ni texto "verifica/verify")'); return True
 
     sent_at = _click_verificar_with_lock(page)
     first_sent_at = sent_at   # guardar el timestamp del PRIMER click — usaremos en relajación final
@@ -2725,6 +2745,49 @@ def main():
         extra = (f'phone={r.final.get("phone")} acc={r.final.get("account_id")}'
                  if r.success else f'err={r.error}')
         print(f'  {mark} U{r.row_idx} {r.email}  {extra}')
+
+def self_test() -> dict:
+    """Validación básica del módulo (política del proyecto, módulos >50 LOC).
+    Verifica imports, funciones clave y constantes definidas. NO ejecuta browser.
+    """
+    out = {'ok': True, 'checks': {}, 'errors': []}
+    try:
+        # Imports principales presentes
+        for mod in ('bot_orchestrator', 'cookie_warmer', 'cookie_filter',
+                     'http2_frame_match', 'tm_browser_engine'):
+            try:
+                __import__(mod); out['checks'][f'import:{mod}'] = True
+            except Exception as e:
+                out['checks'][f'import:{mod}'] = False
+                out['errors'].append(f'{mod}: {e}')
+                out['ok'] = False
+
+        # Funciones clave del flow
+        for fn in ('open_profile', 'goto_signup', 'fill_signup_form',
+                    'email_otp', '_click_verificar_with_lock',
+                    '_pick_es_profile_smart', 'detect_bot_block',
+                    'load_used_ips', 'save_used_ip',
+                    'load_burned', 'save_burned'):
+            present = fn in globals() and callable(globals()[fn])
+            out['checks'][f'fn:{fn}'] = present
+            if not present:
+                out['errors'].append(f'fn missing: {fn}')
+                out['ok'] = False
+
+        # Constantes / paths esenciales
+        for const in ('USED_IPS_PATH', 'PLANTILLA', 'RUNS_DIR',
+                       'PROFILE_PICK_LOCK_PATH'):
+            present = const in globals() and globals()[const]
+            out['checks'][f'const:{const}'] = bool(present)
+            if not present:
+                out['ok'] = False
+                out['errors'].append(f'const missing: {const}')
+
+    except Exception as e:
+        out['ok'] = False
+        out['errors'].append(f'self_test exception: {e}')
+    return out
+
 
 if __name__ == '__main__':
     main()
