@@ -4762,17 +4762,18 @@
                             <thead style="position:sticky;top:0;background:var(--bg-elev,#161616);z-index:1">
                                 <tr style="text-align:left">
                                     <th style="padding:8px 10px;border-bottom:1px solid var(--border);width:32px"><input type="checkbox" id="ct-check-all" onchange="toggleAllCheckAccounts(this.checked)" title="Marcar/desmarcar todas"></th>
-                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Cuenta</th>
-                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Email TM</th>
-                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Nombre completo</th>
-                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Teléfono</th>
-                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Estado</th>
-                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Eventos comprados</th>
-                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">Acciones</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_account">Cuenta</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_email">Email TM</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_name">Nombre completo</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_registered_at">Fecha registro</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_phone">Teléfono</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_status">Estado</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_events">Eventos comprados</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right" data-i18n="ct.col_actions">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="ct-accounts-tbody">
-                                <tr><td colspan="8" style="padding:18px;text-align:center;color:var(--text-muted)">Cargando…</td></tr>
+                                <tr><td colspan="9" style="padding:18px;text-align:center;color:var(--text-muted)" data-i18n="hr.loading">Cargando…</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -4998,9 +4999,11 @@
                     <div class="dash-pane-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);box-shadow:0 6px 18px rgba(2,108,223,.45),0 0 0 1px rgba(255,255,255,.08) inset">🤖</div>
                     <div class="dash-pane-title">
                         <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">🤖&nbsp;<span data-i18n="reg.worker_title">Worker · Motor de registro</span></h3>
-                        <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="reg.worker_sub">Workers paralelos con TLS spoof · proxy rotation · human delays · retry exponencial</p>
+                        <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="reg.worker_sub_v2">
+                            ▶ Iniciar Worker procesa las cuentas marcadas con ☑ Seleccionado en la plantilla (verify 16/16 + persist completo). Si no hay seleccionadas, fallback a worker HTTP simulación legacy.
+                        </p>
                     </div>
-                    <span id="reg-worker-badge" style="margin-left:auto;padding:5px 12px;border-radius:10px;font-size:10.5px;font-weight:800;background:var(--bg);border:1px solid var(--border)"></span>
+                    <span id="reg-worker-badge" data-i18n="reg.badge_no_selected" style="margin-left:auto;padding:5px 12px;border-radius:10px;font-size:10.5px;font-weight:800;background:var(--bg);border:1px solid var(--border)">⚪ Sin seleccionados</span>
                 </div>
 
                 <!-- Config grid -->
@@ -5049,6 +5052,63 @@
                     <button class="btn" onclick="retryAllFailed()" style="padding:10px 16px;display:flex;align-items:center;gap:6px">🔁&nbsp;<span data-i18n="reg.btn_retry_failed">Reintentar fallidos</span></button>
                     <button class="btn btn-danger" onclick="clearStatus('done')" style="padding:10px 16px;display:flex;align-items:center;gap:6px">🗑&nbsp;<span data-i18n="reg.btn_clear_done">Limpiar hechos</span></button>
                     <button class="btn btn-danger" onclick="clearStatus('failed')" style="padding:10px 16px;display:flex;align-items:center;gap:6px">🗑&nbsp;<span data-i18n="reg.btn_clear_failed">Limpiar fallidos</span></button>
+                    <button onclick="openHistorialRegistros()" data-i18n-title="reg.btn_historial_t" title="Informe detallado de los últimos 10 procesos de registro" style="padding:10px 16px;display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#7c3aed,#4c1d95);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.4)"><span data-i18n="reg.btn_historial">📊 Registros realizados</span></button>
+                </div>
+            </div>
+
+            <!-- Modal: Historial Registros (informe últimos 10) -->
+            <div id="historial-registros-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;padding:24px;overflow:auto">
+                <div style="background:var(--bg,#0a0a0a);border:1px solid #7c3aed;border-radius:12px;max-width:1500px;margin:0 auto;padding:18px;box-shadow:0 10px 40px rgba(124,58,237,.4)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+                        <div>
+                            <h3 style="margin:0;font-size:17px;font-weight:800;color:#fff" data-i18n="hr.title">📊 Registros realizados — Informe detallado</h3>
+                            <p style="margin:3px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="hr.subtitle">Últimos 10 procesos · combina logs + accounts.json + plantilla (abandoned)</p>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <select id="hr-range" onchange="loadHistorialRegistros()" class="input" style="font-size:12px" data-i18n-title="hr.range_t" title="Filtrar por periodo">
+                                <option value="today" data-i18n="hr.range_today">📅 Hoy</option>
+                                <option value="yesterday" data-i18n="hr.range_yesterday">📅 Ayer</option>
+                                <option value="week" selected data-i18n="hr.range_week">📅 Última semana</option>
+                                <option value="month" data-i18n="hr.range_month">📅 Último mes</option>
+                                <option value="year" data-i18n="hr.range_year">📅 Último año</option>
+                                <option value="all" data-i18n="hr.range_all">📅 Todos</option>
+                            </select>
+                            <input type="date" id="hr-date" onchange="loadHistorialRegistros()" class="input" style="font-size:12px;padding:4px 6px" data-i18n-title="hr.date_t" title="Día específico (YYYY-MM-DD)">
+                            <select id="hr-filter" onchange="renderHistorialRegistros()" class="input" style="font-size:12px">
+                                <option value="all" data-i18n="hr.filter_all">🌍 Todos</option>
+                                <option value="completed" data-i18n="hr.filter_completed">✅ Solo completados</option>
+                                <option value="failed" data-i18n="hr.filter_failed">❌ Solo fallidos</option>
+                                <option value="abandoned" data-i18n="hr.filter_abandoned">⏭ Solo abandoned</option>
+                                <option value="in_progress" data-i18n="hr.filter_in_progress">⏳ En curso</option>
+                            </select>
+                            <select id="hr-view" onchange="renderHistorialRegistros()" class="input" style="font-size:12px" data-i18n-title="hr.view_t" title="Vista: lista plana o agrupada por día">
+                                <option value="grouped" selected data-i18n="hr.view_grouped">📂 Agrupado por día</option>
+                                <option value="flat" data-i18n="hr.view_flat">📋 Lista plana</option>
+                            </select>
+                            <button class="btn btn-sm" onclick="loadHistorialRegistros()" data-i18n-title="hr.btn_reload_t" title="Recargar">🔄</button>
+                            <button class="btn btn-sm" onclick="closeHistorialRegistros()" data-i18n="hr.btn_close">✕ Cerrar</button>
+                        </div>
+                    </div>
+                    <div id="hr-stats" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;font-size:11px"></div>
+                    <div style="overflow:auto;max-height:65vh;border:1px solid var(--border);border-radius:6px">
+                        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:1200px">
+                            <thead style="position:sticky;top:0;background:var(--bg-elev,#161616);z-index:1">
+                                <tr style="text-align:left">
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_status">Estado</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_time">Hora</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_email">Email registrado</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_row">Fila</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_profile">Perfil</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_ip">IP</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_phone">Phone</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_stage">Stage</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_account">Account ID</th>
+                                    <th style="padding:6px 10px;border-bottom:2px solid #7c3aed" data-i18n="hr.col_reason">Razón / Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hr-tbody"><tr><td colspan="10" style="padding:24px;text-align:center;color:var(--text-muted)" data-i18n="hr.loading">Cargando…</td></tr></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -5174,8 +5234,12 @@
                         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                             <span id="pt-info" style="font-size:10px;color:var(--text-muted);font-weight:600">—</span>
                             <span id="pt-dirty" style="font-size:10px;color:#f59e0b;font-weight:700">0 cambios</span>
-                            <button class="btn btn-sm" onclick="loadPlantillaTm()" title="Recargar">🔄</button>
+                            <span id="pt-selected-count" style="font-size:10px;font-weight:700;color:#22c55e"></span>
+                            <button class="btn btn-sm" onclick="ptToggleAll(true)" data-i18n-title="pt.toggle_all_t" title="Marcar todas las filas"><span data-i18n="pt.toggle_all">☑ Todos</span></button>
+                            <button class="btn btn-sm" onclick="ptToggleAll(false)" data-i18n-title="pt.toggle_none_t" title="Desmarcar todas"><span data-i18n="pt.toggle_none">☐ Ninguno</span></button>
+                            <button class="btn btn-sm" onclick="loadPlantillaTm()" data-i18n-title="hr.btn_reload_t" title="Recargar">🔄</button>
                             <button class="btn btn-accent" onclick="savePlantillaTm()" style="font-weight:700">💾 Guardar</button>
+                            <button onclick="ptLanzarSeleccionados()" data-i18n-title="pt.run_selected_t" title="Registrar solo las filas marcadas" style="font-weight:800;background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;box-shadow:0 4px 12px rgba(34,197,94,.4)" data-i18n="pt.run_selected">▶ Registrar seleccionados</button>
                             <button class="btn btn-sm" onclick="window.open('/api/plantilla-tm/csv/raw','_blank')" title="Descargar CSV">⬇</button>
                             <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer" title="Auto-refresh si el archivo cambia (mtime)">
                                 <input id="pt-autorefresh" type="checkbox" checked style="margin:0;accent-color:#0891b2"> live
@@ -6688,6 +6752,23 @@ popheads</textarea>
                                 <tr><td style="padding:6px"><b>HTTP/2 fingerprint</b></td><td style="padding:6px">SETTINGS, PRIORITY, header order</td><td style="padding:6px"><code>curl_cffi</code> impersonate Chrome HTTP/2 real</td></tr>
                                 <tr><td style="padding:6px"><b>Webdriver leak</b></td><td style="padding:6px"><code>navigator.webdriver</code>, CDP Runtime.enable</td><td style="padding:6px">Patchright + Camoufox + CDP-Patches OS-level</td></tr>
                             </table>
+                        </div>
+                    </details>
+
+                    <!-- ANTI-AKAMAI 2026-05-09 register_account refactor -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#22c55e">🆕 Refactor Anti-Akamai 2026-05-09 — register_account.py blindado</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>Tras tasa 0/4 con bot_block visual <i>"Su sesión se ha suspendido"</i> en el batch <code>061406</code>, se aplicaron 4 fixes P1 (sin coste, ~1h) que cubren las 5 señales positivas que TM/Akamai usaba para flagear:</p>
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px">
+                                <tr style="background:var(--card);font-weight:700"><th style="padding:6px;text-align:left">Fix</th><th style="padding:6px;text-align:left">Antes</th><th style="padding:6px;text-align:left">Ahora</th><th style="padding:6px;text-align:left">Impacto esperado</th></tr>
+                                <tr><td style="padding:6px"><b>P1.1 STEALTH_JS</b></td><td style="padding:6px">Solo bloqueo Notification + serviceWorker (no spoof webdriver/canvas/WebGL/plugins)</td><td style="padding:6px"><code>tm_browser_engine.STEALTH_JS</code> completo + audio noise + screen + Intl.timezone Madrid + cdc_* removal</td><td style="padding:6px;color:#22c55e">+30-40%</td></tr>
+                                <tr><td style="padding:6px"><b>P1.2 URL limpia</b></td><td style="padding:6px"><code>my.ticketmaster.es/?_=17783000833623</code> (cache-buster típico de scrapers)</td><td style="padding:6px"><code>my.ticketmaster.es/</code> directo, sin query string</td><td style="padding:6px;color:#22c55e">+10-15%</td></tr>
+                                <tr><td style="padding:6px"><b>P1.3 Timings</b></td><td style="padding:6px">400-700ms tras home, 600ms post-redirect, 800ms entre retries</td><td style="padding:6px">1800-3200ms home, 1500-2500ms post-redirect, scroll wheel REAL (no <code>scrollTo</code>) + cookies-banner 900-1500ms</td><td style="padding:6px;color:#22c55e">+5-15%</td></tr>
+                                <tr><td style="padding:6px"><b>P1.4 Chrome sync</b></td><td style="padding:6px">curl_cffi pre-check Chrome 131, MoreLogin Chrome 144/146 → mismatch JA4</td><td style="padding:6px">Perfil <code>chrome_146_windows</code> en <code>http2_frame_match</code>, <code>USER_AGENTS</code> Chrome 144/146, <code>akamai_sensor_v3.default_ua</code> 146</td><td style="padding:6px;color:#22c55e">+5%</td></tr>
+                            </table>
+                            <p style="margin-top:8px"><b>Archivos modificados:</b> <code>register_account.py</code> · <code>tm_browser_engine.py</code> · <code>http2_frame_match.py</code> · <code>akamai_sensor_v3.py</code></p>
+                            <p style="margin-top:6px;color:#f59e0b"><b>Si tras esto sigue habiendo bot_block</b> → activar Fase 2: <code>hyper_sdk_chain.mode = "live"</code> con API key Hyper Solutions / TakionAPI / Scrapfly (postea sensor_data real al endpoint <code>/_bm/...</code> para que <code>_abck</code> pase de <code>~-1~</code> a <code>~0~</code>) + migrar de Quantum a residenciales reales (BrightData / Soax / Smartproxy).</p>
                         </div>
                     </details>
 
@@ -11611,11 +11692,13 @@ function _renderPlantillaTm(){
         tbody.innerHTML = '<tr><td style="padding:18px;text-align:center;color:var(--text-muted)">Plantilla vacía</td></tr>';
         return;
     }
+    // NO añadimos columna # virtual: el CSV ya tiene N_Usuario como primera columna
+    // identificadora. Una columna # extra duplicaba números (1 1, 2 2, ..., 99 99) y
+    // a partir de 100 confundía visualmente.
     thead.innerHTML = '<tr style="text-align:left">' +
-        '<th style="padding:6px 8px;border-bottom:1px solid var(--border);min-width:32px">#</th>' +
         window._ptHeader.map(h => `<th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:700;color:#0891b2">${esc(h)}</th>`).join('') + '</tr>';
     if(!window._ptRows.length){
-        tbody.innerHTML = `<tr><td colspan="${window._ptHeader.length+1}" style="padding:18px;text-align:center;color:var(--text-muted)">Sin filas</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${window._ptHeader.length}" style="padding:18px;text-align:center;color:var(--text-muted)">Sin filas</td></tr>`;
         return;
     }
     tbody.innerHTML = window._ptRows.map((row, ri) => {
@@ -11627,17 +11710,30 @@ function _renderPlantillaTm(){
             const styleDirty = isDirty
                 ? 'background:rgba(245,158,11,.18);border:1px solid #f59e0b;font-weight:700'
                 : 'background:transparent;border:1px solid transparent';
+            // Columna Seleccionado → checkbox
+            if (h === 'Seleccionado') {
+                const isChecked = (val === '1' || val === 'x' || val === 'X' || val === 'true');
+                return `<td style="padding:3px 4px;border-bottom:1px solid var(--border);text-align:center;${isDirty?'background:rgba(245,158,11,.18)':''}">
+                    <input data-r="${ri}" data-c="${ci}" data-orig="${esc(orig)}" type="checkbox" ${isChecked?'checked':''} onchange="onPtCheckboxChange(this)" style="width:18px;height:18px;cursor:pointer;accent-color:#0891b2;margin:0">
+                </td>`;
+            }
+            // Columna N_Usuario (primer campo del CSV, identificador numérico) →
+            // ancho mínimo suficiente para 4 dígitos (627 filas, hasta 9999) + tabular-nums.
+            // Antes era input ancho-auto que truncaba "10" a "1¦" cuando había 2+ dígitos.
+            if (h === 'N_Usuario') {
+                return `<td style="padding:3px 4px;border-bottom:1px solid var(--border);min-width:54px;width:54px;font-variant-numeric:tabular-nums">
+                    <input data-r="${ri}" data-c="${ci}" data-orig="${esc(orig)}" type="text" value="${esc(val)}" oninput="onPtCellChange(this)" style="width:100%;color:var(--text-muted);font-size:11px;padding:3px 5px;border-radius:3px;text-align:right;font-variant-numeric:tabular-nums;font-family:monospace;${styleDirty}">
+                </td>`;
+            }
             const isSensitive = /password|tarjeta|cvv|pasaporte/i.test(h);
             const inputType = (isSensitive && !isDirty) ? 'text' : 'text';  // siempre text para editar
             return `<td style="padding:3px 4px;border-bottom:1px solid var(--border)">
                 <input data-r="${ri}" data-c="${ci}" data-orig="${esc(orig)}" type="${inputType}" value="${esc(val)}" oninput="onPtCellChange(this)" style="width:100%;color:inherit;font-size:11px;padding:3px 5px;border-radius:3px;font-family:${/password|cvv|tarjeta|pasaporte|telefono|zip/i.test(h)?'monospace':'inherit'};${styleDirty}">
             </td>`;
         }).join('');
-        return `<tr style="background:${ri%2?'rgba(255,255,255,.02)':'transparent'}">
-            <td style="padding:3px 8px;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:10px;text-align:right">${ri+1}</td>
-            ${cells}
-        </tr>`;
+        return `<tr style="background:${ri%2?'rgba(255,255,255,.02)':'transparent'}">${cells}</tr>`;
     }).join('');
+    _ptUpdateSelectedCount();
 }
 
 function onPtCellChange(inp){
@@ -11657,6 +11753,92 @@ function onPtCellChange(inp){
         inp.style.fontWeight = '400';
     }
     _ptUpdateDirty();
+}
+
+function onPtCheckboxChange(inp){
+    const r = parseInt(inp.dataset.r), c = parseInt(inp.dataset.c);
+    const orig = inp.dataset.orig;
+    const cur = inp.checked ? '1' : '0';
+    const key = `${r}:${c}`;
+    if(cur !== orig){
+        window._ptDirty.set(key, cur);
+        inp.parentElement.style.background = 'rgba(245,158,11,.18)';
+    } else {
+        window._ptDirty.delete(key);
+        inp.parentElement.style.background = 'transparent';
+    }
+    _ptUpdateDirty();
+    _ptUpdateSelectedCount();
+}
+
+function _ptUpdateSelectedCount(){
+    const el = document.getElementById('pt-selected-count');
+    if(!el || !window._ptHeader) return;
+    const selIdx = window._ptHeader.indexOf('Seleccionado');
+    if(selIdx < 0){ el.textContent = ''; return; }
+    let n = 0;
+    window._ptRows.forEach((row, ri) => {
+        const dirtyVal = window._ptDirty.get(`${ri}:${selIdx}`);
+        const v = dirtyVal !== undefined ? dirtyVal : (row[selIdx] || '');
+        if(v === '1' || v === 'x' || v === 'X' || v === 'true') n++;
+    });
+    el.textContent = n > 0 ? tFmt('pt.selected_count', {n}) : '';
+    el.style.color = n > 0 ? '#22c55e' : 'var(--text-muted)';
+}
+
+function ptToggleAll(checkAll){
+    if(!window._ptHeader) return;
+    const selIdx = window._ptHeader.indexOf('Seleccionado');
+    if(selIdx < 0) return;
+    window._ptRows.forEach((row, ri) => {
+        const orig = row[selIdx] || '';
+        const newVal = checkAll ? '1' : '0';
+        const key = `${ri}:${selIdx}`;
+        if(newVal !== orig){
+            window._ptDirty.set(key, newVal);
+        } else {
+            window._ptDirty.delete(key);
+        }
+    });
+    _renderPlantillaTm();
+    _ptUpdateDirty();
+    _ptUpdateSelectedCount();
+}
+
+async function ptLanzarSeleccionados(){
+    if(!window._ptHeader) return;
+    const selIdx = window._ptHeader.indexOf('Seleccionado');
+    if(selIdx < 0){ if(typeof toast==='function') toast(t('pt.no_seleccionado_col'),'error'); return; }
+    // 1) Auto-guardar primero si hay cambios pendientes
+    if(window._ptDirty.size){
+        await savePlantillaTm();
+    }
+    // 2) Contar seleccionados aplicando dirty
+    let n = 0;
+    window._ptRows.forEach((row, ri) => {
+        const dirtyVal = window._ptDirty.get(`${ri}:${selIdx}`);
+        const v = dirtyVal !== undefined ? dirtyVal : (row[selIdx] || '');
+        if(v === '1' || v === 'x' || v === 'X' || v === 'true') n++;
+    });
+    if(!n){ if(typeof toast==='function') toast(t('pt.no_selected'),'warning'); return; }
+    // 3) Toast + scroll al card Worker · Motor de registro + flash botón Iniciar
+    if(typeof toast === 'function') toast(tFmt('pt.saved_go_worker', {n}),'success');
+    // Refresh badge worker
+    if(typeof _refreshWorkerSelectedBadge === 'function') _refreshWorkerSelectedBadge();
+    // Scroll smooth al card Worker
+    const startBtn = document.getElementById('reg-btn-start');
+    if(startBtn){
+        startBtn.scrollIntoView({behavior:'smooth', block:'center'});
+        // Flash visual del botón Iniciar Worker durante 3s
+        const orig = startBtn.style.boxShadow;
+        startBtn.style.boxShadow = '0 0 0 4px rgba(34,197,94,.6), 0 0 24px rgba(34,197,94,.8)';
+        startBtn.style.transform = 'scale(1.05)';
+        startBtn.style.transition = 'all .3s';
+        setTimeout(() => {
+            startBtn.style.boxShadow = orig;
+            startBtn.style.transform = '';
+        }, 3000);
+    }
 }
 
 function _ptUpdateDirty(){
@@ -12121,13 +12303,303 @@ async function saveRegistrosConfig(){
     await api('/api/registros/config',{method:'POST',body:JSON.stringify(cfg)});
 }
 
+// ───── Historial registros (modal informe últimos 10) ─────
+window._hrItems = [];
+
+async function openHistorialRegistros(){
+    const modal = document.getElementById('historial-registros-modal');
+    if(modal) modal.style.display = 'block';
+    await loadHistorialRegistros();
+}
+
+function closeHistorialRegistros(){
+    const modal = document.getElementById('historial-registros-modal');
+    if(modal) modal.style.display = 'none';
+}
+
+async function loadHistorialRegistros(){
+    const tbody = document.getElementById('hr-tbody');
+    if(tbody) tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--text-muted)">${t('hr.loading')}</td></tr>`;
+    try {
+        const range = document.getElementById('hr-range')?.value || 'week';
+        const date = document.getElementById('hr-date')?.value || '';
+        // Si hay fecha específica → date sobrescribe range
+        const params = date ? `date=${date}&limit=500` : `range=${range}&limit=500`;
+        const r = await fetch(`/api/registros/historial?${params}`, {credentials:'same-origin'});
+        const d = await r.json();
+        if(d?.ok){
+            window._hrItems = d.items || [];
+            window._hrDays = d.days || [];
+            renderHistorialRegistros();
+        } else {
+            if(tbody) tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:#ef4444">${tFmt('hr.error', {msg: d?.error || '—'})}</td></tr>`;
+        }
+    } catch(e){
+        if(tbody) tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:#ef4444">${tFmt('hr.error_network', {msg: e.message})}</td></tr>`;
+    }
+}
+
+// Render una fila de la tabla detallada (reutilizado en flat y grouped views)
+function _hrRenderRow(it){
+    const _hrLabelKey = {
+        'completed': 'hr.label_completed', 'failed': 'hr.label_failed',
+        'abandoned': 'hr.label_abandoned', 'in_progress': 'hr.label_in_progress',
+    };
+    const sev = it.severity || 'low';
+    const bgRow = sev === 'high' ? 'rgba(239,68,68,.06)'
+                : sev === 'medium' ? 'rgba(245,158,11,.05)'
+                : 'rgba(34,197,94,.04)';
+    const statusBadgeBg =
+        it.status === 'completed' ? 'linear-gradient(135deg,#22c55e,#15803d)'
+        : it.status === 'failed' ? 'linear-gradient(135deg,#ef4444,#b91c1c)'
+        : it.status === 'abandoned' ? 'linear-gradient(135deg,#f59e0b,#b45309)'
+        : 'linear-gradient(135deg,#7c3aed,#4c1d95)';
+    let translatedLabel;
+    if(it.status === 'failed' && it.last_error){
+        translatedLabel = tFmt('hr.label_failed_with', {why: it.last_error});
+    } else {
+        translatedLabel = t(_hrLabelKey[it.status] || 'hr.label_in_progress');
+    }
+    const reasonText = it.abandoned_reason || it.last_error || (it.status === 'completed' ? 'OK' : '—');
+    const e_email = (it.final_email || '').replace(/[<>"&]/g, '');
+    const e_phone = (it.phone || '').replace(/[<>"&]/g, '');
+    const e_acc = (it.account_id || '').replace(/[<>"&]/g, '').slice(0, 8);
+    return `<tr style="background:${bgRow};border-bottom:1px solid var(--border)">
+        <td style="padding:8px 10px"><span style="display:inline-block;padding:3px 10px;border-radius:5px;background:${statusBadgeBg};color:#fff;font-weight:700;font-size:10px">${translatedLabel}</span></td>
+        <td style="padding:8px 10px;color:var(--text-muted);font-family:monospace;font-size:10.5px">${it.log_mtime || '—'}</td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:11px">${e_email}</td>
+        <td style="padding:8px 10px;color:var(--text-muted);font-size:10.5px">${it.row_num || '—'}</td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:10.5px;color:#0891b2">${it.profile || '—'}</td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:10px;color:var(--text-muted)">${it.ip || '—'}</td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:10.5px">${e_phone || '—'}</td>
+        <td style="padding:8px 10px;font-size:10.5px;color:#a78bfa">${it.last_stage || '—'}</td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:10px;color:${it.account_id?'#22c55e':'var(--text-muted)'}">${e_acc || '—'}</td>
+        <td style="padding:8px 10px;font-size:10.5px;color:${sev==='high'?'#ef4444':sev==='medium'?'#f59e0b':'var(--text-muted)'};max-width:280px;overflow:hidden;text-overflow:ellipsis" title="${reasonText.replace(/"/g,'&quot;')}">${reasonText}</td>
+    </tr>`;
+}
+
+function _hrToggleDay(date){
+    const el = document.getElementById('hr-day-' + date);
+    if(!el) return;
+    el.style.display = (el.style.display === 'none') ? '' : 'none';
+    const chev = document.getElementById('hr-chev-' + date);
+    if(chev) chev.textContent = (el.style.display === 'none') ? '▶' : '▼';
+}
+
+function renderHistorialRegistros(){
+    const tbody = document.getElementById('hr-tbody');
+    const filterSel = document.getElementById('hr-filter');
+    const viewSel = document.getElementById('hr-view');
+    const statsBox = document.getElementById('hr-stats');
+    if(!tbody) return;
+    const filter = filterSel?.value || 'all';
+    const view = viewSel?.value || 'grouped';
+    const items = (window._hrItems || []).filter(it => filter === 'all' || it.status === filter);
+
+    // Stats globales del periodo
+    if(statsBox){
+        const all = window._hrItems || [];
+        const days = window._hrDays || [];
+        const c = all.filter(i => i.status === 'completed').length;
+        const f = all.filter(i => i.status === 'failed').length;
+        const ab = all.filter(i => i.status === 'abandoned').length;
+        const ip = all.filter(i => i.status === 'in_progress').length;
+        statsBox.innerHTML = `
+            <span style="padding:5px 12px;background:rgba(34,197,94,.15);border:1px solid #22c55e;border-radius:6px;color:#22c55e;font-weight:700">${tFmt('hr.stat_completed',{n:c})}</span>
+            <span style="padding:5px 12px;background:rgba(239,68,68,.15);border:1px solid #ef4444;border-radius:6px;color:#ef4444;font-weight:700">${tFmt('hr.stat_failed',{n:f})}</span>
+            <span style="padding:5px 12px;background:rgba(245,158,11,.15);border:1px solid #f59e0b;border-radius:6px;color:#f59e0b;font-weight:700">${tFmt('hr.stat_abandoned',{n:ab})}</span>
+            <span style="padding:5px 12px;background:rgba(124,58,237,.15);border:1px solid #7c3aed;border-radius:6px;color:#a78bfa;font-weight:700">${tFmt('hr.stat_in_progress',{n:ip})}</span>
+            <span style="padding:5px 12px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-weight:600">${tFmt('hr.stat_total',{n:all.length})}</span>
+            <span style="padding:5px 12px;background:rgba(2,108,223,.15);border:1px solid #026CDF;border-radius:6px;color:#026CDF;font-weight:700">${tFmt('hr.stat_days',{n: days.length})}</span>
+        `;
+    }
+
+    if(!items.length){
+        tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--text-muted)">${t('hr.empty')}</td></tr>`;
+        return;
+    }
+
+    if(view === 'flat'){
+        // Vista plana — todas las filas seguidas (comportamiento original)
+        tbody.innerHTML = items.map(_hrRenderRow).join('');
+        return;
+    }
+
+    // Vista agrupada por día — desplegable colapsable
+    // Reagrupar items filtrados (porque filter puede haber sacado algunos del bucket original)
+    const buckets = {};
+    items.forEach(it => {
+        const d = it.day || it.log_mtime?.slice(0,10) || '?';
+        if(!buckets[d]) buckets[d] = {date: d, date_label: it.day_label || d, items: []};
+        buckets[d].items.push(it);
+    });
+    const days = Object.values(buckets).sort((a,b) => b.date.localeCompare(a.date));
+
+    let html = '';
+    days.forEach((day, idx) => {
+        const c = day.items.filter(i => i.status === 'completed').length;
+        const f = day.items.filter(i => i.status === 'failed').length;
+        const ab = day.items.filter(i => i.status === 'abandoned').length;
+        const ip = day.items.filter(i => i.status === 'in_progress').length;
+        const total = day.items.length;
+        // Por defecto el día más reciente expandido, los demás colapsados
+        const startCollapsed = idx > 0;
+        const dispRows = startCollapsed ? 'none' : '';
+        const chev = startCollapsed ? '▶' : '▼';
+        // Header del día — clickable
+        html += `<tr style="background:linear-gradient(90deg,rgba(2,108,223,.12),rgba(2,108,223,.04));cursor:pointer;border-bottom:2px solid #026CDF" onclick="_hrToggleDay('${day.date}')">
+            <td colspan="10" style="padding:10px 14px;font-weight:700;color:#fff">
+                <span id="hr-chev-${day.date}" style="display:inline-block;width:14px;color:#026CDF;font-size:10px">${chev}</span>
+                <span style="font-size:13px;color:#fff;margin-left:6px">📅 ${esc(day.date_label)}</span>
+                <span style="margin-left:14px;color:var(--text-muted);font-weight:600;font-size:11px">${total} ${total === 1 ? 'registro' : 'registros'}</span>
+                <span style="margin-left:10px;font-size:10.5px">
+                    <span style="color:#22c55e;font-weight:700">✅ ${c}</span>
+                    <span style="color:#ef4444;font-weight:700;margin-left:8px">❌ ${f}</span>
+                    <span style="color:#f59e0b;font-weight:700;margin-left:8px">⏭ ${ab}</span>
+                    <span style="color:#a78bfa;font-weight:700;margin-left:8px">⏳ ${ip}</span>
+                </span>
+            </td>
+        </tr>`;
+        // Filas del día (colapsables como group)
+        html += `<tr id="hr-day-${day.date}" style="display:${dispRows}"><td colspan="10" style="padding:0;background:transparent">
+            <table style="width:100%;border-collapse:collapse;font-size:11px">
+                <tbody>${day.items.map(_hrRenderRow).join('')}</tbody>
+            </table>
+        </td></tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
 async function startRegistrosWorker(){
+    // PRIORIDAD 1: si hay filas Seleccionado=1 en plantilla → lanzar orquestador real
+    // (register_account.py + verify 16/16 + persistence completa).
+    // PRIORIDAD 2: si no hay seleccionadas → worker simulación/HTTP legacy.
+    // GUARD anti doble-click 2026-05-09: lock global mientras hay request en vuelo.
+    // Sin esto el user puede pulsar 2 veces seguido y lanzar 2 batches paralelos
+    // que duplican procesos register_account por fila → logs corruptos + SMS dup.
+    if(window._regWorkerLaunching){
+        if(typeof toast==='function') toast('⏳ Lanzamiento en curso, espera...','warning');
+        return;
+    }
+    window._regWorkerLaunching = true;
+    const _btn = document.getElementById('reg-btn-start');
+    const _origText = _btn ? _btn.innerHTML : null;
+    if(_btn){
+        _btn.disabled = true;
+        _btn.style.opacity = '0.6';
+        _btn.style.cursor = 'wait';
+        _btn.innerHTML = '⏳ Lanzando…';
+    }
+    const _release = () => {
+        window._regWorkerLaunching = false;
+        if(_btn){
+            _btn.disabled = false;
+            _btn.style.opacity = '';
+            _btn.style.cursor = '';
+            if(_origText !== null) _btn.innerHTML = _origText;
+        }
+    };
+    try { return await _startRegistrosWorkerInner(_release); }
+    catch(e){ _release(); throw e; }
+}
+
+async function _startRegistrosWorkerInner(_release){
+    let selCount = 0;
+    try {
+        const ptr = await fetch('/api/plantilla-tm/csv', {credentials:'same-origin'});
+        const ptd = await ptr.json();
+        if(ptd?.ok && Array.isArray(ptd.rows) && Array.isArray(ptd.header)){
+            const idx = ptd.header.indexOf('Seleccionado');
+            if(idx >= 0){
+                selCount = ptd.rows.filter(r => {
+                    const v = (r[idx] || '').toString().trim();
+                    return v === '1' || v === 'x' || v === 'X' || v === 'true';
+                }).length;
+            }
+        }
+    } catch(e) { /* continúa al worker legacy */ }
+
+    if(selCount > 0){
+        // Hay seleccionadas → lanzar orquestador real con TM_ONLY_SELECTED
+        const slots = parseInt(document.getElementById('reg-cfg-concurrency')?.value || '2', 10);
+        const slotsCap = Math.min(slots, 4);
+        if(!confirm(tFmt('reg.confirm_start', {n: selCount, slots: slotsCap}))){ _release(); return; }
+        try {
+            const r = await fetch('/api/plantilla-tm/run-selected', {
+                method:'POST', credentials:'same-origin',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({target: selCount, slots: slotsCap}),
+            });
+            const d = await r.json();
+            if(d?.ok){
+                toast(tFmt('reg.toast_started', {n: selCount, pid: d.pid}),'success');
+                _setWorkerBadge('running', tFmt('reg.badge_running_pid', {n: selCount, pid: d.pid}));
+                if(typeof loadRegistros === 'function') loadRegistros();
+            } else if(r.status === 409 && d?.error === 'batch_already_running'){
+                // GUARD anti-duplicación 2026-05-09: backend rechaza porque ya hay
+                // un _run_batch10.py corriendo (PID en d.existing_pid).
+                toast(`⚠ Ya hay un batch activo (PID ${d.existing_pid}). Espera a que termine.`,'warning');
+            } else {
+                toast(tFmt('hr.error', {msg: d?.error || '—'}),'error');
+            }
+        } catch(e){
+            toast(tFmt('hr.error_network', {msg: e.message}),'error');
+        }
+        _release();
+        return;
+    }
+
+    // Fallback: worker legacy (HTTP simulación)
     const r = await api('/api/registros/worker/start',{method:'POST',body:'{}'});
     if(r && r.ok){
         toast(r.already_running?'Ya está corriendo':`▶ Worker iniciado (${r.concurrency} threads, modo ${r.mode})`,'success');
         loadRegistros();
     } else toast('Error iniciando','error');
+    _release();
 }
+
+function _setWorkerBadge(state, text){
+    const el = document.getElementById('reg-worker-badge');
+    if(!el) return;
+    if(state === 'running'){
+        // text ya viene formateado por el llamador (con tFmt)
+        el.textContent = text || t('reg.badge_running');
+        el.style.background = 'linear-gradient(135deg,#22c55e,#15803d)';
+        el.style.color = '#fff';
+        el.style.borderColor = '#22c55e';
+    } else if(state === 'idle'){
+        el.textContent = text || t('reg.badge_no_selected');
+        el.style.background = 'var(--bg)';
+        el.style.color = '';
+        el.style.borderColor = 'var(--border)';
+    } else if(state === 'selected'){
+        el.textContent = text || '';
+        el.style.background = 'rgba(34,197,94,.15)';
+        el.style.color = '#22c55e';
+        el.style.borderColor = '#22c55e';
+    }
+}
+
+// Auto-actualizar badge cada 5s mostrando cuántas seleccionadas hay
+async function _refreshWorkerSelectedBadge(){
+    try {
+        const r = await fetch('/api/plantilla-tm/csv', {credentials:'same-origin'});
+        const d = await r.json();
+        if(d?.ok && Array.isArray(d.rows) && Array.isArray(d.header)){
+            const idx = d.header.indexOf('Seleccionado');
+            if(idx >= 0){
+                const n = d.rows.filter(row => {
+                    const v = (row[idx]||'').toString().trim();
+                    return v === '1' || v === 'x' || v === 'X' || v === 'true';
+                }).length;
+                if(n > 0) _setWorkerBadge('selected', tFmt('reg.badge_selected_n', {n}));
+                else _setWorkerBadge('idle', t('reg.badge_no_selected'));
+            }
+        }
+    } catch(e) {}
+}
+setInterval(_refreshWorkerSelectedBadge, 5000);
+setTimeout(_refreshWorkerSelectedBadge, 1500);
 
 async function stopRegistrosWorker(){
     const r = await api('/api/registros/worker/stop',{method:'POST',body:'{}'});
@@ -16935,11 +17407,26 @@ function _renderAccountsTable(){
             .some(v => (v||'').toLowerCase().includes(search));
     });
     if(!accs.length){
-        tbody.innerHTML = `<tr><td colspan="8" style="padding:18px;text-align:center;color:var(--text-muted)">Sin resultados</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="padding:18px;text-align:center;color:var(--text-muted)">${typeof t==='function'?t('common.no_results'):'Sin resultados'}</td></tr>`;
         return;
     }
     tbody.innerHTML = accs.map(a => {
         const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || '—';
+        // Fecha registro: priorizar registration_completed_at > created_at; formato YYYY-MM-DD HH:MM
+        const _ts = a.registration_completed_at || a.created_at || '';
+        const _dt = _ts ? _ts.slice(0,16).replace('T',' ') : '—';
+        // Subtítulo con días desde registro si > 0
+        let _agoTxt = '';
+        if(_ts){
+            try {
+                const dt = new Date(_ts);
+                const diffMs = Date.now() - dt.getTime();
+                const days = Math.floor(diffMs / 86400000);
+                if(days >= 1) _agoTxt = `<div style="font-size:9px;color:var(--text-muted);margin-top:1px">${tFmt('ct.ago_days', {n: days})}</div>`;
+                else if(diffMs >= 3600000) _agoTxt = `<div style="font-size:9px;color:var(--text-muted);margin-top:1px">${tFmt('ct.ago_hours', {n: Math.floor(diffMs/3600000)})}</div>`;
+                else _agoTxt = `<div style="font-size:9px;color:#22c55e;margin-top:1px">${t('ct.ago_recent')}</div>`;
+            } catch(_) {}
+        }
         let statusBadge;
         if(a.pending_user_review){
             statusBadge = `<span title="Pendiente revisión manual del usuario — ${esc(a.review_reason||'deferred')}" style="background:#f59e0b;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">🔍 pendiente revisar</span>`;
@@ -16979,6 +17466,7 @@ function _renderAccountsTable(){
             <td style="padding:6px 10px"><b>${esc(a.label || a.id)}</b><div style="font-size:9px;color:var(--text-muted);font-family:monospace">${esc(a.id)}</div></td>
             <td style="padding:6px 10px"><span style="font-family:monospace">${esc(a.tm_email || '—')}</span></td>
             <td style="padding:6px 10px">${esc(fullName)} ${a.country?`<span style="font-size:9px;color:var(--text-muted)">· ${esc(a.country)}</span>`:''}</td>
+            <td style="padding:6px 10px;font-family:monospace;font-size:10.5px;white-space:nowrap">${esc(_dt)}${_agoTxt}</td>
             <td style="padding:6px 10px;font-family:monospace;font-size:10px">${esc(a.phone || '—')}</td>
             <td style="padding:6px 10px">${statusBadge}${validatedAt}</td>
             <td style="padding:6px 10px;line-height:1.7">${evBadges}</td>

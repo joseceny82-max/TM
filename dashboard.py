@@ -2477,6 +2477,13 @@ def api_accounts_with_purchases():
             "last_name": a.get("last_name"), "country": a.get("country"),
             "phone": (a.get("phone_prefix") or "") + (a.get("phone") or ""),
             "status": a.get("status"),
+            "registration_completed_at": a.get("registration_completed_at"),
+            "created_at": a.get("created_at"),
+            "phone_verified_at": a.get("phone_verified_at"),
+            "credentials_verified": a.get("credentials_verified"),
+            "validated_at": a.get("validated_at"),
+            "pending_user_review": a.get("pending_user_review"),
+            "review_reason": a.get("review_reason"),
             "events_used": events_list,
             "any_blocked": any(e["blocked"] for e in events_list),
         })
@@ -8497,6 +8504,115 @@ def api_plantilla_tm_raw():
                      download_name="plantilla_tm.csv")
 
 
+def _detect_active_batch10_pid():
+    """Detecta si hay un _run_batch10.py corriendo. Devuelve PID o None.
+    Usado para rechazar lanzamientos duplicados (doble-click bug 2026-05-09).
+    """
+    try:
+        import psutil
+        for p in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if (p.info.get('name') or '').lower() not in ('python.exe', 'python', 'pythonw.exe'):
+                    continue
+                cl = ' '.join(p.info.get('cmdline') or [])
+                if '_run_batch10.py' in cl:
+                    return p.info['pid']
+            except Exception:
+                continue
+    except Exception:
+        # Fallback Windows: tasklist + findstr
+        try:
+            import subprocess as _sp
+            r = _sp.run(['wmic', 'process', 'where', 'name="python.exe"',
+                         'get', 'ProcessId,CommandLine', '/format:list'],
+                        capture_output=True, text=True, timeout=5)
+            blocks = r.stdout.split('\n\n')
+            for b in blocks:
+                if '_run_batch10.py' in b:
+                    for line in b.split('\n'):
+                        if line.startswith('ProcessId='):
+                            try: return int(line.split('=', 1)[1].strip())
+                            except: pass
+        except Exception:
+            pass
+    return None
+
+
+@app.route("/api/plantilla-tm/run-selected", methods=["POST"])
+@login_required
+def api_plantilla_tm_run_selected():
+    """Lanza el orquestador en modo SOLO SELECCIONADOS.
+    Body: {target?: int, slots?: int}.
+    El orquestador filtra por columna Seleccionado=1 (env TM_ONLY_SELECTED=1)."""
+    import csv as _csv_pl
+    import subprocess as _sp_pl
+    import sys as _sys_pl
+    d = request.get_json() or {}
+
+    # GUARD anti-duplicación 2026-05-09: rechazar si ya hay un batch activo.
+    # Sin esto, doble-click del frontend → 2 batches en paralelo → 2 register_account
+    # por fila → logs corruptos + SMS duplicados + race conditions.
+    existing_pid = _detect_active_batch10_pid()
+    if existing_pid:
+        return jsonify({
+            "ok": False, "error": "batch_already_running",
+            "existing_pid": existing_pid,
+            "message": "Ya hay un batch activo. Espera a que termine o cancélalo antes de lanzar otro.",
+        }), 409
+
+    # Contar seleccionados actuales del CSV
+    if not _os_pl.path.exists(_PLANTILLA_PATH):
+        return jsonify({"ok": False, "error": "plantilla_not_found"}), 404
+    try:
+        with open(_PLANTILLA_PATH, encoding='utf-8-sig') as f:
+            rows = list(_csv_pl.DictReader(f))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"read_csv: {e}"}), 500
+
+    selected = [r for r in rows
+                if (r.get('Seleccionado') or '').strip() in ('1', 'x', 'X', 'true')
+                and (r.get('Email_TM') or '').strip()
+                and not (r.get('Notas') or '').strip()]
+    if not selected:
+        return jsonify({"ok": False, "error": "no_selected_rows"}), 400
+
+    target = int(d.get('target') or len(selected))
+    slots = max(1, min(4, int(d.get('slots') or 2)))
+    target = max(1, min(target, len(selected)))
+
+    log_path = _os_pl.path.join(
+        PROJECT_ROOT if 'PROJECT_ROOT' in globals() else _os_pl.path.dirname(__file__),
+        'logs',
+        f'batch_selected_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+    )
+    _os_pl.makedirs(_os_pl.path.dirname(log_path), exist_ok=True)
+
+    env = {**_os_pl.environ}
+    env['TM_TARGET'] = str(target)
+    env['TM_SLOTS'] = str(slots)
+    env['TM_ONLY_SELECTED'] = '1'
+    env['PYTHONIOENCODING'] = 'utf-8'
+    if 'TM_IMAP_MADRE_PWD' not in env:
+        env['TM_IMAP_MADRE_PWD'] = 'jzny-tfyh-qtuq-feou'
+
+    try:
+        proc = _sp_pl.Popen(
+            [_sys_pl.executable, '-u', '_run_batch10.py'],
+            stdout=open(log_path, 'w', encoding='utf-8'),
+            stderr=_sp_pl.STDOUT,
+            cwd=_os_pl.path.dirname(_PLANTILLA_PATH),
+            env=env,
+        )
+        return jsonify({
+            "ok": True, "pid": proc.pid,
+            "target": target, "slots": slots,
+            "selected_count": len(selected),
+            "log_path": log_path,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"launch: {e}"}), 500
+
+
 @app.route("/api/registros/<rid>", methods=["PUT", "PATCH"])
 @login_required
 def api_registros_update(rid):
@@ -8581,6 +8697,265 @@ def api_registros_worker_stop():
 @login_required
 def api_registros_worker_status():
     return jsonify({"ok": True, "status": tm_registrations.worker_status()})
+
+
+@app.route("/api/registros/historial", methods=["GET"])
+@login_required
+def api_registros_historial():
+    """Informe detallado de procesos de registro con filtro temporal.
+
+    Combina logs batch10_row*.log + accounts.json para devolver un resumen
+    de cada intento: éxito, fallo, abandoned, infra-error, en-curso.
+
+    Query:
+      - ?limit=10 (default 200 si hay range)
+      - ?range=today|yesterday|week|month|year|all (default all)
+      - ?date=YYYY-MM-DD (día específico, sobrescribe range)
+      - ?days_back=N (alternativa a range, mira últimos N días)
+    """
+    import glob as _glob_pl
+    import re as _re_pl
+    import os as _os_pl
+    import json as _json_pl
+    from datetime import datetime as _dt_pl, timedelta as _td_pl
+
+    range_param = (request.args.get('range') or '').lower()
+    date_param = request.args.get('date') or ''
+    days_back = request.args.get('days_back')
+    # Default: si hay range/date/days_back, sin limit (todos del periodo). Sino limit=10.
+    has_range = bool(range_param or date_param or days_back)
+    default_limit = 500 if has_range else 10
+    limit = int(request.args.get('limit') or default_limit)
+
+    # Calcular cutoff de fecha mínima según range
+    now_pl = _dt_pl.now()
+    cutoff_date = None
+    cutoff_date_end = None  # para rango cerrado (ej. ayer = ayer 00:00 a hoy 00:00)
+    if date_param:
+        try:
+            d0 = _dt_pl.strptime(date_param, '%Y-%m-%d')
+            cutoff_date = d0
+            cutoff_date_end = d0 + _td_pl(days=1)
+        except Exception:
+            pass
+    elif days_back:
+        try:
+            cutoff_date = now_pl - _td_pl(days=int(days_back))
+        except Exception:
+            pass
+    elif range_param == 'today':
+        cutoff_date = now_pl.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif range_param == 'yesterday':
+        ystr = now_pl.replace(hour=0, minute=0, second=0, microsecond=0) - _td_pl(days=1)
+        cutoff_date = ystr
+        cutoff_date_end = ystr + _td_pl(days=1)
+    elif range_param == 'week':
+        cutoff_date = now_pl - _td_pl(days=7)
+    elif range_param == 'month':
+        cutoff_date = now_pl - _td_pl(days=30)
+    elif range_param == 'year':
+        cutoff_date = now_pl - _td_pl(days=365)
+    # 'all' o vacío: sin cutoff
+    proj = _os_pl.path.dirname(_os_pl.path.abspath(__file__))
+
+    # Leer todos los logs row* recientes (filtrar por mtime si hay cutoff)
+    log_pat = _os_pl.path.join(proj, 'logs', 'batch10_row*.log')
+    all_logs = _glob_pl.glob(log_pat)
+    if cutoff_date:
+        cutoff_ts = cutoff_date.timestamp()
+        end_ts = cutoff_date_end.timestamp() if cutoff_date_end else None
+        all_logs = [f for f in all_logs
+                    if _os_pl.path.getmtime(f) >= cutoff_ts
+                    and (end_ts is None or _os_pl.path.getmtime(f) < end_ts)]
+    log_files = sorted(all_logs, key=_os_pl.path.getmtime, reverse=True)[:limit]
+
+    # Cargar accounts.json para cross-reference
+    try:
+        with open(_os_pl.path.join(proj, 'datos', 'cuentas', 'accounts.json'),
+                  encoding='utf-8') as f:
+            accs_data = _json_pl.load(f)
+        accs = accs_data if isinstance(accs_data, list) else accs_data.get('accounts', [])
+        accs_by_email = {(a.get('tm_email') or '').lower(): a for a in accs}
+    except Exception:
+        accs_by_email = {}
+
+    # Plantilla para detectar abandonados
+    plantilla_path = _os_pl.path.join(proj, 'plantilla_tm.csv')
+    abandoned = {}
+    try:
+        import csv as _csv_pl
+        with open(plantilla_path, encoding='utf-8-sig') as f:
+            for r in _csv_pl.DictReader(f):
+                em = (r.get('Email_TM') or '').strip().lower()
+                nt = (r.get('Notas') or '').strip()
+                if em and nt.startswith('abandoned'):
+                    abandoned[em] = nt
+    except Exception:
+        pass
+
+    items = []
+    for lf in log_files:
+        try:
+            with open(lf, encoding='utf-8') as f:
+                content = f.read()
+        except Exception:
+            continue
+
+        # Email registrado real (puede ser distinto del nombre del log si pool claim)
+        m_email = _re_pl.search(r'email=(\S+@\S+)', content)
+        email_real = m_email.group(1) if m_email else None
+
+        # Email del nombre del archivo
+        bn = _os_pl.path.basename(lf)  # batch10_row60_coffer-carpals.2k.log
+        m_bn = _re_pl.match(r'batch10_row(\d+)_(.+)\.log', bn)
+        row_num = int(m_bn.group(1)) if m_bn else None
+        email_csv = m_bn.group(2) + '@icloud.com' if m_bn else None
+
+        # Final email = email_real (lo que registró el script) o email_csv
+        final_email = email_real or email_csv or 'unknown'
+
+        # Tiempos
+        m_init = _re_pl.search(r'\[(\d\d:\d\d:\d\d)[\.\d]*\] INFO\s+═══ run_(\d{8}_\d{6})_u\d+', content)
+        started_at = m_init.group(2) if m_init else None
+        m_fin = _re_pl.search(r'═══ FIN run_\w+ success=(True|False)', content)
+        success = m_fin.group(1) == 'True' if m_fin else None
+
+        # Perfil + IP
+        m_prof = _re_pl.search(r'perfil arrancado (P-\d+) port=\d+ ip=([\d\.]+)', content)
+        profile = m_prof.group(1) if m_prof else None
+        ip = m_prof.group(2) if m_prof else None
+
+        # Phone usado (último ciclo)
+        m_phone = _re_pl.search(r'(?:teléfono guardado.*?(\d{9,12})|✓ U\d+\s+\S+\s+phone=(\d+))', content)
+        phone = (m_phone.group(1) or m_phone.group(2)) if m_phone else None
+
+        # account_id si aplica
+        m_acc = _re_pl.search(r'✓ account_id=(\w+)', content)
+        acc_id = m_acc.group(1) if m_acc else None
+
+        # Razón última (errores conocidos)
+        last_error = None
+        last_stage = None
+        for pat, label in [
+            (r'⏭ ABORT EARLY tras (\d+) ciclos sin OTP', 'email_otp_alias_dead'),
+            (r'❌ email OTP timeout', 'email_otp_timeout'),
+            (r'BAD_CREDENTIALS_detected', 'bad_credentials'),
+            (r'FATAL_(\w+)', 'fatal'),
+            (r'browser has been closed', 'browser_closed'),
+            (r'no_pwd_input', 'login_no_pwd'),
+            (r'signin_mode_permanent', 'account_already_exists'),
+            (r'FLAKY_THRESHOLD', 'flaky_threshold'),
+            (r'signal_TIMEOUT_no_checkout', 'timeout'),
+        ]:
+            if _re_pl.search(pat, content):
+                last_error = label
+                break
+
+        # Stage final detectado
+        for stage_pat, stage_name in [
+            (r'click "Añade número"', 'phone_sms'),
+            (r'cuenta persistida', 'completed'),
+            (r'click "Añadir mi teléfono"', 'phone_step'),
+            (r'click "Verificar mi correo"', 'email_otp'),
+            (r'fill_signup_form', 'signup_form'),
+            (r'click Siguiente', 'submit_form'),
+            (r'pre-flight: IMAP', 'preflight'),
+        ]:
+            if _re_pl.search(stage_pat, content):
+                last_stage = stage_name
+
+        # Determinar estado final
+        em_lower = (final_email or '').lower()
+        if em_lower in abandoned:
+            status = 'abandoned'
+            label_es = '⏭ Abandoned (alias muerto)'
+            severity = 'medium'
+        elif success is True or em_lower in accs_by_email:
+            status = 'completed'
+            label_es = '✅ Completado 16/16'
+            severity = 'low'
+        elif success is False:
+            status = 'failed'
+            label_es = '❌ Fallido (no recoverable)'
+            severity = 'high'
+        elif last_error:
+            status = 'failed'
+            label_es = f'❌ Fallido ({last_error})'
+            severity = 'high'
+        else:
+            # Sin FIN → en flight o killed mid-run
+            status = 'in_progress'
+            label_es = '⏳ En curso o killed'
+            severity = 'medium'
+
+        # mtime del log
+        mtime = _dt_pl.fromtimestamp(_os_pl.path.getmtime(lf))
+
+        # Account info si está
+        acc_info = accs_by_email.get(em_lower) or {}
+
+        items.append({
+            'log_file': bn,
+            'log_mtime': mtime.strftime('%Y-%m-%d %H:%M:%S'),
+            'row_num': row_num,
+            'email_csv': email_csv,
+            'email_real': email_real,
+            'final_email': final_email,
+            'started_at': started_at,
+            'success': success,
+            'status': status,
+            'label': label_es,
+            'severity': severity,
+            'profile': profile,
+            'ip': ip,
+            'phone': phone or acc_info.get('phone', ''),
+            'account_id': acc_id or acc_info.get('id'),
+            'card_id': None,
+            'last_stage': last_stage,
+            'last_error': last_error,
+            'abandoned_reason': abandoned.get(em_lower),
+            'log_size': _os_pl.path.getsize(lf),
+            'day': mtime.strftime('%Y-%m-%d'),
+            'day_label': mtime.strftime('%A %d %b %Y'),  # ej. "Friday 09 May 2026"
+        })
+
+        if len(items) >= limit:
+            break
+
+    # Agrupar por día (YYYY-MM-DD) — útil para el frontend
+    by_day = {}
+    for it in items:
+        d = it.get('day')
+        if d not in by_day:
+            by_day[d] = {
+                'date': d,
+                'date_label': it.get('day_label'),
+                'count': 0,
+                'completed': 0, 'failed': 0, 'abandoned': 0, 'in_progress': 0,
+                'items': [],
+            }
+        bucket = by_day[d]
+        bucket['count'] += 1
+        bucket[it['status']] = bucket.get(it['status'], 0) + 1
+        bucket['items'].append(it)
+    # Ordenar por fecha desc
+    days_list = sorted(by_day.values(), key=lambda x: x['date'], reverse=True)
+
+    return jsonify({
+        'ok': True,
+        'items': items,
+        'count': len(items),
+        'days': days_list,
+        'days_count': len(days_list),
+        'range': range_param or ('custom_date' if date_param else 'all'),
+        'date': date_param,
+        'cutoff_date': cutoff_date.isoformat() if cutoff_date else None,
+        'sources': {
+            'logs_scanned': len(log_files),
+            'accounts_indexed': len(accs_by_email),
+            'abandoned_in_plantilla': len(abandoned),
+        }
+    })
 
 
 # ==========================================
@@ -10973,6 +11348,53 @@ def api_queue_sniper():
         customer_id=b.get("customer_id", "ticketmasterspain"),
         account_pool=b.get("account_pool"),
         purchase_flow_args=b.get("purchase_flow_args")))
+
+
+def self_test() -> dict:
+    """Validación básica del dashboard (política del proyecto, módulos >50 LOC).
+    Verifica imports, rutas críticas registradas y funciones helper.
+    NO arranca el servidor — sólo valida que se puede importar y rutas existen.
+    """
+    out = {'ok': True, 'checks': {}, 'errors': []}
+    try:
+        # Flask app instance
+        out['checks']['flask_app'] = 'app' in globals() and hasattr(app, 'route')
+
+        # Rutas críticas registradas
+        critical_routes = [
+            '/api/healthz',
+            '/api/plantilla-tm/run-selected',
+            '/api/plantilla-tm/csv',
+            '/api/registros',
+            '/login',
+        ]
+        registered = {r.rule for r in app.url_map.iter_rules()}
+        for r in critical_routes:
+            present = r in registered
+            out['checks'][f'route:{r}'] = present
+            if not present:
+                out['ok'] = False
+                out['errors'].append(f'route missing: {r}')
+
+        # Funciones helper internas del fix anti-doble-click
+        out['checks']['fn:_detect_active_batch10_pid'] = (
+            '_detect_active_batch10_pid' in globals() and
+            callable(globals()['_detect_active_batch10_pid'])
+        )
+
+        # Imports principales
+        for mod in ('config', 'tm_registrations', 'account_manager',
+                     'notifications', 'audit_log'):
+            try:
+                __import__(mod); out['checks'][f'import:{mod}'] = True
+            except Exception as e:
+                out['checks'][f'import:{mod}'] = False
+                out['errors'].append(f'{mod}: {e}')
+                out['ok'] = False
+    except Exception as e:
+        out['ok'] = False
+        out['errors'].append(f'self_test exception: {e}')
+    return out
 
 
 # ==========================================
