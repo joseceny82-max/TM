@@ -8793,6 +8793,23 @@ def api_registros_historial():
     except Exception:
         pass
 
+    # tm_registrations.json: fuente de verdad declarativa para status final.
+    # Tiene prioridad sobre la deducción del log (audit 2026-05-09: cuando el bot
+    # mata un browser mid-run el log queda sin FIN pero el status real ya está
+    # marcado en tm_registrations como failed/abandoned/done).
+    tm_regs_path = _os_pl.path.join(proj, 'tm_registrations.json')
+    tm_regs_by_email = {}
+    try:
+        with open(tm_regs_path, encoding='utf-8') as f:
+            tm_regs_data = _json_pl.load(f)
+        tm_regs_list = tm_regs_data if isinstance(tm_regs_data, list) else tm_regs_data.get('items', [])
+        for r in tm_regs_list:
+            if not isinstance(r, dict): continue
+            em = (r.get('email') or '').strip().lower()
+            if em: tm_regs_by_email[em] = r
+    except Exception:
+        pass
+
     items = []
     for lf in log_files:
         try:
@@ -8866,11 +8883,25 @@ def api_registros_historial():
 
         # Determinar estado final
         em_lower = (final_email or '').lower()
-        if em_lower in abandoned:
+
+        # PRIORIDAD 1: tm_registrations.json (fuente de verdad declarativa).
+        # Si el email tiene una entrada con status final marcado, respetarlo.
+        # Audit 2026-05-09: 23 cuentas con browser_closed se marcaron failed
+        # explícitamente en tm_regs aunque el log siga sin FIN.
+        tm_reg = tm_regs_by_email.get(em_lower)
+        tm_status = (tm_reg.get('status') if tm_reg else '') or ''
+
+        if tm_status == 'failed':
+            status = 'failed'
+            err_in_reg = tm_reg.get('last_error', '') or last_error or 'failed'
+            label_es = f'❌ Fallido ({err_in_reg})'
+            severity = 'high'
+        elif tm_status == 'abandoned' or em_lower in abandoned:
             status = 'abandoned'
-            label_es = '⏭ Abandoned (alias muerto)'
+            reason = (tm_reg.get('last_error', '') if tm_reg else '') or abandoned.get(em_lower, 'alias muerto')
+            label_es = f'⏭ Abandoned ({reason[:30]})'
             severity = 'medium'
-        elif success is True or em_lower in accs_by_email:
+        elif tm_status == 'done' or success is True or em_lower in accs_by_email:
             status = 'completed'
             label_es = '✅ Completado 16/16'
             severity = 'low'
