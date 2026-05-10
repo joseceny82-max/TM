@@ -7961,6 +7961,13 @@ function noteFromResp(r){
     if(r.warn_key) return tFmt(r.warn_key, r.warn_args || {});
     return r.note || r.warn || '';
 }
+// Helper conciso para strings inline ES/EN sin necesidad de añadir clave a i18n.py.
+// Útil para mensajes de toast/confirm/notify y textos dinámicos en JS.
+//   ej: toast(tx('Guardado','Saved'), 'success')
+//   ej: el.innerHTML = tx('Sin datos','No data')
+function tx(es, en){
+    return (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en') ? en : es;
+}
 function errFromResp(r){
     if(!r) return '';
     if(r.error_key) return tFmt(r.error_key, r.error_args || {});
@@ -8628,8 +8635,8 @@ async function loadDashboard(){
         rec.innerHTML = (a.events||[]).slice(0,15).map(e=>renderActRow(e)).join('')
             || `<div class="pc-empty" style="padding:26px 0">
                    <span class="pc-empty-icon" style="font-size:44px">📭</span>
-                   <h4 style="color:var(--text-muted)">Sin actividad reciente</h4>
-                   <p style="font-size:11px">Arranca el bot para ver eventos aquí</p>
+                   <h4 style="color:var(--text-muted)">${tx('Sin actividad reciente','No recent activity')}</h4>
+                   <p style="font-size:11px">${tx('Arranca el bot para ver eventos aquí','Start the bot to see events here')}</p>
                </div>`;
     }
 
@@ -8644,21 +8651,24 @@ async function loadDashboard(){
     window._DASH_ANALYTICS = (a && a.ok) ? (a.events||[]) : [];
 }
 
-// ── Stat cards: desplegable con detalle contextual ──
-const STAT_META = {
-    tickets:   {title:'🎟️ Entradas Compradas', desc:'Número total de entradas adquiridas correctamente por el bot en todos los dominios TM configurados.', tip:'Objetivo: maximizar este número. Cada worker que termina con éxito suma aquí. Revisa Analytics para ver tendencia semanal.', actions:[['Ver Analytics','analytics'],['Ver Mis Entradas','compras']]},
-    events:    {title:'🎭 Eventos Activos', desc:'Eventos monitorizados en este momento. El bot vigila stock, drops y re-aperturas en todos estos.', tip:'Tener <b>demasiados</b> eventos activos reparte la potencia de workers. Mantén solo los eventos de hoy/mañana activados.', actions:[['Ir a Eventos','eventos']]},
-    accounts:  {title:'👥 Cuentas', desc:'Cuentas de Ticketmaster disponibles para login (email + password + tarjeta asociada).', tip:'Recomendación: <b>3-5 cuentas por dominio</b>. Usa cuentas con historial real (>30 días) para bajar score anti-bot.', actions:[['Gestionar cuentas','cuentas']]},
-    cards:     {title:'💳 Tarjetas', desc:'Tarjetas de crédito/débito guardadas para checkout automático.', tip:'Tokeniza en Adyen antes del drop para acelerar el pago 4-6 segundos. Ver pestaña Cuentas y Tarjetas.', actions:[['Gestionar tarjetas','cuentas']]},
-    proxies:   {title:'🔀 Proxies', desc:'Proxies residenciales/ISP disponibles en pool. Cada worker coge uno distinto al arrancar.', tip:'<b>ISP sticky 30 min</b> es ideal para Queue-it. Benchmarkea contra ticketmaster.com antes del drop.', actions:[['Ir a Sniper Bot','bot']]},
-    cookies:   {title:'🍪 Cookies en Pool', desc:'Cookies AcpAT/Queue-it/PerimeterX pre-farmeadas listas para inyectar.', tip:'<b>Cookie warming</b>: genera cookies visitando TM 15-30 min antes del drop. Multiplica tasa de éxito.', actions:[['Ir a Cookies','cookies']]},
-    workers:   {title:'🤖 Workers Activos', desc:'Hilos de bot corriendo simultáneamente (cada uno con cuenta+proxy+cookie distintos).', tip:'Regla de oro: <b>1 worker = 1 IP única</b>. Más de 3 workers/IP suele ser detección garantizada.', actions:[['Ir a Sniper Bot','bot']]},
-    queues:    {title:'🏃 Colas Activas (Queue-it)', desc:'Número de sesiones Queue-it en curso esperando su turno en la fila virtual.', tip:'Captura la cookie <b>AcpAT</b> al pasar e inyéctala en otros workers para saltar la cola.', actions:[['Ir a Filas','filas']]},
-    problems:  {title:'⚠️ Problemas Abiertos', desc:'Incidencias detectadas automáticamente agrupadas por fingerprint (anti-bot, CAPTCHA, proxy caído…).', tip:'Revisa los <b>críticos</b> primero. Usa auto-resolver para limpieza de low-severity.', actions:[['Abrir Centro de Problemas','problemas']]},
-    domains:   {title:'🌐 Dominios Activos', desc:'Dominios TM seleccionados para operar en paralelo (modo multi-dominio).', tip:'<b>Multi-dominio distribuido</b> (ES+UK+DE+US…) multiplica probabilidad de éxito pero requiere proxies por región.', actions:[['Seleccionar dominios','openDomainModal()']]},
-    conversion:{title:'📈 Conversion %', desc:'Porcentaje de workers que terminan con compra exitosa sobre total de intentos.', tip:'Benchmark típico: <b>10-25% en drops normales</b>, <b>40-70% con pre-farming + ISP proxies + cookie injection</b>.', actions:[['Ver Analytics','analytics']]},
-    revenue:   {title:'💰 Gasto Total', desc:'Suma del coste total (entradas + comisiones) acumulado en el periodo.', tip:'Configura un <b>límite de gasto</b> en ajustes para evitar sustos en eventos con surge pricing.', actions:[['Ver Analytics','analytics']]},
-};
+// ── Stat cards: desplegable con detalle contextual (bilingüe via tx()) ──
+function _getStatMeta(){
+    return {
+        tickets:   {title:tx('🎟️ Entradas Compradas','🎟️ Tickets Bought'), desc:tx('Número total de entradas adquiridas correctamente por el bot en todos los dominios TM configurados.','Total tickets successfully purchased by the bot across all configured TM domains.'), tip:tx('Objetivo: maximizar este número. Cada worker que termina con éxito suma aquí. Revisa Analytics para ver tendencia semanal.','Goal: maximize this number. Each successful worker adds here. Check Analytics for weekly trend.'), actions:[[tx('Ver Analytics','View Analytics'),'analytics'],[tx('Ver Mis Entradas','View My Tickets'),'compras']]},
+        events:    {title:tx('🎭 Eventos Activos','🎭 Active Events'), desc:tx('Eventos monitorizados en este momento. El bot vigila stock, drops y re-aperturas en todos estos.','Currently monitored events. The bot watches stock, drops and re-openings on all of these.'), tip:tx('Tener <b>demasiados</b> eventos activos reparte la potencia de workers. Mantén solo los eventos de hoy/mañana activados.','Having <b>too many</b> active events spreads worker power thin. Keep only today/tomorrow events enabled.'), actions:[[tx('Ir a Eventos','Go to Events'),'eventos']]},
+        accounts:  {title:tx('👥 Cuentas','👥 Accounts'), desc:tx('Cuentas de Ticketmaster disponibles para login (email + password + tarjeta asociada).','Ticketmaster accounts available for login (email + password + linked card).'), tip:tx('Recomendación: <b>3-5 cuentas por dominio</b>. Usa cuentas con historial real (>30 días) para bajar score anti-bot.','Recommended: <b>3-5 accounts per domain</b>. Use accounts with real history (>30 days) to lower anti-bot score.'), actions:[[tx('Gestionar cuentas','Manage accounts'),'cuentas']]},
+        cards:     {title:tx('💳 Tarjetas','💳 Cards'), desc:tx('Tarjetas de crédito/débito guardadas para checkout automático.','Saved credit/debit cards for automated checkout.'), tip:tx('Tokeniza en Adyen antes del drop para acelerar el pago 4-6 segundos. Ver pestaña Cuentas y Tarjetas.','Tokenize in Adyen before the drop to speed up payment 4-6 seconds. See Accounts & Cards tab.'), actions:[[tx('Gestionar tarjetas','Manage cards'),'cuentas']]},
+        proxies:   {title:tx('🔀 Proxies','🔀 Proxies'), desc:tx('Proxies residenciales/ISP disponibles en pool. Cada worker coge uno distinto al arrancar.','Residential/ISP proxies in pool. Each worker takes a different one on startup.'), tip:tx('<b>ISP sticky 30 min</b> es ideal para Queue-it. Benchmarkea contra ticketmaster.com antes del drop.','<b>ISP sticky 30 min</b> is ideal for Queue-it. Benchmark against ticketmaster.com before the drop.'), actions:[[tx('Ir a Sniper Bot','Go to Sniper Bot'),'bot']]},
+        cookies:   {title:tx('🍪 Cookies en Pool','🍪 Cookie Pool'), desc:tx('Cookies AcpAT/Queue-it/PerimeterX pre-farmeadas listas para inyectar.','Pre-farmed AcpAT/Queue-it/PerimeterX cookies ready to inject.'), tip:tx('<b>Cookie warming</b>: genera cookies visitando TM 15-30 min antes del drop. Multiplica tasa de éxito.','<b>Cookie warming</b>: generate cookies by visiting TM 15-30 min before the drop. Boosts success rate.'), actions:[[tx('Ir a Cookies','Go to Cookies'),'cookies']]},
+        workers:   {title:tx('🤖 Workers Activos','🤖 Active Workers'), desc:tx('Hilos de bot corriendo simultáneamente (cada uno con cuenta+proxy+cookie distintos).','Concurrent bot threads running (each with distinct account+proxy+cookie).'), tip:tx('Regla de oro: <b>1 worker = 1 IP única</b>. Más de 3 workers/IP suele ser detección garantizada.','Golden rule: <b>1 worker = 1 unique IP</b>. More than 3 workers/IP usually means guaranteed detection.'), actions:[[tx('Ir a Sniper Bot','Go to Sniper Bot'),'bot']]},
+        queues:    {title:tx('🏃 Colas Activas (Queue-it)','🏃 Active Queues (Queue-it)'), desc:tx('Número de sesiones Queue-it en curso esperando su turno en la fila virtual.','Number of in-progress Queue-it sessions waiting their turn in the virtual queue.'), tip:tx('Captura la cookie <b>AcpAT</b> al pasar e inyéctala en otros workers para saltar la cola.','Capture the <b>AcpAT</b> cookie on pass and inject it into other workers to skip the queue.'), actions:[[tx('Ir a Filas','Go to Queues'),'filas']]},
+        problems:  {title:tx('⚠️ Problemas Abiertos','⚠️ Open Problems'), desc:tx('Incidencias detectadas automáticamente agrupadas por fingerprint (anti-bot, CAPTCHA, proxy caído…).','Auto-detected incidents grouped by fingerprint (anti-bot, CAPTCHA, dead proxy…).'), tip:tx('Revisa los <b>críticos</b> primero. Usa auto-resolver para limpieza de low-severity.','Check <b>critical</b> first. Use auto-resolve for low-severity cleanup.'), actions:[[tx('Abrir Centro de Problemas','Open Problem Center'),'problemas']]},
+        domains:   {title:tx('🌐 Dominios Activos','🌐 Active Domains'), desc:tx('Dominios TM seleccionados para operar en paralelo (modo multi-dominio).','TM domains selected to operate in parallel (multi-domain mode).'), tip:tx('<b>Multi-dominio distribuido</b> (ES+UK+DE+US…) multiplica probabilidad de éxito pero requiere proxies por región.','<b>Distributed multi-domain</b> (ES+UK+DE+US…) multiplies success probability but requires proxies per region.'), actions:[[tx('Seleccionar dominios','Select domains'),'openDomainModal()']]},
+        conversion:{title:tx('📈 Conversion %','📈 Conversion %'), desc:tx('Porcentaje de workers que terminan con compra exitosa sobre total de intentos.','Percentage of workers completing successful purchase out of total attempts.'), tip:tx('Benchmark típico: <b>10-25% en drops normales</b>, <b>40-70% con pre-farming + ISP proxies + cookie injection</b>.','Typical benchmark: <b>10-25% on normal drops</b>, <b>40-70% with pre-farming + ISP proxies + cookie injection</b>.'), actions:[[tx('Ver Analytics','View Analytics'),'analytics']]},
+        revenue:   {title:tx('💰 Gasto Total','💰 Total Spend'), desc:tx('Suma del coste total (entradas + comisiones) acumulado en el periodo.','Sum of total cost (tickets + fees) accumulated over the period.'), tip:tx('Configura un <b>límite de gasto</b> en ajustes para evitar sustos en eventos con surge pricing.','Set a <b>spending limit</b> in settings to avoid surprises on surge-pricing events.'), actions:[[tx('Ver Analytics','View Analytics'),'analytics']]},
+    };
+}
+const STAT_META = new Proxy({}, { get(_, key){ return _getStatMeta()[key]; } });
 
 function toggleStatCard(card){
     if(!card) return;
@@ -8679,19 +8689,19 @@ function renderStatDetail(key){
     const dom = window._DASH_DOMAIN || {};
     let breakdown = '';
 
-    // breakdown contextual
-    if(key==='events')   breakdown = chip('🎫 Totales', s.events||0) + chip('🌐 Dominios', (dom.selected||[]).length);
-    else if(key==='proxies')  breakdown = chip('✅ Pool actual', s.proxies||0) + chip('🎯 Recomendado', '≥ '+Math.max(20,(s.workers||0)*3));
-    else if(key==='workers')  breakdown = chip('🤖 Activos', s.workers||0) + chip('🏃 En cola', s.queues||0) + chip('⚠️ Problemas', s.problems||0);
-    else if(key==='queues')   breakdown = chip('🏃 En cola', s.queues||0) + chip('🎟️ Tickets conseguidos', s.tickets_bought||0);
-    else if(key==='problems') breakdown = chip('⚠️ Abiertos', s.problems||0) + chip('🌐 Dominios operativos', (dom.selected||[]).length);
-    else if(key==='accounts') breakdown = chip('👤 Disponibles', s.accounts||0) + chip('💳 Tarjetas', s.cards||0);
-    else if(key==='cookies')  breakdown = chip('🍪 En pool', s.cookies||0) + chip('💡 Óptimo', '≥ '+Math.max(50,(s.workers||0)*10));
-    else if(key==='tickets')  breakdown = chip('🎟️ Conseguidas', s.tickets_bought||0) + chip('💰 Gasto', (s.revenue||0)+'€');
-    else if(key==='domains')  breakdown = chip('🌐 Seleccionados', (dom.selected||[]).length) + chip('⚙️ Modo', dom.multi_mode?'Multi':'Único');
-    else if(key==='conversion')breakdown = chip('📈 %', (s.conversion||0)+'%') + chip('🎟️ Éxitos', s.tickets_bought||0) + chip('🤖 Workers', s.workers||0);
-    else if(key==='revenue')  breakdown = chip('💰 Total', (s.revenue||0)+'€') + chip('🎟️ Tickets', s.tickets_bought||0);
-    else if(key==='cards')    breakdown = chip('💳 Guardadas', s.cards||0) + chip('👤 Cuentas', s.accounts||0);
+    // breakdown contextual (bilingüe)
+    if(key==='events')   breakdown = chip('🎫 '+tx('Totales','Total'), s.events||0) + chip('🌐 '+tx('Dominios','Domains'), (dom.selected||[]).length);
+    else if(key==='proxies')  breakdown = chip('✅ '+tx('Pool actual','Current pool'), s.proxies||0) + chip('🎯 '+tx('Recomendado','Recommended'), '≥ '+Math.max(20,(s.workers||0)*3));
+    else if(key==='workers')  breakdown = chip('🤖 '+tx('Activos','Active'), s.workers||0) + chip('🏃 '+tx('En cola','Queued'), s.queues||0) + chip('⚠️ '+tx('Problemas','Problems'), s.problems||0);
+    else if(key==='queues')   breakdown = chip('🏃 '+tx('En cola','Queued'), s.queues||0) + chip('🎟️ '+tx('Tickets conseguidos','Tickets won'), s.tickets_bought||0);
+    else if(key==='problems') breakdown = chip('⚠️ '+tx('Abiertos','Open'), s.problems||0) + chip('🌐 '+tx('Dominios operativos','Operating domains'), (dom.selected||[]).length);
+    else if(key==='accounts') breakdown = chip('👤 '+tx('Disponibles','Available'), s.accounts||0) + chip('💳 '+tx('Tarjetas','Cards'), s.cards||0);
+    else if(key==='cookies')  breakdown = chip('🍪 '+tx('En pool','In pool'), s.cookies||0) + chip('💡 '+tx('Óptimo','Optimal'), '≥ '+Math.max(50,(s.workers||0)*10));
+    else if(key==='tickets')  breakdown = chip('🎟️ '+tx('Conseguidas','Won'), s.tickets_bought||0) + chip('💰 '+tx('Gasto','Spend'), (s.revenue||0)+'€');
+    else if(key==='domains')  breakdown = chip('🌐 '+tx('Seleccionados','Selected'), (dom.selected||[]).length) + chip('⚙️ '+tx('Modo','Mode'), dom.multi_mode?tx('Multi','Multi'):tx('Único','Single'));
+    else if(key==='conversion')breakdown = chip('📈 %', (s.conversion||0)+'%') + chip('🎟️ '+tx('Éxitos','Successes'), s.tickets_bought||0) + chip('🤖 Workers', s.workers||0);
+    else if(key==='revenue')  breakdown = chip('💰 '+tx('Total','Total'), (s.revenue||0)+'€') + chip('🎟️ Tickets', s.tickets_bought||0);
+    else if(key==='cards')    breakdown = chip('💳 '+tx('Guardadas','Saved'), s.cards||0) + chip('👤 '+tx('Cuentas','Accounts'), s.accounts||0);
 
     const actions = (meta.actions||[]).map(a=>{
         const target = a[1];
@@ -8703,7 +8713,7 @@ function renderStatDetail(key){
     return `
         <div class="sd-desc">${meta.desc||''}</div>
         ${breakdown?`<div class="sd-breakdown">${breakdown}</div>`:''}
-        ${meta.tip?`<div class="sd-tip">💡 <b>Recomendación:</b> ${meta.tip}</div>`:''}
+        ${meta.tip?`<div class="sd-tip">💡 <b>${tx('Recomendación','Recommendation')}:</b> ${meta.tip}</div>`:''}
         ${actions?`<div class="sd-actions">${actions}</div>`:''}
     `;
 }
@@ -10399,11 +10409,11 @@ async function loadProblems(){
     // HERO stats
     const s = r.stats || {};
     document.getElementById('pc-hero').innerHTML = `
-        <div class="pc-stat critical"><div class="pc-icon">🔥</div><div class="pc-label">🔥 Críticos</div><div class="pc-value">${s.critical||0}</div></div>
-        <div class="pc-stat high"><div class="pc-icon">⚠️</div><div class="pc-label">⚠️ Altos</div><div class="pc-value">${s.high||0}</div></div>
-        <div class="pc-stat medium"><div class="pc-icon">ℹ️</div><div class="pc-label">ℹ️ Medios</div><div class="pc-value">${s.medium||0}</div></div>
-        <div class="pc-stat low"><div class="pc-icon">💡</div><div class="pc-label">💡 Bajos</div><div class="pc-value">${s.low||0}</div></div>
-        <div class="pc-stat resolved"><div class="pc-icon">✅</div><div class="pc-label">✅ Resueltos</div><div class="pc-value">${s.resolved||0}</div></div>`;
+        <div class="pc-stat critical"><div class="pc-icon">🔥</div><div class="pc-label">🔥 ${tx('Críticos','Critical')}</div><div class="pc-value">${s.critical||0}</div></div>
+        <div class="pc-stat high"><div class="pc-icon">⚠️</div><div class="pc-label">⚠️ ${tx('Altos','High')}</div><div class="pc-value">${s.high||0}</div></div>
+        <div class="pc-stat medium"><div class="pc-icon">ℹ️</div><div class="pc-label">ℹ️ ${tx('Medios','Medium')}</div><div class="pc-value">${s.medium||0}</div></div>
+        <div class="pc-stat low"><div class="pc-icon">💡</div><div class="pc-label">💡 ${tx('Bajos','Low')}</div><div class="pc-value">${s.low||0}</div></div>
+        <div class="pc-stat resolved"><div class="pc-icon">✅</div><div class="pc-label">✅ ${tx('Resueltos','Resolved')}</div><div class="pc-value">${s.resolved||0}</div></div>`;
 
     // Contadores en filtros
     const pcfAll = document.getElementById('pcf-all');
@@ -10437,8 +10447,8 @@ async function loadProblems(){
         ? list.map(p=>renderProblemCard(p)).join('')
         : `<div class="pc-empty">
                <span class="pc-empty-icon">🎉</span>
-               <h4>¡Todo en orden!</h4>
-               <p>No hay problemas abiertos. El bot está operando sin incidencias.</p>
+               <h4>${tx('¡Todo en orden!','All clear!')}</h4>
+               <p>${tx('No hay problemas abiertos. El bot está operando sin incidencias.','No open problems. The bot is running without incidents.')}</p>
            </div>`;
 }
 
@@ -10467,26 +10477,26 @@ function renderProblemCard(p){
     return `<div class="problem-card ${esc(sev)} ${resolvedCls}" onclick="toggleProblemDetails(this,event)">
         <div class="pc-sev-badge ${esc(sev)}">${icon}</div>
         <div class="pc-body">
-            <div class="pc-title">${esc(p.title || '(sin título)')}</div>
+            <div class="pc-title">${esc(p.title || tx('(sin título)','(no title)'))}</div>
             <div class="pc-meta">
                 <span class="pc-cat-pill">${esc(catDisplay)}</span>
-                ${count > 1 ? `<span class="pc-count-pill">🔁 ${count} veces</span>` : ''}
-                <span class="pc-time">👁 Vista <b>${esc(relTime(lastSeen))}</b></span>
-                ${count > 1 ? `<span class="pc-time">📅 Primera vez <b>${esc(relTime(firstSeen))}</b></span>` : ''}
-                ${p.resolved ? `<span class="badge badge-success">✅ Resuelto</span>` : ''}
+                ${count > 1 ? `<span class="pc-count-pill">🔁 ${count} ${tx('veces','times')}</span>` : ''}
+                <span class="pc-time">👁 ${tx('Vista','Seen')} <b>${esc(relTime(lastSeen))}</b></span>
+                ${count > 1 ? `<span class="pc-time">📅 ${tx('Primera vez','First seen')} <b>${esc(relTime(firstSeen))}</b></span>` : ''}
+                ${p.resolved ? `<span class="badge badge-success">✅ ${tx('Resuelto','Resolved')}</span>` : ''}
             </div>
             ${p.message ? `<div class="pc-message">${esc(p.message)}</div>` : ''}
             <div class="pc-details" onclick="event.stopPropagation()">
                 <div><b>ID:</b> <code>${esc(p.id)}</code> · <b>Fingerprint:</b> <code>${esc(p.fingerprint||'—')}</code></div>
-                <div><b>Severidad:</b> ${esc(SEV_LABEL[sev]||sev)} · <b>Ocurrencias:</b> ${count}</div>
-                <div><b>Primera vez:</b> ${esc((firstSeen||'').replace('T',' ').slice(0,19))}</div>
-                <div><b>Última vez:</b> ${esc((lastSeen||'').replace('T',' ').slice(0,19))}</div>
-                ${p.resolved ? `<div><b>Resuelto:</b> ${esc((p.resolved_at||'').replace('T',' ').slice(0,19))} — ${esc(p.resolution||'')}</div>` : ''}
+                <div><b>${tx('Severidad','Severity')}:</b> ${esc(SEV_LABEL[sev]||sev)} · <b>${tx('Ocurrencias','Occurrences')}:</b> ${count}</div>
+                <div><b>${tx('Primera vez','First seen')}:</b> ${esc((firstSeen||'').replace('T',' ').slice(0,19))}</div>
+                <div><b>${tx('Última vez','Last seen')}:</b> ${esc((lastSeen||'').replace('T',' ').slice(0,19))}</div>
+                ${p.resolved ? `<div><b>${tx('Resuelto','Resolved')}:</b> ${esc((p.resolved_at||'').replace('T',' ').slice(0,19))} — ${esc(p.resolution||'')}</div>` : ''}
                 ${metaStr ? `<pre>${esc(metaStr)}</pre>` : ''}
             </div>
         </div>
         <div class="pc-actions" onclick="event.stopPropagation()">
-            ${!p.resolved ? `<button class="btn btn-success btn-sm" onclick="resolveProblem('${esc(p.id)}')">✅ Resolver</button>` : ''}
+            ${!p.resolved ? `<button class="btn btn-success btn-sm" onclick="resolveProblem('${esc(p.id)}')">✅ ${tx('Resolver','Resolve')}</button>` : ''}
         </div>
     </div>`;
 }
@@ -10501,27 +10511,27 @@ async function reportProblem(){
     const sev = document.getElementById('pr-sev').value;
     const title = document.getElementById('pr-title').value.trim();
     const msg = document.getElementById('pr-msg').value.trim();
-    if(!title){ toast('Falta título','error'); return; }
+    if(!title){ toast(tx('Falta título','Title required'),'error'); return; }
     await api('/api/problems/report',{method:'POST',body:JSON.stringify({category:cat,severity:sev,title,message:msg})});
     document.getElementById('pr-title').value=''; document.getElementById('pr-msg').value='';
-    toast('Problema reportado','success'); loadProblems();
+    toast(tx('Problema reportado','Problem reported'),'success'); loadProblems();
 }
 async function resolveProblem(id){
     await api(`/api/problems/${id}/resolve`,{method:'POST',body:'{}'});
-    toast('Problema resuelto','success');
+    toast(tx('Problema resuelto','Problem resolved'),'success');
     loadProblems();
 }
 async function autoResolveProblems(){
     const r = await api('/api/problems/auto-resolve',{method:'POST',body:'{}'});
-    toast('Auto-resueltos: '+(r?.resolved||0),'success'); loadProblems();
+    toast(tx('Auto-resueltos: ','Auto-resolved: ')+(r?.resolved||0),'success'); loadProblems();
 }
 async function autoResolveStale(){
     const r = await api('/api/problems/auto-resolve-stale',{method:'POST',body:JSON.stringify({hours:48})});
-    toast('Inactivos resueltos: '+(r?.resolved||0),'success'); loadProblems();
+    toast(tx('Inactivos resueltos: ','Stale resolved: ')+(r?.resolved||0),'success'); loadProblems();
 }
 async function clearResolvedProblems(){
     await api('/api/problems/clear',{method:'POST',body:'{}'});
-    toast('Resueltos eliminados','success');
+    toast(tx('Resueltos eliminados','Resolved cleared'),'success');
     loadProblems();
 }
 
@@ -14396,16 +14406,16 @@ async function loadAntibot(){
     const html = `
     <div class="grid-2">
         <div class="card"><h3>Queue-it</h3>
-            <label><input type="checkbox" id="ab-queue" ${c.queue_it.enabled?'checked':''}> Activado</label>
-            <div style="margin-top:8px">Estrategia: <b>${esc(c.queue_it.wait_strategy)}</b></div>
-            <div>Max espera: <b>${esc(c.queue_it.max_wait_minutes)} min</b></div>
+            <label><input type="checkbox" id="ab-queue" ${c.queue_it.enabled?'checked':''}> ${tx('Activado','Enabled')}</label>
+            <div style="margin-top:8px">${tx('Estrategia','Strategy')}: <b>${esc(c.queue_it.wait_strategy)}</b></div>
+            <div>${tx('Max espera','Max wait')}: <b>${esc(c.queue_it.max_wait_minutes)} min</b></div>
         </div>
         <div class="card"><h3>PerimeterX / Imperva</h3>
             <label><input type="checkbox" id="ab-px" ${c.perimeterx.enabled?'checked':''}> PerimeterX</label><br>
             <label style="margin-top:6px"><input type="checkbox" id="ab-imp" ${c.imperva.enabled?'checked':''}> Imperva</label>
         </div>
         <div class="card"><h3>reCAPTCHA</h3>
-            <label><input type="checkbox" id="ab-rc" ${c.recaptcha.enabled?'checked':''}> Activado</label>
+            <label><input type="checkbox" id="ab-rc" ${c.recaptcha.enabled?'checked':''}> ${tx('Activado','Enabled')}</label>
             <div class="input-group" style="margin-top:8px">
                 <select id="ab-rc-mode" class="input">
                     <option ${c.recaptcha.mode==='auto'?'selected':''}>auto</option>
@@ -14422,7 +14432,7 @@ async function loadAntibot(){
             <label><input type="checkbox" id="ab-tls" ${c.stealth.tls_fingerprint?'checked':''}> TLS fingerprint</label>
         </div>
     </div>
-    <button class="btn btn-accent" style="margin-top:10px" onclick="saveAntibot()">Guardar</button>`;
+    <button class="btn btn-accent" style="margin-top:10px" onclick="saveAntibot()">${tx('Guardar','Save')}</button>`;
     document.getElementById('antibot-panel').innerHTML = html;
 }
 async function saveAntibot(){
@@ -14449,24 +14459,24 @@ async function loadCaptcha(){
     const r = await api('/api/bot/captcha'); if(!r||!r.ok) return;
     const c = r.config;
     const html = `
-    <div class="card"><h3>Proveedor de CAPTCHA</h3>
+    <div class="card"><h3>${tx('Proveedor de CAPTCHA','CAPTCHA Provider')}</h3>
         <div class="input-group">
             <select id="cp-primary" class="input">
                 ${r.methods.map(m=>`<option ${c.primary===m?'selected':''}>${esc(m)}</option>`).join('')}
             </select>
         </div>
-        <div style="margin-top:10px">Mejor metodo actual: <b style="color:var(--accent-light)">${esc(r.best)}</b></div>
+        <div style="margin-top:10px">${tx('Mejor método actual','Best current method')}: <b style="color:var(--accent-light)">${esc(r.best)}</b></div>
     </div>
     <div class="grid-2">
         ${Object.entries(c.services).map(([k,v])=>`
         <div class="card"><h3>${esc(k)}</h3>
-            <label><input type="checkbox" id="cs-${k}" ${v.enabled?'checked':''}> Activado</label>
+            <label><input type="checkbox" id="cs-${k}" ${v.enabled?'checked':''}> ${tx('Activado','Enabled')}</label>
             <div class="input-group" style="margin-top:6px">
                 <input id="ck-${k}" class="input" placeholder="API Key" value="${esc(v.api_key||'')}">
             </div>
         </div>`).join('')}
     </div>
-    <button class="btn btn-accent" style="margin-top:10px" onclick="saveCaptcha()">Guardar</button>`;
+    <button class="btn btn-accent" style="margin-top:10px" onclick="saveCaptcha()">${tx('Guardar','Save')}</button>`;
     document.getElementById('captcha-panel').innerHTML = html;
 }
 async function saveCaptcha(){
@@ -14482,7 +14492,7 @@ async function saveCaptcha(){
 async function loadBrowsers(){
     const r = await api('/api/bot/browsers'); if(!r||!r.ok) return;
     const html = `
-    <div class="card"><h3>🌐 Navegadores Anti-Detect</h3>
+    <div class="card"><h3>🌐 ${tx('Navegadores Anti-Detect','Anti-Detect Browsers')}</h3>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
             ${r.antidetect.map(b=>`
                 <div class="site-card" style="grid-template-columns:1fr auto">
@@ -14491,11 +14501,11 @@ async function loadBrowsers(){
                 </div>`).join('')}
         </div>
     </div>
-    <div class="card"><h3>💻 Navegadores instalados</h3>
+    <div class="card"><h3>💻 ${tx('Navegadores instalados','Installed browsers')}</h3>
         <div>${r.detected.map(d=>`<span class="badge ${d.installed?'badge-success':'badge-danger'}">${esc(d.name)}: ${d.installed?'✓':'✗'}</span>`).join(' ')}</div>
     </div>
     <div class="card"><h3>🎭 Fingerprint generator</h3>
-        <button class="btn btn-accent btn-sm" onclick="genFingerprint()">Generar nuevo fingerprint</button>
+        <button class="btn btn-accent btn-sm" onclick="genFingerprint()">${tx('Generar nuevo fingerprint','Generate new fingerprint')}</button>
         <pre id="fp-result" style="margin-top:10px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;max-height:200px;overflow:auto"></pre>
     </div>`;
     document.getElementById('browsers-panel').innerHTML = html;
@@ -16604,18 +16614,18 @@ async function loadAcrPending(){
     if(!out) return;
     const items = r?.pending || [];
     if(items.length === 0){
-        out.innerHTML = `<p style="color:var(--text-muted)">— Sin cuentas pendientes ${dom ? 'para '+dom.toUpperCase() : ''} —<br><small>Tip: añade cuentas en la pestaña "Excel (Importar/Exportar)" o "Cuentas + Tarjetas".</small></p>`;
+        out.innerHTML = `<p style="color:var(--text-muted)">— ${tx('Sin cuentas pendientes','No pending accounts')} ${dom ? tx('para ','for ')+dom.toUpperCase() : ''} —<br><small>${tx('Tip: añade cuentas en la pestaña "Excel (Importar/Exportar)" o "Cuentas + Tarjetas".','Tip: add accounts in the "Excel (Import/Export)" or "Accounts + Cards" tab.')}</small></p>`;
         return;
     }
     out.innerHTML = `
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">${items.length} cuenta(s) pendientes · ✅ ready / ⚠️ faltan campos</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">${items.length} ${tx('cuenta(s) pendientes','pending account(s)')} · ✅ ready / ⚠️ ${tx('faltan campos','missing fields')}</div>
         <table style="width:100%;border-collapse:collapse">
             <thead><tr style="border-bottom:1px solid var(--border);text-align:left">
-                <th style="padding:5px;font-size:10px">Estado</th>
-                <th style="padding:5px;font-size:10px">Etiqueta</th>
+                <th style="padding:5px;font-size:10px">${tx('Estado','Status')}</th>
+                <th style="padding:5px;font-size:10px">${tx('Etiqueta','Label')}</th>
                 <th style="padding:5px;font-size:10px">Email</th>
-                <th style="padding:5px;font-size:10px">País</th>
-                <th style="padding:5px;font-size:10px">Falta</th>
+                <th style="padding:5px;font-size:10px">${tx('País','Country')}</th>
+                <th style="padding:5px;font-size:10px">${tx('Falta','Missing')}</th>
                 <th style="padding:5px;font-size:10px"></th>
             </tr></thead>
             <tbody>
@@ -16628,8 +16638,8 @@ async function loadAcrPending(){
                     <td style="padding:5px;font-size:10px;color:var(--warning)">${(it.missing_fields||[]).join(', ') || '—'}</td>
                     <td style="padding:5px">
                         ${it.ready
-                            ? `<button class="btn btn-accent btn-sm" onclick="acrStart('${esc(it.id)}')">🚀 Asistir</button>`
-                            : `<span style="font-size:10px;color:var(--text-muted)">completa primero</span>`}
+                            ? `<button class="btn btn-accent btn-sm" onclick="acrStart('${esc(it.id)}')">🚀 ${tx('Asistir','Assist')}</button>`
+                            : `<span style="font-size:10px;color:var(--text-muted)">${tx('completa primero','complete first')}</span>`}
                     </td>
                 </tr>`).join('')}
             </tbody>
@@ -16642,9 +16652,9 @@ async function loadAcrStats(){
     const pills = document.getElementById('acr-stats-pills');
     if(pills){
         pills.innerHTML = `
-            <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:rgba(168,85,247,.15);color:#a855f7;font-weight:700">${s.active_sessions||0} activas</span>
-            <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:rgba(34,197,94,.15);color:#22c55e;font-weight:700">${s.completed_total||0} totales</span>
-            <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:rgba(2,108,223,.15);color:#026CDF;font-weight:700">${s.completed_today||0} hoy</span>`;
+            <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:rgba(168,85,247,.15);color:#a855f7;font-weight:700">${s.active_sessions||0} ${tx('activas','active')}</span>
+            <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:rgba(34,197,94,.15);color:#22c55e;font-weight:700">${s.completed_total||0} ${tx('totales','total')}</span>
+            <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:rgba(2,108,223,.15);color:#026CDF;font-weight:700">${s.completed_today||0} ${tx('hoy','today')}</span>`;
     }
 }
 
@@ -16653,7 +16663,7 @@ async function loadAcrHistory(){
     const sessions = r?.sessions || [];
     const out = document.getElementById('acr-history');
     if(!out) return;
-    if(sessions.length === 0){ out.innerHTML = '<p style="color:var(--text-muted)">— Sin sesiones registradas —</p>'; return; }
+    if(sessions.length === 0){ out.innerHTML = `<p style="color:var(--text-muted)">— ${tx('Sin sesiones registradas','No registered sessions')} —</p>`; return; }
     out.innerHTML = sessions.slice(-10).reverse().map(s => {
         const flag = {completed:'✅', cancelled:'❌', error:'🛑', waiting_user:'⏳', browser_launched:'🌐'}[s.status] || '⚪';
         return `<div style="padding:6px 8px;border-left:3px solid ${s.status==='completed'?'#22c55e':s.status==='error'?'#ef4444':'#a855f7'};background:var(--bg);margin-bottom:4px;border-radius:4px">
@@ -16668,15 +16678,16 @@ async function acrStart(account_id){
     const domain = document.getElementById('acr-domain')?.value || 'es';
     const engine = document.getElementById('acr-engine')?.value || 'auto';
     const live = document.getElementById('acr-mode')?.value === 'true';
-    if(live && !confirm('🚨 Modo LIVE — se abrirá un navegador real con el formulario TM.\n\nEl wizard rellenará todos los campos automáticamente.\nTÚ tendrás que pulsar "Crear cuenta" cuando termine.\n\n¿Continuar?')) return;
+    if(live && !confirm(tx('🚨 Modo LIVE — se abrirá un navegador real con el formulario TM.\n\nEl wizard rellenará todos los campos automáticamente.\nTÚ tendrás que pulsar "Crear cuenta" cuando termine.\n\n¿Continuar?',
+                          '🚨 LIVE mode — a real browser will open with the TM form.\n\nThe wizard will auto-fill all fields.\nYOU must click "Create account" when done.\n\nContinue?'))) return;
     const r = await api('/api/bot/account-creator/start', {method:'POST', body: JSON.stringify({account_id, domain, engine, live})});
     if(!r?.ok){
         notify('❌ ' + (r?.error || 'Error'), 'error');
-        if(r?.missing) notify('Faltan campos: ' + r.missing.join(', '), 'warning');
+        if(r?.missing) notify(tx('Faltan campos: ','Missing fields: ') + r.missing.join(', '), 'warning');
         return;
     }
     _acrCurrentSession = r.session_id;
-    notify(`🚀 Sesión iniciada: ${r.session_id}`, 'success');
+    notify(`🚀 ${tx('Sesión iniciada','Session started')}: ${r.session_id}`, 'success');
     document.getElementById('acr-session-card').style.display = '';
     acrRefreshStatus();
     loadAcrStats();
@@ -16686,7 +16697,7 @@ async function acrStart(account_id){
 async function acrRefreshStatus(){
     if(!_acrCurrentSession) return;
     const r = await api('/api/bot/account-creator/status/' + _acrCurrentSession);
-    if(!r?.ok){ notify('❌ Sesión perdida', 'warning'); _acrCurrentSession = null; return; }
+    if(!r?.ok){ notify(tx('❌ Sesión perdida','❌ Session lost'), 'warning'); _acrCurrentSession = null; return; }
     const out = document.getElementById('acr-session-info');
     if(!out) return;
     const statusIcon = {starting:'⏳', browser_launched:'🌐', page_loaded:'📄', waiting_user:'✋', post_signup:'🎉', completed:'✅', cancelled:'❌', error:'🛑'}[r.status] || '⚪';
@@ -16694,7 +16705,7 @@ async function acrRefreshStatus(){
     out.innerHTML = `
         ${userMsg}
         <div style="margin-bottom:8px">
-            <b>Cuenta:</b> ${esc(r.account_label||'?')} · <b>Dominio:</b> ${r.domain} · <b>Engine:</b> ${r.engine} · <b>Estado:</b> ${statusIcon} ${r.status}
+            <b>${tx('Cuenta','Account')}:</b> ${esc(r.account_label||'?')} · <b>${tx('Dominio','Domain')}:</b> ${r.domain} · <b>Engine:</b> ${r.engine} · <b>${tx('Estado','Status')}:</b> ${statusIcon} ${r.status}
         </div>
         <div style="font-size:10.5px;font-family:monospace;background:var(--bg);padding:8px;border-radius:6px;max-height:240px;overflow-y:auto;border:1px solid var(--border)">
             ${(r.steps||[]).map(s => `<div style="padding:2px 0;color:${s.ok?'var(--text)':'var(--danger)'}">[${s.ts}] ${s.ok?'✅':'❌'} <b>${esc(s.step)}</b>: ${esc(s.msg||'')}</div>`).join('')}
@@ -16703,10 +16714,11 @@ async function acrRefreshStatus(){
 
 async function acrCapture(){
     if(!_acrCurrentSession) return;
-    if(!confirm('¿Has pulsado "Crear cuenta" en el navegador?\n\nVoy a capturar las cookies y marcar la cuenta como registrada.')) return;
+    if(!confirm(tx('¿Has pulsado "Crear cuenta" en el navegador?\n\nVoy a capturar las cookies y marcar la cuenta como registrada.',
+                    'Have you clicked "Create account" in the browser?\n\nI will capture cookies and mark the account as registered.'))) return;
     const r = await api('/api/bot/account-creator/capture/' + _acrCurrentSession, {method:'POST'});
     if(r?.ok){
-        notify(`✅ Cuenta registrada · ${r.captured?.cookies||0} cookies capturadas`, 'success');
+        notify(`✅ ${tx('Cuenta registrada','Account registered')} · ${r.captured?.cookies||0} ${tx('cookies capturadas','cookies captured')}`, 'success');
         document.getElementById('acr-session-card').style.display = 'none';
         _acrCurrentSession = null;
         loadAcrPending();
@@ -16719,10 +16731,10 @@ async function acrCapture(){
 
 async function acrCancel(){
     if(!_acrCurrentSession) return;
-    if(!confirm('¿Cancelar la sesión actual?')) return;
+    if(!confirm(tx('¿Cancelar la sesión actual?','Cancel the current session?'))) return;
     const r = await api('/api/bot/account-creator/cancel/' + _acrCurrentSession, {method:'POST'});
     if(r?.ok){
-        notify('❌ Sesión cancelada', 'warning');
+        notify(tx('❌ Sesión cancelada','❌ Session cancelled'), 'warning');
         document.getElementById('acr-session-card').style.display = 'none';
         _acrCurrentSession = null;
         loadAcrPending();
@@ -17620,7 +17632,7 @@ async function loadAccountsWithPurchases(){
     }
     if(!data?.ok){
         document.getElementById('ct-accounts-tbody').innerHTML =
-            `<tr><td colspan="7" style="padding:18px;text-align:center;color:var(--text-muted)">Sin datos</td></tr>`;
+            `<tr><td colspan="7" style="padding:18px;text-align:center;color:var(--text-muted)">${tx('Sin datos','No data')}</td></tr>`;
         return;
     }
     window._ctAccountsCache = data.accounts || [];
@@ -17657,11 +17669,11 @@ function _renderAccountsStats(data){
     const stats = document.getElementById('ct-accounts-stats');
     if(!stats) return;
     stats.innerHTML = `
-        <span style="background:rgba(34,197,94,.15);border:1px solid #22c55e;border-radius:14px;padding:3px 10px;font-weight:700;color:#22c55e">✅ Disponibles: ${free}/${total}</span>
-        <span style="background:rgba(239,68,68,.12);border:1px solid #ef4444;border-radius:14px;padding:3px 10px;font-weight:700;color:#ef4444">🚫 Bloqueadas (límite): ${blocked}</span>
-        <span style="background:rgba(2,108,223,.12);border:1px solid var(--accent);border-radius:14px;padding:3px 10px;font-weight:700">📦 Con compras: ${usedAtLeastOnce}</span>
-        <span style="background:rgba(148,148,148,.10);border:1px solid var(--border);border-radius:14px;padding:3px 10px">Default máx/evento: <b>${data.default_max_qty}</b></span>
-        ${evFilter ? `<span style="background:#026CDF;color:#fff;border-radius:14px;padding:3px 10px;font-weight:700">Filtro: ${esc(evFilter)}</span>` : ''}
+        <span style="background:rgba(34,197,94,.15);border:1px solid #22c55e;border-radius:14px;padding:3px 10px;font-weight:700;color:#22c55e">✅ ${tx('Disponibles','Available')}: ${free}/${total}</span>
+        <span style="background:rgba(239,68,68,.12);border:1px solid #ef4444;border-radius:14px;padding:3px 10px;font-weight:700;color:#ef4444">🚫 ${tx('Bloqueadas (límite)','Blocked (limit)')}: ${blocked}</span>
+        <span style="background:rgba(2,108,223,.12);border:1px solid var(--accent);border-radius:14px;padding:3px 10px;font-weight:700">📦 ${tx('Con compras','With purchases')}: ${usedAtLeastOnce}</span>
+        <span style="background:rgba(148,148,148,.10);border:1px solid var(--border);border-radius:14px;padding:3px 10px">${tx('Default máx/evento','Default max/event')}: <b>${data.default_max_qty}</b></span>
+        ${evFilter ? `<span style="background:#026CDF;color:#fff;border-radius:14px;padding:3px 10px;font-weight:700">${tx('Filtro','Filter')}: ${esc(evFilter)}</span>` : ''}
     `;
 }
 
@@ -17697,13 +17709,13 @@ function _renderAccountsTable(){
         }
         let statusBadge;
         if(a.pending_user_review){
-            statusBadge = `<span title="Pendiente revisión manual del usuario — ${esc(a.review_reason||'deferred')}" style="background:#f59e0b;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">🔍 pendiente revisar</span>`;
+            statusBadge = `<span title="${tx('Pendiente revisión manual del usuario','Pending manual user review')} — ${esc(a.review_reason||'deferred')}" style="background:#f59e0b;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">🔍 ${tx('pendiente revisar','pending review')}</span>`;
         } else if(a.status === 'invalid_credentials'){
-            statusBadge = '<span title="Login rechazado por TM (BAD_CREDENTIALS)" style="background:#ef4444;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">⚠ inválida</span>';
+            statusBadge = `<span title="${tx('Login rechazado por TM (BAD_CREDENTIALS)','Login rejected by TM (BAD_CREDENTIALS)')}" style="background:#ef4444;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">⚠ ${tx('inválida','invalid')}</span>`;
         } else if(a.credentials_verified){
-            statusBadge = '<span title="Login real verificado" style="background:#22c55e;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">✓ verificada</span>';
+            statusBadge = `<span title="${tx('Login real verificado','Real login verified')}" style="background:#22c55e;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">✓ ${tx('verificada','verified')}</span>`;
         } else if(a.status === 'active'){
-            statusBadge = '<span style="background:#22c55e;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">activa</span>';
+            statusBadge = `<span style="background:#22c55e;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px">${tx('activa','active')}</span>`;
         } else {
             statusBadge = `<span style="background:#666;color:#fff;border-radius:10px;padding:2px 8px;font-size:10px">${esc(a.status||'?')}</span>`;
         }
@@ -19496,15 +19508,15 @@ function renderProxySticky(sessions, stats, log){
     const badge = document.getElementById('psk-summary-badge');
     if(badge){
         const c = stats.ip_changes_recent || 0;
-        badge.innerHTML = `<span style="color:${stats.active_sessions>0?'#22c55e':'var(--text-muted)'}">${stats.active_sessions||0} activas</span> · <span style="color:${c>0?'#ef4444':'var(--text-muted)'}">${c} IP changes</span>`;
+        badge.innerHTML = `<span style="color:${stats.active_sessions>0?'#22c55e':'var(--text-muted)'}">${stats.active_sessions||0} ${tx('activas','active')}</span> · <span style="color:${c>0?'#ef4444':'var(--text-muted)'}">${c} IP changes</span>`;
     }
     const hero = document.getElementById('psk-hero');
     if(hero){
         hero.innerHTML = `
-            <div class="pc-stat"><div class="pc-icon">📌</div><div class="pc-label">Activas</div><div class="pc-value" style="color:#fff">${stats.active_sessions||0}</div></div>
-            <div class="pc-stat resolved"><div class="pc-icon">⏰</div><div class="pc-label">Expiradas</div><div class="pc-value">${stats.expired_sessions||0}</div></div>
+            <div class="pc-stat"><div class="pc-icon">📌</div><div class="pc-label">${tx('Activas','Active')}</div><div class="pc-value" style="color:#fff">${stats.active_sessions||0}</div></div>
+            <div class="pc-stat resolved"><div class="pc-icon">⏰</div><div class="pc-label">${tx('Expiradas','Expired')}</div><div class="pc-value">${stats.expired_sessions||0}</div></div>
             <div class="pc-stat ${stats.ip_changes_recent>0?'critical':''}"><div class="pc-icon">⚠</div><div class="pc-label">IP changes</div><div class="pc-value">${stats.ip_changes_recent||0}</div></div>
-            <div class="pc-stat medium"><div class="pc-icon">♻️</div><div class="pc-label">Renewals</div><div class="pc-value">${stats.renewals_recent||0}</div></div>
+            <div class="pc-stat medium"><div class="pc-icon">♻️</div><div class="pc-label">${tx('Renovaciones','Renewals')}</div><div class="pc-value">${stats.renewals_recent||0}</div></div>
         `;
     }
     const cnt = document.getElementById('psk-count');
@@ -19512,7 +19524,7 @@ function renderProxySticky(sessions, stats, log){
     const tb = document.getElementById('psk-table');
     if(tb){
         if(!sessions.length){
-            tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Sin sesiones</td></tr>';
+            tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">${tx('Sin sesiones','No sessions')}</td></tr>`;
         } else {
             tb.innerHTML = sessions.map(s => {
                 const remColor = s.expired ? '#ef4444' : (s.seconds_remaining < 300 ? '#fb923c' : '#22c55e');
@@ -19535,7 +19547,7 @@ function renderProxySticky(sessions, stats, log){
     const lg = document.getElementById('psk-log');
     if(lg){
         if(!log.length){
-            lg.innerHTML = '<span style="color:var(--text-muted)">Sin eventos</span>';
+            lg.innerHTML = `<span style="color:var(--text-muted)">${tx('Sin eventos','No events')}</span>`;
         } else {
             lg.innerHTML = log.map(e => {
                 const c = e.event === 'ip_changed' ? '#ef4444' : (e.event === 'renewed' ? '#fb923c' : 'var(--text-muted)');
@@ -19553,7 +19565,7 @@ async function generateStickyUser(){
     const base = document.getElementById('pskBase').value.trim();
     const ttl = parseInt(document.getElementById('pskTTL').value) || 30;
     const scheme = document.getElementById('pskScheme').value;
-    if(!wid || !base){ toast('Worker ID y Base user requeridos', 'error'); return; }
+    if(!wid || !base){ toast(tx('Worker ID y Base user requeridos','Worker ID and Base user required'), 'error'); return; }
     const sess = await api('/api/proxy-sticky/get-session', {method:'POST', body:JSON.stringify({worker_id:wid, domain:dom, ttl_s: ttl*60})});
     if(!sess?.ok){ toast('Error: '+(sess?.error||'?'), 'error'); return; }
     const sid = sess.session.session_id;
@@ -19563,7 +19575,7 @@ async function generateStickyUser(){
     if(out){
         out.innerHTML = `
             <div style="padding:10px;background:rgba(34,197,94,.08);border:1px solid #22c55e;border-radius:8px">
-                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${sess.renewed?'✅ Nueva sesión':'♻️ Reusada'}</div>
+                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${sess.renewed?tx('✅ Nueva sesión','✅ New session'):tx('♻️ Reusada','♻️ Reused')}</div>
                 <div style="font-family:monospace;font-size:13px;font-weight:700;color:#22c55e;user-select:all;cursor:pointer;word-break:break-all" onclick="copyPresaleCode('${esc(fmt.username)}', this.parentElement.parentElement.querySelector('button'))">${esc(fmt.username)}</div>
                 <button class="btn btn-accent btn-sm" style="margin-top:6px" onclick="copyPresaleCode('${esc(fmt.username)}', this)">📋 Copy username</button>
             </div>`;
@@ -19571,12 +19583,12 @@ async function generateStickyUser(){
     loadProxySticky();
 }
 async function releaseSticky(wid, dom){
-    if(!confirm(`¿Liberar sesión ${wid}/${dom}?`)) return;
+    if(!confirm(tx(`¿Liberar sesión ${wid}/${dom}?`,`Release session ${wid}/${dom}?`))) return;
     await api('/api/proxy-sticky/release', {method:'POST', body:JSON.stringify({worker_id:wid, domain:dom})});
     loadProxySticky();
 }
 async function releaseAllSticky(){
-    if(!confirm('¿Liberar TODAS las sesiones sticky?')) return;
+    if(!confirm(tx('¿Liberar TODAS las sesiones sticky?','Release ALL sticky sessions?'))) return;
     await api('/api/proxy-sticky/release', {method:'POST', body:JSON.stringify({all_workers:true})});
     loadProxySticky();
 }
@@ -19777,10 +19789,10 @@ async function loadOTP(){
     const hero = document.getElementById('otp-hero');
     if(hero){
         hero.innerHTML = `
-            <div class="pc-stat"><div class="pc-icon">📬</div><div class="pc-label">📬 Cuentas</div><div class="pc-value" style="color:#fff">${s.accounts_total||0}</div></div>
-            <div class="pc-stat resolved"><div class="pc-icon">✅</div><div class="pc-label">✅ Habilitadas</div><div class="pc-value">${s.accounts_enabled||0}</div></div>
-            <div class="pc-stat medium"><div class="pc-icon">🔐</div><div class="pc-label">🔐 OTPs total</div><div class="pc-value">${s.total_received||0}</div></div>
-            <div class="pc-stat high"><div class="pc-icon">⏱</div><div class="pc-label">⏱ Última hora</div><div class="pc-value">${s.last_1h||0}</div></div>
+            <div class="pc-stat"><div class="pc-icon">📬</div><div class="pc-label">📬 ${tx('Cuentas','Accounts')}</div><div class="pc-value" style="color:#fff">${s.accounts_total||0}</div></div>
+            <div class="pc-stat resolved"><div class="pc-icon">✅</div><div class="pc-label">✅ ${tx('Habilitadas','Enabled')}</div><div class="pc-value">${s.accounts_enabled||0}</div></div>
+            <div class="pc-stat medium"><div class="pc-icon">🔐</div><div class="pc-label">🔐 ${tx('OTPs total','Total OTPs')}</div><div class="pc-value">${s.total_received||0}</div></div>
+            <div class="pc-stat high"><div class="pc-icon">⏱</div><div class="pc-label">⏱ ${tx('Última hora','Last hour')}</div><div class="pc-value">${s.last_1h||0}</div></div>
             <div class="pc-stat ${s.total_imap_errors>0?'critical':''}"><div class="pc-icon">💥</div><div class="pc-label">💥 IMAP errors</div><div class="pc-value">${s.total_imap_errors||0}</div></div>
         `;
     }
@@ -19789,8 +19801,8 @@ async function loadOTP(){
     const schStatus = document.getElementById('otp-sched-status');
     if(schStatus){
         schStatus.innerHTML = sch.running
-            ? `<span style="color:#22c55e">● running</span> · interval ${sch.interval_s}s · ticks ${sch.ticks||0} · desde ${(sch.started_at||'').replace('T',' ').slice(0,19)}`
-            : `<span style="color:var(--text-muted)">○ detenido</span>`;
+            ? `<span style="color:#22c55e">● running</span> · interval ${sch.interval_s}s · ticks ${sch.ticks||0} · ${tx('desde','since')} ${(sch.started_at||'').replace('T',' ').slice(0,19)}`
+            : `<span style="color:var(--text-muted)">○ ${tx('detenido','stopped')}</span>`;
     }
     const schBtn = document.getElementById('otp-sched-btn');
     if(schBtn){
@@ -19807,12 +19819,12 @@ async function loadOTP(){
     const keys = Object.keys(workers);
     if(idleS){
         if(keys.length === 0){
-            idleS.innerHTML = `<span style="color:var(--text-muted)">Sin workers IDLE activos</span> · ${CURRENT_LANG==='en'?'enable per account':'activa por cuenta'}`;
+            idleS.innerHTML = `<span style="color:var(--text-muted)">${tx('Sin workers IDLE activos','No active IDLE workers')}</span> · ${tx('activa por cuenta','enable per account')}`;
         } else {
             const running = keys.filter(k => workers[k].running).length;
             const connected = keys.filter(k => workers[k].connected).length;
             const renewals = keys.reduce((a,k) => a + (workers[k].renewals||0), 0);
-            idleS.innerHTML = `<span style="color:#22c55e">● ${running} running</span> · ${connected} conectados · ${renewals} renewals`;
+            idleS.innerHTML = `<span style="color:#22c55e">● ${running} running</span> · ${connected} ${tx('conectados','connected')} · ${renewals} ${tx('renovaciones','renewals')}`;
         }
     }
 
@@ -19834,18 +19846,18 @@ async function loadOTP(){
                 return `<div class="proxy-row" style="grid-template-columns:auto 1fr auto auto auto auto;gap:6px;padding:8px">
                     <input type="checkbox" ${a.enabled?'checked':''} onchange="toggleOTPAccount('${esc(a.id)}', this.checked)" title="Enabled">
                     <div style="min-width:0;overflow:hidden">
-                        <b style="font-size:12px;color:var(--text)">${esc(a.email||'(sin email)')}</b>
+                        <b style="font-size:12px;color:var(--text)">${esc(a.email||tx('(sin email)','(no email)'))}</b>
                         <div style="font-size:10px;color:var(--text-muted)">
                             <span style="background:var(--bg);padding:1px 5px;border-radius:3px">${esc((_otpProviders[a.provider]||{}).label||a.provider||'?')}</span>
                             · ${esc(a.host||'?')}:${a.port||993} · ${wStatus}
                             · ✉️ ${byAcc.received||0} · ⚠ ${byAcc.errors||0}
-                            ${a.has_password ? '' : '<span style="color:#ef4444"> · no password</span>'}
+                            ${a.has_password ? '' : `<span style="color:#ef4444"> · ${tx('no password','no password')}</span>`}
                         </div>
                     </div>
-                    <button class="btn btn-sm" onclick="testOTPConnection('${esc(a.id)}')" title="Test conexión">🧪</button>
-                    <button class="btn btn-sm" onclick="fetchOTPNow('${esc(a.id)}')" title="Fetch ahora">📧</button>
+                    <button class="btn btn-sm" onclick="testOTPConnection('${esc(a.id)}')" title="${tx('Test conexión','Test connection')}">🧪</button>
+                    <button class="btn btn-sm" onclick="fetchOTPNow('${esc(a.id)}')" title="${tx('Fetch ahora','Fetch now')}">📧</button>
                     <button class="btn btn-sm" onclick="toggleAccountIdle('${esc(a.id)}', ${!w.running})" title="${w.running?'Stop IDLE':'Start IDLE'}">${w.running?'⏹':'🔔'}</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteOTPAccount('${esc(a.id)}','${esc(a.email)}')" title="Eliminar">🗑</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteOTPAccount('${esc(a.id)}','${esc(a.email)}')" title="${tx('Eliminar','Delete')}">🗑</button>
                 </div>`;
             }).join('');
         }
