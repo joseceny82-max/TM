@@ -148,9 +148,10 @@
 
         /* LANG SWITCHER */
         .lang-switch{display:inline-flex;gap:6px;align-items:center}
-        .lang-btn{background:var(--card);border:2px solid var(--border);cursor:pointer;padding:0;width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;transition:border-color .2s, transform .2s, box-shadow .2s, opacity .2s;overflow:hidden;font-family:inherit;font-size:18px;line-height:1;opacity:.55;filter:grayscale(40%)}
+        .lang-btn{background:var(--card);border:2px solid var(--border);cursor:pointer;padding:0;width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;transition:border-color .2s, transform .2s, box-shadow .2s, opacity .2s, filter .2s;overflow:hidden;opacity:.55;filter:grayscale(40%)}
         .lang-btn:hover{border-color:var(--accent);transform:translateY(-2px) scale(1.12);opacity:.85;filter:grayscale(0%)}
         .lang-btn.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(2,108,223,.3),0 4px 12px rgba(2,108,223,.4);opacity:1;filter:grayscale(0%)}
+        .lang-btn img{width:30px;height:30px;border-radius:50%;object-fit:cover;display:block;pointer-events:none}
 
         .btn{padding:7px 14px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:6px;cursor:pointer;font-size:12px;transition:border-color .15s, color .15s, background-color .15s, transform .15s, box-shadow .15s, opacity .15s;font-family:inherit}
         .btn:hover{border-color:var(--accent);color:var(--accent-light);background:var(--card-hover)}
@@ -1427,8 +1428,8 @@
                 </div>
                 <div class="topbar-time" id="topbar-time">--:--</div>
                 <div class="lang-switch">
-                    <button class="lang-btn active" data-lang="es" onclick="setLang('es')" title="Español" aria-label="Español">🇪🇸</button>
-                    <button class="lang-btn" data-lang="en" onclick="setLang('en')" title="English" aria-label="English">🇬🇧</button>
+                    <button class="lang-btn active" data-lang="es" onclick="setLang('es')" title="Español" aria-label="Español"><img src="https://flagcdn.com/w80/es.png" alt="ES" srcset="https://flagcdn.com/w160/es.png 2x"></button>
+                    <button class="lang-btn" data-lang="en" onclick="setLang('en')" title="English" aria-label="English"><img src="https://flagcdn.com/w80/gb.png" alt="EN" srcset="https://flagcdn.com/w160/gb.png 2x"></button>
                 </div>
                 <a href="/logout" class="btn btn-sm" title="Logout">⎋</a>
             </div>
