@@ -300,6 +300,70 @@ def _pick_es_profile_smart(burned: set) -> Optional[dict]:
 
 
 PROFILE_PICK_LOCK_PATH = os.path.join(RUNS_DIR, 'profile_pick.lock')
+ACTIVE_STARTS_PATH = os.path.join(RUNS_DIR, 'active_starts.json')
+
+
+def _load_active_starts() -> dict:
+    """{env_id: {pid, port, profile, started_at}}. Stale (>30 min o pid muerto) se purga."""
+    try:
+        with open(ACTIVE_STARTS_PATH, encoding='utf-8') as f:
+            d = json.load(f)
+    except Exception:
+        d = {}
+    # Purge stale: pid muerto o >30 min
+    import psutil as _ps
+    now = time.time()
+    cleaned = {}
+    for env_id, info in (d or {}).items():
+        try:
+            pid = info.get('pid')
+            started = info.get('started_at', 0)
+            if pid and _ps.pid_exists(pid) and (now - started) < 1800:
+                cleaned[env_id] = info
+        except Exception:
+            pass
+    return cleaned
+
+
+def _save_active_starts(d: dict):
+    try:
+        with open(ACTIVE_STARTS_PATH, 'w', encoding='utf-8') as f:
+            json.dump(d, f, indent=2)
+    except Exception as e:
+        log(f'  ⚠ save active_starts err: {e}')
+
+
+def _register_active_start(env_id: str, port: int, profile: str) -> bool:
+    """Registra que ESTE proceso usa env_id+port. Si ya está usado por OTRO proceso vivo,
+    devuelve False (caller debe descartar el perfil y pickear otro).
+    """
+    d = _load_active_starts()
+    existing = d.get(env_id) or d.get(str(env_id))
+    if existing:
+        ex_pid = existing.get('pid')
+        ex_port = existing.get('port')
+        if ex_pid != os.getpid():
+            log(f'  ⚠ COLISIÓN: env_id={env_id} ya en uso por PID={ex_pid} port={ex_port} — descartando perfil')
+            return False
+    d[str(env_id)] = {
+        'pid': os.getpid(),
+        'port': port,
+        'profile': profile,
+        'started_at': time.time(),
+    }
+    _save_active_starts(d)
+    return True
+
+
+def _release_active_start(env_id):
+    """Libera la entrada. Llamado en cleanup tras cerrar el perfil."""
+    try:
+        d = _load_active_starts()
+        if str(env_id) in d:
+            del d[str(env_id)]
+            _save_active_starts(d)
+    except Exception: pass
+
 
 def _with_profile_pick_lock(fn, *args, **kwargs):
     """Lock cross-process para pick + claim atómico de perfil MoreLogin.
@@ -362,6 +426,18 @@ def open_profile(country: str, burned: set, run: RunState) -> tuple[BrowserConte
             burned_local.add(prof['profile'])
             bo._release_profile(prof['profile'])
             time.sleep(5); continue
+
+        # ANTI-COLLISION 2026-05-10: verificar que ningún OTRO proceso register
+        # tenga este env_id activo. Bug detectado: 2 procesos paralelos arrancaron
+        # P-171238 con el mismo port=63132, el segundo robó el browser del primero.
+        # _register_active_start devuelve False si hay colisión → blacklist + next.
+        if not _register_active_start(prof['env_id'], candidate_port, prof['profile']):
+            log(f'  ⚠ env_id {prof["env_id"]} ya en uso por otro proceso — blacklist + retry ({attempt+1}/10)')
+            try: bo._close_profile_clean(prof['env_id'], candidate_port, prof['profile'])
+            except Exception: pass
+            burned_local.add(prof['profile'])
+            bo._release_profile(prof['profile'])
+            time.sleep(3); continue
 
         # DOUBLE-CLAIM tras start exitoso — garantiza que el perfil quede en
         # burned_profiles.json incluso si el claim atómico anterior se perdió por IO.
@@ -428,6 +504,8 @@ def open_profile(country: str, burned: set, run: RunState) -> tuple[BrowserConte
                 try: save_used_ip(prof['ip'], f'bot_block_pre_check_{run.run_id}')
                 except Exception: pass
                 try: bo._close_profile_clean(run.env_id, run.port, run.profile)
+                except Exception: pass
+                try: _release_active_start(run.env_id)
                 except Exception: pass
                 raise RuntimeError(f'bot_block_detected: HTTP pre-check via_proxy ip={prof.get("ip")}')
             else:
@@ -1821,6 +1899,10 @@ def close_profile(run: RunState):
     res = bo._close_profile_clean(run.env_id, run.port, run.profile)
     log(f'  {res}')
     bo._release_profile(run.profile)
+    # ANTI-COLLISION: liberar entry en active_starts.json para que otro proceso
+    # pueda usar este env_id si se reabre (2026-05-10 bug fix).
+    try: _release_active_start(run.env_id)
+    except Exception: pass
     run.stage_done('profile_closed', res)
 
 def record_in_tm_registrations(user: UserRow, account_id: str, run: RunState) -> dict:
