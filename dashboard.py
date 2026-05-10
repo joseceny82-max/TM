@@ -6759,7 +6759,10 @@ def api_ratelimit_stats():
 @app.route("/api/setup-wizard/status", methods=["GET"])
 @login_required
 def api_setup_status():
-    return jsonify(setup_wizard.get_status())
+    lang = (request.args.get("lang") or "").lower().strip() or "es"
+    if lang not in ("es", "en"):
+        lang = "es"
+    return jsonify(setup_wizard.get_status(lang=lang))
 
 
 @app.route("/api/setup-wizard/test/<step_id>", methods=["POST"])

@@ -7890,6 +7890,13 @@ function setLang(l){
     localStorage.setItem('tm_lang', l);
     document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', b.dataset.lang===l));
     applyI18n();
+    // Refresh global: invalidar caches comunes que guardan strings ya renderizados
+    try {
+        // Caches del frontend que pueden contener strings ya traducidos al ES
+        if (typeof window._botEventsCache !== 'undefined') window._botEventsCache = null;
+        if (typeof window._lastSetupWizardData !== 'undefined') window._lastSetupWizardData = null;
+        if (typeof window._lastHealthData !== 'undefined') window._lastHealthData = null;
+    } catch(e) {}
     // re-render dynamic content + actualizar título topbar de la sección activa
     const active = document.querySelector('.nav-item.active');
     if(active){
@@ -7897,6 +7904,11 @@ function setLang(l){
         if(pt) pt.textContent = t('title.'+active.dataset.section);
         loadSection(active.dataset.section);
     }
+    // Refrescar componentes globales que pueden estar visibles en cualquier sección
+    try { if (typeof loadSetupWizard === 'function') loadSetupWizard(); } catch(e) {}
+    try { if (typeof loadDomainBar === 'function') loadDomainBar(); } catch(e) {}
+    // Notificar al user para que sepa que el cambio se aplicó
+    try { toast(l === 'en' ? '🇬🇧 English' : '🇪🇸 Español', 'info'); } catch(e) {}
 }
 
 // ═══════════════════════════════════════════
@@ -7912,8 +7924,20 @@ function toast(msg, type='success'){
 }
 async function api(url, opts={}){
     try{
+        // Auto-inject ?lang=<CURRENT_LANG> en GET requests para que el backend
+        // pueda devolver strings localizados (Setup Wizard, errores, etc.).
+        // Solo se añade si la URL aún no incluye lang= y es un endpoint /api/.
+        try {
+            if (typeof CURRENT_LANG === 'string' && CURRENT_LANG &&
+                (!opts.method || opts.method.toUpperCase() === 'GET') &&
+                url.indexOf('/api/') === 0 && url.indexOf('lang=') === -1) {
+                const sep = url.indexOf('?') >= 0 ? '&' : '?';
+                url = url + sep + 'lang=' + encodeURIComponent(CURRENT_LANG);
+            }
+        } catch(e) {}
         const r = await fetch(url, Object.assign({
-            headers:{'Content-Type':'application/json'},
+            headers:{'Content-Type':'application/json',
+                     'Accept-Language': (typeof CURRENT_LANG === 'string' ? CURRENT_LANG : 'es')},
             credentials:'same-origin'
         }, opts));
         // Solo redirigir a login si es sesión expirada (401/403)
