@@ -40,161 +40,160 @@
             -webkit-font-smoothing:antialiased;
         }
 
-        /* ═══ FONDO ANIMADO: gradient mesh con más colores + más movimiento ═══ */
+        /* ═══ FONDO ANIMADO: gradient mesh sobrio profesional ═══ */
         .bg-gradient{
             position:fixed;inset:0;z-index:0;pointer-events:none;
             background:
-                radial-gradient(ellipse 70% 50% at 20% 30%, rgba(2,108,223,.45), transparent 55%),
-                radial-gradient(ellipse 55% 60% at 80% 70%, rgba(208,0,111,.40), transparent 60%),
-                radial-gradient(ellipse 65% 55% at 70% 20%, rgba(124,58,237,.35), transparent 60%),
-                radial-gradient(ellipse 60% 50% at 30% 80%, rgba(245,158,11,.22), transparent 60%),
-                radial-gradient(ellipse 80% 60% at 50% 100%, rgba(34,197,94,.18), transparent 60%);
-            animation: bgShift 12s ease-in-out infinite alternate;
+                radial-gradient(ellipse 65% 50% at 25% 30%, rgba(2,108,223,.32), transparent 60%),
+                radial-gradient(ellipse 55% 55% at 80% 75%, rgba(2,108,223,.20), transparent 65%),
+                radial-gradient(ellipse 50% 45% at 75% 20%, rgba(59,158,255,.15), transparent 65%);
+            animation: bgShift 18s ease-in-out infinite alternate;
         }
         @keyframes bgShift{
-            0%   { transform:scale(1) translate(0,0); filter:hue-rotate(0deg); }
-            33%  { transform:scale(1.08) translate(-3%,-2%); filter:hue-rotate(15deg); }
-            66%  { transform:scale(1.04) translate(2%,3%); filter:hue-rotate(-10deg); }
-            100% { transform:scale(1.1) translate(3%,-1%); filter:hue-rotate(5deg); }
+            0%   { transform:scale(1) translate(0,0); }
+            50%  { transform:scale(1.04) translate(-1.5%,-1%); }
+            100% { transform:scale(1.02) translate(1%,1.5%); }
         }
         .bg-grid{
             position:fixed;inset:0;z-index:0;pointer-events:none;
             background-image:
-                linear-gradient(rgba(2,108,223,.06) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(2,108,223,.06) 1px, transparent 1px);
-            background-size:60px 60px;
-            mask-image:radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 75%);
-            -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 75%);
+                linear-gradient(rgba(2,108,223,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(2,108,223,.05) 1px, transparent 1px);
+            background-size:64px 64px;
+            mask-image:radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 78%);
+            -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 78%);
+        }
+        /* Vignette superior + inferior para profundidad cinematic */
+        .bg-vignette{
+            position:fixed;inset:0;z-index:0;pointer-events:none;
+            background:
+                linear-gradient(180deg, rgba(0,0,0,.35) 0%, transparent 25%),
+                linear-gradient(0deg,   rgba(0,0,0,.45) 0%, transparent 30%);
         }
 
-        /* ═══ FOCOS DE ESCENARIO (spotlights barriendo) ═══ */
-        .spotlights{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;mix-blend-mode:screen}
-        .spotlight{
-            position:absolute;top:-5%;left:50%;width:280px;height:140vh;
-            transform-origin:50% 0;
+        /* ═══ ORBES GRANDES DESENFOCADOS (estilo SaaS Linear/Stripe) ═══ */
+        .orbs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+        .orb{
+            position:absolute;border-radius:50%;
+            filter:blur(80px);
+            opacity:.55;
+            animation: orbDrift 24s ease-in-out infinite alternate;
+            will-change:transform;
+        }
+        .orb.o1{ top:-15%; left:-10%; width:520px; height:520px;
+                 background:radial-gradient(circle, rgba(2,108,223,.55), transparent 70%);
+                 animation-delay:0s; }
+        .orb.o2{ bottom:-20%; right:-15%; width:600px; height:600px;
+                 background:radial-gradient(circle, rgba(59,158,255,.40), transparent 70%);
+                 animation-delay:-8s; animation-duration:28s; }
+        .orb.o3{ top:30%; right:-10%; width:380px; height:380px;
+                 background:radial-gradient(circle, rgba(2,82,180,.45), transparent 70%);
+                 animation-delay:-14s; animation-duration:22s; }
+        @keyframes orbDrift{
+            0%,100% { transform:translate(0,0) scale(1); }
+            50%     { transform:translate(40px,-30px) scale(1.08); }
+        }
+
+        /* ═══ LÍNEAS DE LUZ (rays sutiles atravesando el viewport) ═══ */
+        .light-rays{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;mix-blend-mode:screen;opacity:.5}
+        .ray{
+            position:absolute;top:-10%;left:50%;
+            width:1.5px;height:130vh;
             background:linear-gradient(180deg,
-                rgba(255,255,255,0) 0%,
-                rgba(255,255,255,.05) 5%,
-                rgba(2,108,223,.18) 30%,
-                rgba(2,108,223,.08) 60%,
-                transparent 95%);
-            filter:blur(8px);
-            animation: spotlightSweep 8s ease-in-out infinite;
+                transparent 0%,
+                rgba(59,158,255,.55) 30%,
+                rgba(59,158,255,.25) 70%,
+                transparent 100%);
+            transform-origin:50% 0;
+            box-shadow:0 0 8px rgba(59,158,255,.4);
+            animation: raySweep 12s ease-in-out infinite;
         }
-        .spotlight.s1{ animation-delay:0s; left:25%; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.06) 5%, rgba(2,108,223,.22) 30%, transparent 95%); }
-        .spotlight.s2{ animation-delay:-2.7s; left:50%; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.06) 5%, rgba(208,0,111,.20) 30%, transparent 95%); animation-duration:9s; }
-        .spotlight.s3{ animation-delay:-5.3s; left:75%; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.06) 5%, rgba(124,58,237,.20) 30%, transparent 95%); animation-duration:10s; }
-        @keyframes spotlightSweep{
-            0%,100% { transform:translateX(-50%) rotate(-22deg); opacity:.55; }
-            50%     { transform:translateX(-50%) rotate(22deg); opacity:.85; }
-        }
-
-        /* ═══ CONFETTI CAYENDO (tickets pequeños y notas) ═══ */
-        .confetti-layer{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
-        .confetti{
-            position:absolute;top:-50px;
-            font-size:18px;
-            animation: confettiFall linear infinite;
-            opacity:0;
-            will-change:transform,opacity;
-            filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));
-        }
-        @keyframes confettiFall{
-            0%   { transform:translateY(-50px) rotate(0deg); opacity:0; }
-            8%   { opacity:1; }
-            92%  { opacity:.9; }
-            100% { transform:translateY(105vh) rotate(720deg); opacity:0; }
+        .ray.r1{ animation-delay:0s;    left:30%; }
+        .ray.r2{ animation-delay:-4s;   left:50%; animation-duration:14s; }
+        .ray.r3{ animation-delay:-8s;   left:70%; animation-duration:16s; }
+        @keyframes raySweep{
+            0%,100% { transform:rotate(-15deg); opacity:.3; }
+            50%     { transform:rotate(15deg);  opacity:.7; }
         }
 
-        /* ═══ ICONOS FLOTANTES MÁS VIVOS Y COLORIDOS ═══ */
-        .float-layer{ position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden; }
-        .float-icon{
-            position:absolute;font-size:38px;opacity:.18;
-            animation: floatY 14s ease-in-out infinite;
-            filter:drop-shadow(0 0 16px rgba(2,108,223,.6));
+        /* ═══ FORMAS GEOMÉTRICAS SUTILES (anillos + líneas SVG) ═══ */
+        .shapes-layer{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+        .geo-shape{
+            position:absolute;
+            opacity:.10;
+            animation: shapeFloat 24s ease-in-out infinite;
             will-change:transform,opacity;
         }
-        .float-icon.f1{ top:8%;  left:10%; font-size:50px; animation-delay:0s;   filter:drop-shadow(0 0 18px rgba(245,158,11,.7)); }
-        .float-icon.f2{ top:14%; left:85%; font-size:44px; animation-delay:-2s;  filter:drop-shadow(0 0 16px rgba(208,0,111,.7)); }
-        .float-icon.f3{ top:72%; left:6%;  font-size:46px; animation-delay:-4s;  filter:drop-shadow(0 0 16px rgba(124,58,237,.7)); }
-        .float-icon.f4{ top:82%; left:88%; font-size:40px; animation-delay:-6s;  filter:drop-shadow(0 0 14px rgba(34,197,94,.7)); }
-        .float-icon.f5{ top:42%; left:4%;  font-size:36px; animation-delay:-8s;  filter:drop-shadow(0 0 14px rgba(2,108,223,.7)); }
-        .float-icon.f6{ top:28%; left:92%; font-size:42px; animation-delay:-10s; filter:drop-shadow(0 0 16px rgba(245,158,11,.7)); }
-        .float-icon.f7{ top:60%; left:14%; font-size:38px; animation-delay:-1s;  filter:drop-shadow(0 0 14px rgba(208,0,111,.7)); }
-        .float-icon.f8{ top:10%; left:48%; font-size:36px; animation-delay:-5s;  filter:drop-shadow(0 0 14px rgba(124,58,237,.7)); }
-        .float-icon.f9{ top:50%; left:90%; font-size:40px; animation-delay:-3s;  filter:drop-shadow(0 0 16px rgba(34,197,94,.7)); }
-        .float-icon.f10{ top:88%;left:48%; font-size:38px; animation-delay:-7s;  filter:drop-shadow(0 0 14px rgba(2,108,223,.7)); }
-        .float-icon.f11{ top:25%; left:18%; font-size:34px; animation-delay:-9s; filter:drop-shadow(0 0 14px rgba(245,158,11,.7)); }
-        .float-icon.f12{ top:65%; left:82%; font-size:42px; animation-delay:-11s; filter:drop-shadow(0 0 16px rgba(208,0,111,.7)); }
-        @keyframes floatY{
-            0%,100% { transform:translateY(0) rotate(-12deg) scale(1); opacity:.18; }
-            25%     { transform:translateY(-24px) rotate(8deg) scale(1.08); opacity:.34; }
-            50%     { transform:translateY(-44px) rotate(15deg) scale(1.12); opacity:.40; }
-            75%     { transform:translateY(-22px) rotate(-6deg) scale(1.05); opacity:.30; }
+        .geo-shape.g1{ top:10%; left:8%;  width:120px; height:120px; animation-delay:0s; }
+        .geo-shape.g2{ top:18%; left:82%; width:90px;  height:90px;  animation-delay:-4s; opacity:.08; }
+        .geo-shape.g3{ top:68%; left:6%;  width:140px; height:140px; animation-delay:-8s; opacity:.07; }
+        .geo-shape.g4{ top:78%; left:84%; width:100px; height:100px; animation-delay:-12s; opacity:.09; }
+        .geo-shape.g5{ top:42%; left:90%; width:70px;  height:70px;  animation-delay:-6s; opacity:.08; }
+        .geo-shape.g6{ top:55%; left:4%;  width:80px;  height:80px;  animation-delay:-16s; opacity:.07; }
+        @keyframes shapeFloat{
+            0%,100% { transform:translateY(0) rotate(0deg); }
+            33%     { transform:translateY(-18px) rotate(60deg); }
+            66%     { transform:translateY(12px) rotate(-40deg); }
         }
+        .geo-shape svg{ width:100%; height:100%; stroke:rgba(2,108,223,.7); fill:none; stroke-width:1; }
 
-        /* ═══ ESTRELLAS TWINKLING ═══ */
+        /* ═══ ESTRELLAS — ahora puntos sutiles tipo "noise field" ═══ */
         .stars{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
         .star{
-            position:absolute;width:3px;height:3px;border-radius:50%;
-            background:#fff;
-            box-shadow:0 0 6px #fff, 0 0 12px rgba(2,108,223,.6);
-            animation: twinkle 3s ease-in-out infinite;
+            position:absolute;width:2px;height:2px;border-radius:50%;
+            background:rgba(255,255,255,.85);
+            box-shadow:0 0 4px rgba(255,255,255,.4);
+            animation: twinkle 4s ease-in-out infinite;
         }
         @keyframes twinkle{
-            0%,100% { opacity:.2; transform:scale(.6); }
-            50%     { opacity:1; transform:scale(1.4); }
+            0%,100% { opacity:.15; transform:scale(.7); }
+            50%     { opacity:.85; transform:scale(1.1); }
         }
 
-        /* ═══ PARTÍCULAS FLOTANTES (puntos brillantes ascendentes) ═══ */
+        /* ═══ PARTÍCULAS ASCENDENTES (todas azul accent — más sobrio) ═══ */
         .particles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
         .particle{
-            position:absolute;width:4px;height:4px;border-radius:50%;
-            background:rgba(2,108,223,.7);
-            box-shadow:0 0 14px rgba(2,108,223,.9), 0 0 28px rgba(2,108,223,.5);
-            animation: particleFloat 10s linear infinite;
+            position:absolute;width:3px;height:3px;border-radius:50%;
+            background:rgba(59,158,255,.6);
+            box-shadow:0 0 10px rgba(59,158,255,.6), 0 0 20px rgba(2,108,223,.3);
+            animation: particleFloat 14s linear infinite;
         }
-        .particle.p1 {top:95%;left:6%; animation-delay:0s}
-        .particle.p2 {top:95%;left:18%;animation-delay:-1.2s; background:rgba(208,0,111,.7);box-shadow:0 0 14px rgba(208,0,111,.9),0 0 28px rgba(208,0,111,.5)}
-        .particle.p3 {top:95%;left:30%;animation-delay:-2.4s}
-        .particle.p4 {top:95%;left:42%;animation-delay:-3.6s; background:rgba(124,58,237,.7);box-shadow:0 0 14px rgba(124,58,237,.9),0 0 28px rgba(124,58,237,.5)}
-        .particle.p5 {top:95%;left:54%;animation-delay:-4.8s}
-        .particle.p6 {top:95%;left:66%;animation-delay:-6s;   background:rgba(34,197,94,.7);box-shadow:0 0 14px rgba(34,197,94,.9),0 0 28px rgba(34,197,94,.5)}
-        .particle.p7 {top:95%;left:78%;animation-delay:-7.2s; background:rgba(245,158,11,.7);box-shadow:0 0 14px rgba(245,158,11,.9),0 0 28px rgba(245,158,11,.5)}
-        .particle.p8 {top:95%;left:88%;animation-delay:-8.4s}
-        .particle.p9 {top:95%;left:12%;animation-delay:-3s;   background:rgba(245,158,11,.7);box-shadow:0 0 14px rgba(245,158,11,.9)}
-        .particle.p10{top:95%;left:60%;animation-delay:-5.5s; background:rgba(208,0,111,.7);box-shadow:0 0 14px rgba(208,0,111,.9)}
-        .particle.p11{top:95%;left:36%;animation-delay:-7s}
-        .particle.p12{top:95%;left:84%;animation-delay:-9s;   background:rgba(124,58,237,.7);box-shadow:0 0 14px rgba(124,58,237,.9)}
+        .particle.p1 {top:95%;left:8%;  animation-delay:0s}
+        .particle.p2 {top:95%;left:22%; animation-delay:-2s}
+        .particle.p3 {top:95%;left:36%; animation-delay:-4s}
+        .particle.p4 {top:95%;left:50%; animation-delay:-6s}
+        .particle.p5 {top:95%;left:64%; animation-delay:-8s}
+        .particle.p6 {top:95%;left:78%; animation-delay:-10s}
+        .particle.p7 {top:95%;left:92%; animation-delay:-12s}
+        .particle.p8 {top:95%;left:14%; animation-delay:-3s;  width:2px;height:2px}
+        .particle.p9 {top:95%;left:44%; animation-delay:-7s;  width:2px;height:2px}
+        .particle.p10{top:95%;left:70%; animation-delay:-9s;  width:2px;height:2px}
         @keyframes particleFloat{
             0%   { transform:translateY(0) scale(.5); opacity:0; }
-            10%  { opacity:1; }
-            90%  { opacity:.7; }
-            100% { transform:translateY(-110vh) scale(1.4); opacity:0; }
+            10%  { opacity:.9; }
+            90%  { opacity:.5; }
+            100% { transform:translateY(-110vh) scale(1.1); opacity:0; }
         }
 
-        /* ═══ ECUALIZADOR PULSANTE EN BASE ═══ */
+        /* ═══ AUDIO WAVE BAR EN BASE — minimalista monocromo ═══ */
         .equalizer{
             position:fixed;left:0;right:0;bottom:0;z-index:1;
-            display:flex;justify-content:center;align-items:flex-end;gap:5px;
-            height:120px;padding:0 20px;pointer-events:none;
-            opacity:.55;
-            mask-image:linear-gradient(180deg, transparent 0%, #000 60%);
-            -webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 60%);
+            display:flex;justify-content:center;align-items:flex-end;gap:4px;
+            height:80px;padding:0 24px;pointer-events:none;
+            opacity:.32;
+            mask-image:linear-gradient(180deg, transparent 0%, #000 70%);
+            -webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 70%);
         }
         .eq-bar{
-            width:7px;
-            background:linear-gradient(180deg, #d0006f, #7c3aed, #026CDF);
-            border-radius:3px 3px 0 0;
-            box-shadow:0 0 10px rgba(2,108,223,.5);
-            animation: eqBeat 1s ease-in-out infinite;
+            width:3px;
+            background:linear-gradient(180deg, rgba(59,158,255,.9), rgba(2,108,223,.6) 60%, rgba(2,82,180,.3));
+            border-radius:2px 2px 0 0;
+            animation: eqBeat 1.4s ease-in-out infinite;
             transform-origin:bottom;
         }
         @keyframes eqBeat{
-            0%,100% { transform:scaleY(.18); }
-            25%     { transform:scaleY(.65); }
-            50%     { transform:scaleY(1); }
-            75%     { transform:scaleY(.45); }
+            0%,100% { transform:scaleY(.15); }
+            50%     { transform:scaleY(.85); }
         }
 
         /* ═══ TARJETA DE LOGIN — GLASSMORPHISM ═══ */
@@ -283,9 +282,11 @@
         .input-wrap{position:relative}
         .input-wrap .input-icon{
             position:absolute;left:14px;top:50%;transform:translateY(-50%);
-            color:var(--text-dim);font-size:16px;pointer-events:none;
+            color:var(--text-dim);pointer-events:none;
+            display:inline-flex;align-items:center;justify-content:center;
             transition:color .25s;
         }
+        .input-wrap .input-icon svg{display:block}
         .form-group input{
             width:100%;
             padding:13px 14px 13px 42px;
@@ -534,40 +535,74 @@
 </head>
 <body>
 
-    <!-- Capas de fondo -->
+    <!-- Capas de fondo SaaS profesional -->
     <div class="bg-gradient" aria-hidden="true"></div>
     <div class="bg-grid" aria-hidden="true"></div>
+    <div class="bg-vignette" aria-hidden="true"></div>
 
-    <!-- Focos de escenario barriendo -->
-    <div class="spotlights" aria-hidden="true">
-        <div class="spotlight s1"></div>
-        <div class="spotlight s2"></div>
-        <div class="spotlight s3"></div>
+    <!-- Orbes desenfocados gigantes (estilo Linear/Stripe) -->
+    <div class="orbs" aria-hidden="true">
+        <div class="orb o1"></div>
+        <div class="orb o2"></div>
+        <div class="orb o3"></div>
     </div>
 
-    <!-- Estrellas twinkling (generadas por JS para dispersión natural) -->
+    <!-- Rays de luz verticales sutiles -->
+    <div class="light-rays" aria-hidden="true">
+        <div class="ray r1"></div>
+        <div class="ray r2"></div>
+        <div class="ray r3"></div>
+    </div>
+
+    <!-- Formas geométricas SVG (anillos, hexágonos, líneas onda) -->
+    <div class="shapes-layer" aria-hidden="true">
+        <div class="geo-shape g1">
+            <svg viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45"/>
+                <circle cx="50" cy="50" r="32"/>
+                <circle cx="50" cy="50" r="18"/>
+            </svg>
+        </div>
+        <div class="geo-shape g2">
+            <svg viewBox="0 0 100 100">
+                <polygon points="50,5 90,28 90,72 50,95 10,72 10,28"/>
+                <polygon points="50,22 75,36 75,64 50,78 25,64 25,36"/>
+            </svg>
+        </div>
+        <div class="geo-shape g3">
+            <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+                <path d="M0,50 Q25,10 50,50 T100,50 T150,50 T200,50" stroke-width="1.2"/>
+                <path d="M0,60 Q25,30 50,60 T100,60 T150,60 T200,60" stroke-width="1" opacity=".6"/>
+                <path d="M0,40 Q25,70 50,40 T100,40 T150,40 T200,40" stroke-width="1" opacity=".6"/>
+            </svg>
+        </div>
+        <div class="geo-shape g4">
+            <svg viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45"/>
+                <line x1="50" y1="5" x2="50" y2="95" stroke-width=".8"/>
+                <line x1="5" y1="50" x2="95" y2="50" stroke-width=".8"/>
+                <circle cx="50" cy="50" r="6" fill="rgba(2,108,223,.4)"/>
+            </svg>
+        </div>
+        <div class="geo-shape g5">
+            <svg viewBox="0 0 100 100">
+                <rect x="10" y="10" width="80" height="80" rx="10"/>
+                <rect x="22" y="22" width="56" height="56" rx="6"/>
+                <rect x="34" y="34" width="32" height="32" rx="3"/>
+            </svg>
+        </div>
+        <div class="geo-shape g6">
+            <svg viewBox="0 0 100 100">
+                <polygon points="50,8 92,50 50,92 8,50"/>
+                <polygon points="50,28 72,50 50,72 28,50"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Estrellas / noise field (generadas por JS) -->
     <div class="stars" id="starsLayer" aria-hidden="true"></div>
 
-    <!-- Iconos flotantes (tickets, notas musicales, estrellas) — 12 unidades -->
-    <div class="float-layer" aria-hidden="true">
-        <span class="float-icon f1">🎟️</span>
-        <span class="float-icon f2">🎵</span>
-        <span class="float-icon f3">🎤</span>
-        <span class="float-icon f4">⭐</span>
-        <span class="float-icon f5">🎸</span>
-        <span class="float-icon f6">🎫</span>
-        <span class="float-icon f7">🎭</span>
-        <span class="float-icon f8">🎼</span>
-        <span class="float-icon f9">🥁</span>
-        <span class="float-icon f10">🎹</span>
-        <span class="float-icon f11">🪩</span>
-        <span class="float-icon f12">🎺</span>
-    </div>
-
-    <!-- Confetti cayendo continuamente (generado por JS) -->
-    <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
-
-    <!-- Partículas brillantes flotando hacia arriba — 12 unidades -->
+    <!-- Partículas ascendentes monocromas -->
     <div class="particles" aria-hidden="true">
         <span class="particle p1"></span>
         <span class="particle p2"></span>
@@ -579,11 +614,9 @@
         <span class="particle p8"></span>
         <span class="particle p9"></span>
         <span class="particle p10"></span>
-        <span class="particle p11"></span>
-        <span class="particle p12"></span>
     </div>
 
-    <!-- Ecualizador estilo concierto en la base -->
+    <!-- Audio wave bar minimalista en la base -->
     <div class="equalizer" id="equalizer" aria-hidden="true"></div>
 
     <div class="login-wrap">
@@ -608,14 +641,24 @@
                 <label for="username" data-i18n="login.user">Usuario</label>
                 <div class="input-wrap">
                     <input type="text" id="username" name="username" autocomplete="username" required autofocus placeholder="admin">
-                    <span class="input-icon" aria-hidden="true">👤</span>
+                    <span class="input-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </span>
                 </div>
             </div>
             <div class="form-group">
                 <label for="password" data-i18n="login.password">Contraseña</label>
                 <div class="input-wrap">
                     <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••">
-                    <span class="input-icon" aria-hidden="true">🔒</span>
+                    <span class="input-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </span>
                 </div>
             </div>
 
@@ -669,77 +712,45 @@
         function setLoginLang(l){ LANG=l; localStorage.setItem('tm_lang', l); applyLoginI18n(); }
         applyLoginI18n();
 
-        // Detección de dispositivo móvil para reducir densidad de animaciones
-        // (ahorra batería + evita lag en pantallas táctiles)
+        // Detección de dispositivo móvil — densidad reducida para ahorro batería
         const IS_MOBILE = window.matchMedia('(max-width: 768px)').matches
                          || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        // ═══ ESTRELLAS TWINKLING (40 desktop · 18 móvil) ═══
+        // ═══ NOISE FIELD (puntos sutiles dispersos como starfield) ═══
+        // Desktop: 50 puntos · Móvil: 24 · Reduced motion: skip
         (function genStars(){
             const layer = document.getElementById('starsLayer');
             if(!layer || REDUCED) return;
-            const count = IS_MOBILE ? 18 : 40;
+            const count = IS_MOBILE ? 24 : 50;
             for(let i=0;i<count;i++){
                 const s = document.createElement('span');
                 s.className = 'star';
                 s.style.top = (Math.random()*100)+'%';
                 s.style.left = (Math.random()*100)+'%';
-                s.style.animationDelay = (Math.random()*3)+'s';
-                s.style.animationDuration = (2.5 + Math.random()*2.5)+'s';
-                const size = 1.5 + Math.random()*2.5;
+                s.style.animationDelay = (Math.random()*4)+'s';
+                s.style.animationDuration = (3 + Math.random()*3)+'s';
+                const size = 1 + Math.random()*1.8;
                 s.style.width = size+'px';
                 s.style.height = size+'px';
                 layer.appendChild(s);
             }
         })();
 
-        // ═══ ECUALIZADOR (28 barras desktop · 16 móvil) ═══
+        // ═══ AUDIO WAVE BAR (32 desktop · 18 móvil) — minimalista monocromo ═══
         (function genEqualizer(){
             const eq = document.getElementById('equalizer');
             if(!eq) return;
-            const count = IS_MOBILE ? 16 : 28;
+            const count = IS_MOBILE ? 18 : 32;
             for(let i=0;i<count;i++){
                 const b = document.createElement('span');
                 b.className = 'eq-bar';
-                b.style.height = (40 + Math.random()*70)+'px';
-                b.style.animationDelay = (-Math.random()*1.2)+'s';
-                b.style.animationDuration = (0.7 + Math.random()*0.8)+'s';
+                b.style.height = (30 + Math.random()*45)+'px';
+                b.style.animationDelay = (-Math.random()*1.6)+'s';
+                b.style.animationDuration = (1.0 + Math.random()*0.8)+'s';
                 eq.appendChild(b);
             }
         })();
-
-        // ═══ CONFETTI INFINITO (tickets, estrellas, notas cayendo) ═══
-        // Desktop: 18 inicial + 1/700ms · Móvil: 8 inicial + 1/1400ms
-        (function genConfetti(){
-            const layer = document.getElementById('confettiLayer');
-            if(!layer || REDUCED) return;
-            const symbols = ['🎟️','⭐','🎵','✨','🎉','🎊','🎶','💫'];
-            const initialCount = IS_MOBILE ? 8 : 18;
-            const intervalMs = IS_MOBILE ? 1400 : 700;
-            for(let i=0;i<initialCount;i++){
-                spawnConfetti(layer, symbols, true);
-            }
-            setInterval(()=>spawnConfetti(layer, symbols, false), intervalMs);
-        })();
-        function spawnConfetti(layer, symbols, initial){
-            const c = document.createElement('span');
-            c.className = 'confetti';
-            c.textContent = symbols[Math.floor(Math.random()*symbols.length)];
-            c.style.left = (Math.random()*100)+'%';
-            // Móvil: tamaños un poco menores (12-22px vs 14-30px)
-            const baseSize = IS_MOBILE ? 12 : 14;
-            const range = IS_MOBILE ? 10 : 16;
-            c.style.fontSize = (baseSize + Math.random()*range)+'px';
-            const dur = 8 + Math.random()*10;
-            c.style.animationDuration = dur+'s';
-            if(initial){
-                c.style.animationDelay = (-Math.random()*dur)+'s';
-            }
-            c.style.filter = `drop-shadow(0 2px 6px rgba(0,0,0,.4)) hue-rotate(${Math.floor(Math.random()*360)}deg)`;
-            layer.appendChild(c);
-            setTimeout(()=>{ try{ c.remove(); }catch(_){} }, (dur+1)*1000);
-        }
 
         // ═══ Pause animations al ocultar pestaña (ahorra batería) ═══
         document.addEventListener('visibilitychange', ()=>{
