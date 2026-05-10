@@ -31,6 +31,134 @@ _lock = threading.RLock()
 
 
 # ════════════════════════════════════════════════════════════════
+#  i18n — traducciones EN del catálogo. Solo description+value
+#  (los demás campos: id/icon/category/tier son canónicos)
+# ════════════════════════════════════════════════════════════════
+_TRANSLATIONS_EN = {
+    "queue_monitor": {
+        "description": "Real-time Queue-it position with alerts",
+        "value": "Know when you enter the queue without manual checking",
+    },
+    "price_alert": {
+        "description": "Alert when price drops below threshold",
+        "value": "Don't miss drops when prices fall mid-sale",
+    },
+    "cookie_injector": {
+        "description": "Injects pre-authenticated TM cookies + AcpAT",
+        "value": "Skip Queue-it when you have a valid token",
+    },
+    "auto_seatmap": {
+        "description": "Automatic selection on seat map",
+        "value": "Pick best seat without manual click",
+    },
+    "card_rotation": {
+        "description": "Card rotation with 24h success / 72h declined cooldown",
+        "value": "Avoid bank anti-fraud pattern from repeated use",
+    },
+    "otp_3ds": {
+        "description": "Reads 3DS code from IMAP/SMS automatically (13 banks)",
+        "value": "No need to manually enter the bank SMS",
+    },
+    "ja4_spoof": {
+        "description": "12 Chrome/FF/Safari TLS profiles to evade fingerprint",
+        "value": "TM doesn't detect the bot via TLS handshake",
+    },
+    "compliance_gate": {
+        "description": "EU Digital Fairness Act (Q3 2026) — consent + face-value",
+        "value": "Legal protection for sales within EU",
+    },
+    "captcha_solver": {
+        "description": "CapSolver / 2Captcha / Anti-Captcha / CapMonster (auto-fallback)",
+        "value": "Solves reCAPTCHA + hCaptcha + Turnstile without manual",
+    },
+    "browser_pool_manager": {
+        "description": "Pre-warmed browser pool for sub-second checkout",
+        "value": "Skip 3-5s of browser spawn per purchase",
+    },
+    "proxy_health_scheduler": {
+        "description": "Periodic proxy benchmark every 30min + auto-rotation",
+        "value": "Detect dead proxies before the drop",
+    },
+    "discovery_adaptive": {
+        "description": "Adaptive event polling by hot/warm/cold",
+        "value": "Detect event state changes without aggressive polling",
+    },
+    "tm_mobile_sdk": {
+        "description": "Uses TM mobile API (less protected than web)",
+        "value": "Partial bypass of Akamai web detection",
+    },
+    "presale_farming": {
+        "description": "Harvests and tests presale codes automatically",
+        "value": "Presale access without manual code",
+    },
+    "akamai_sensor_v3": {
+        "description": "Generates sensor_data POST to validate _abck",
+        "value": "Valid _abck cookie → no 'Browsing Activity Paused'",
+    },
+    "captcha_pre_solve": {
+        "description": "Pre-solve N captcha tokens 30s before drop",
+        "value": "0ms captcha latency at drop time",
+    },
+    "multi_proxy_race": {
+        "description": "Parallel HTTP/2 race with N proxies, first 200 wins",
+        "value": "Reduces checkout latency 30-50% in congested geo",
+    },
+    "drop_predictor_ml": {
+        "description": "ML model that learns drop patterns by venue/artist",
+        "value": "Launch the bot at optimal time without 24/7 polling",
+    },
+    "phone_pool_prebuy": {
+        "description": "Buy N 5sim numbers 60s before drop",
+        "value": "Skip 30-90s of phone wait at the critical moment",
+    },
+    "smart_retry": {
+        "description": "Exponential backoff + circuit breaker on 429/503",
+        "value": "Doesn't burn IPs when TM triggers temporary rate-limit",
+    },
+    "auto_refund_watcher": {
+        "description": "Monitor for released seats (cancellations) post-onsale",
+        "value": "Catch tickets returning to stock when someone cancels",
+    },
+    "stealth_sdk": {
+        "description": "External API that generates 100% valid sensor_data for Akamai",
+        "value": "Total _abck challenge bypass — only real 2026 anti-bot",
+    },
+    "cluster_mode": {
+        "description": "Distributed bot across N machines with central coordinator",
+        "value": "Launch N×M parallel attempts in different geos",
+    },
+    "ai_seat_picker": {
+        "description": "ML to choose best section by VIP/price/view priority",
+        "value": "Optimal selection without hardcoded rules",
+    },
+    "multi_account_burst": {
+        "description": "Launches 5+ accounts simultaneously at drop time",
+        "value": "Increases success probability × N (with anti-bot risk)",
+    },
+    "browser_extension_ublock": {
+        "description": "Blocks tracking pixels and ads → 30-50% faster load",
+        "value": "Reduces checkout load timing, fewer retries",
+    },
+}
+
+
+def _localize_entry(ext: Dict, lang: str = "es") -> Dict:
+    """Devuelve una copia del entry con description+value localizadas si lang='en'.
+    Si lang='es' o no hay traducción, devuelve el entry tal cual."""
+    if lang != "en":
+        return dict(ext)
+    tr = _TRANSLATIONS_EN.get(ext.get("id"))
+    if not tr:
+        return dict(ext)
+    out = dict(ext)
+    if "description" in tr:
+        out["description"] = tr["description"]
+    if "value" in tr:
+        out["value"] = tr["value"]
+    return out
+
+
+# ════════════════════════════════════════════════════════════════
 #  CATÁLOGO — ordenado por success_rate descendente (Tier S → C)
 # ════════════════════════════════════════════════════════════════
 CATALOG: List[Dict] = [
@@ -279,18 +407,20 @@ def _save_interest(d: dict):
 #  API pública
 # ════════════════════════════════════════════════════════════════
 def list_recommendations(filter_status: Optional[str] = None,
-                          filter_tier: Optional[str] = None) -> List[Dict]:
+                          filter_tier: Optional[str] = None,
+                          lang: str = "es") -> List[Dict]:
     """Lista el catálogo enriquecido con interest del usuario.
 
     Filtros opcionales:
       filter_status: "installed", "available", "recommended", "experimental", "external"
       filter_tier:   "S", "A", "B", "C"
+      lang:          "es" (default) | "en" → localiza description+value
     """
     with _lock:
         d = _load_interest()
         out = []
         for ext in CATALOG:
-            entry = dict(ext)
+            entry = _localize_entry(ext, lang)
             entry["user_interested"] = ext["id"] in d.get("interested", {})
             entry["user_installed_at"] = d.get("installed", {}).get(ext["id"])
             if filter_status and ext["status"] != filter_status:
@@ -306,10 +436,10 @@ def list_recommendations(filter_status: Optional[str] = None,
         return out
 
 
-def get_extension(ext_id: str) -> Optional[Dict]:
+def get_extension(ext_id: str, lang: str = "es") -> Optional[Dict]:
     for ext in CATALOG:
         if ext["id"] == ext_id:
-            return dict(ext)
+            return _localize_entry(ext, lang)
     return None
 
 
@@ -368,23 +498,28 @@ def get_stats() -> Dict:
         }
 
 
-def search(query: str, limit: int = 20) -> List[Dict]:
+def search(query: str, limit: int = 20, lang: str = "es") -> List[Dict]:
     """Busca extensiones por nombre/descripción/categoría/value (case-insensitive).
 
-    Retorna las que matchean ordenadas por success_rate desc.
+    Busca tanto en ES como EN (haystack combinado) para que el usuario EN
+    encuentre por ej. "browser" igual que un usuario ES busca por "navegador".
+    Retorna las que matchean ordenadas por success_rate desc, localizadas a `lang`.
     """
     if not query or not query.strip():
-        return list_recommendations()[:limit]
+        return list_recommendations(lang=lang)[:limit]
     q = query.lower().strip()
     matches = []
     for ext in CATALOG:
+        # Haystack combinado ES + EN
+        tr = _TRANSLATIONS_EN.get(ext.get("id"), {})
         haystack = " ".join([
             ext.get("name", ""), ext.get("description", ""),
             ext.get("category", ""), ext.get("value", ""),
             ext.get("id", ""),
+            tr.get("description", ""), tr.get("value", ""),
         ]).lower()
         if q in haystack:
-            matches.append(ext)
+            matches.append(_localize_entry(ext, lang))
     matches.sort(key=lambda e: -e["success_rate"])
     return matches[:limit]
 
@@ -428,6 +563,29 @@ def self_test() -> Dict:
         # Stats no peta
         s = get_stats()
         out["checks"]["stats_ok"] = "total_in_catalog" in s
+
+        # i18n: verificar paridad ES/EN del catálogo
+        catalog_ids = {ext["id"] for ext in CATALOG}
+        en_ids = set(_TRANSLATIONS_EN.keys())
+        missing_en = catalog_ids - en_ids
+        extra_en = en_ids - catalog_ids
+        out["checks"]["i18n_en_coverage"] = len(missing_en) == 0
+        out["checks"]["i18n_en_no_extra"] = len(extra_en) == 0
+        if missing_en:
+            out["errors"].append(f"missing EN translation: {sorted(missing_en)}")
+        if extra_en:
+            out["errors"].append(f"extra EN translation (no catalog entry): {sorted(extra_en)}")
+        # Cada traducción EN debe tener description+value
+        for eid, tr in _TRANSLATIONS_EN.items():
+            if not tr.get("description") or not tr.get("value"):
+                out["ok"] = False
+                out["errors"].append(f"EN {eid}: missing description or value")
+        # list_recommendations(lang='en') no contiene strings ES típicos
+        en_list = list_recommendations(lang="en")
+        sample_text = " ".join(e.get("description", "") + " " + e.get("value", "") for e in en_list).lower()
+        out["checks"]["en_no_navegador"] = "navegador" not in sample_text
+        out["checks"]["en_no_evita"] = "evita" not in sample_text
+        out["checks"]["en_no_lanza"] = " lanza " not in sample_text
     except Exception as e:
         out["ok"] = False
         out["errors"].append(f"{type(e).__name__}: {e}")

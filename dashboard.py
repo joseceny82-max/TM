@@ -648,6 +648,9 @@ def api_domains_select():
 @app.route("/api/problems")
 @login_required
 def api_problems():
+    lang = (request.args.get("lang") or "").lower().strip() or "es"
+    if lang not in ("es", "en"):
+        lang = "es"
     q = request.args.get("q", "")
     sev = request.args.get("severity") or None
     cat = request.args.get("category") or None
@@ -660,10 +663,10 @@ def api_problems():
     return jsonify({
         "ok": True,
         "problems":   problems,
-        "categories": problem_center.get_categories(),
+        "categories": problem_center.get_categories(lang=lang),
         "stats":      problem_center.get_stats(),
         "timeline":   problem_center.get_timeline(hours=24),
-        "breakdown":  problem_center.get_category_breakdown(),
+        "breakdown":  problem_center.get_category_breakdown(lang=lang),
     })
 
 
@@ -1618,8 +1621,11 @@ def api_bot_groups_create():
         # Categorías genéricas multi-select (Floor/GA/Reserved/VIP/Boxes/Wheelchair)
         "selected_categories": d.get("selected_categories"),
     }
+    lang = (request.args.get("lang") or d.get("lang") or "").lower().strip() or "es"
+    if lang not in ("es", "en"):
+        lang = "es"
     g = bot_engine.engine.create_group(
-        d.get("event_id"), d.get("domain_ids", []), d.get("name", ""), params=params
+        d.get("event_id"), d.get("domain_ids", []), d.get("name", ""), params=params, lang=lang
     )
     worker_count = int(d.get("worker_count", 1))
     for i in range(worker_count):
@@ -3580,10 +3586,13 @@ def api_extensions_list():
     import extension_recommender
     status = request.args.get("status") or None
     tier = request.args.get("tier") or None
+    lang = (request.args.get("lang") or "").lower().strip() or "es"
+    if lang not in ("es", "en"):
+        lang = "es"
     return jsonify({
         "ok": True,
         "recommendations": extension_recommender.list_recommendations(
-            filter_status=status, filter_tier=tier),
+            filter_status=status, filter_tier=tier, lang=lang),
         "stats": extension_recommender.get_stats(),
     })
 
@@ -3594,9 +3603,12 @@ def api_extensions_search():
     import extension_recommender
     q = request.args.get("q") or ""
     limit = int(request.args.get("limit") or 20)
+    lang = (request.args.get("lang") or "").lower().strip() or "es"
+    if lang not in ("es", "en"):
+        lang = "es"
     return jsonify({
         "ok": True, "query": q,
-        "matches": extension_recommender.search(q, limit=limit),
+        "matches": extension_recommender.search(q, limit=limit, lang=lang),
     })
 
 
@@ -3604,7 +3616,10 @@ def api_extensions_search():
 @login_required
 def api_extensions_detail(ext_id):
     import extension_recommender
-    ext = extension_recommender.get_extension(ext_id)
+    lang = (request.args.get("lang") or "").lower().strip() or "es"
+    if lang not in ("es", "en"):
+        lang = "es"
+    ext = extension_recommender.get_extension(ext_id, lang=lang)
     if not ext:
         return jsonify({"ok": False, "error": "not_found"}), 404
     return jsonify({"ok": True, "extension": ext})
@@ -9558,13 +9573,19 @@ def api_strategy_self_test():
 @app.route("/api/bot/live-readiness", methods=["GET"])
 @login_required
 def api_live_readiness():
-    return jsonify(live_readiness.check())
+    lang = (request.args.get("lang") or "").lower().strip() or "es"
+    if lang not in ("es", "en"):
+        lang = "es"
+    return jsonify(live_readiness.check(lang=lang))
 
 
 @app.route("/api/bot/live-readiness/auto-setup", methods=["POST"])
 @login_required
 def api_live_auto_setup():
-    return jsonify(live_readiness.auto_setup())
+    lang = (request.args.get("lang") or "").lower().strip() or "es"
+    if lang not in ("es", "en"):
+        lang = "es"
+    return jsonify(live_readiness.auto_setup(lang=lang))
 
 
 @app.route("/api/bot/live-readiness/captcha-key", methods=["POST"])

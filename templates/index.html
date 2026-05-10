@@ -6007,7 +6007,7 @@
                             <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="us.subtitle">Gestión de usuarios · roles (admin/operador/viewer) · 2FA · historial de accesos · PBKDF2 hash</p>
                         </div>
                     </div>
-                    <button class="btn btn-accent" onclick="openUserModal()">+ Usuario</button>
+                    <button class="btn btn-accent" onclick="openUserModal()">+&nbsp;<span data-i18n="us.btn.add">Usuario</span></button>
                 </div>
             </div>
 
@@ -6017,12 +6017,12 @@
             <!-- Tabla usuarios -->
             <div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                    <h3 style="margin:0;font-size:14px">📋 Usuarios registrados</h3>
-                    <input class="input" id="users-search" placeholder="🔍 buscar..." style="width:180px;font-size:11px" oninput="filterUsers()">
+                    <h3 style="margin:0;font-size:14px">📋&nbsp;<span data-i18n="us.registered_title">Usuarios registrados</span></h3>
+                    <input class="input" id="users-search" data-i18n-ph="us.search_ph" placeholder="🔍 buscar..." style="width:180px;font-size:11px" oninput="filterUsers()">
                 </div>
                 <div style="overflow-x:auto">
                     <table style="width:100%;border-collapse:collapse" id="users-table">
-                        <thead><tr><th>Usuario</th><th>Email</th><th>Rol</th><th>2FA</th><th>Último acceso</th><th>Creado</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th data-i18n="us.col.user">Usuario</th><th data-i18n="us.col.email">Email</th><th data-i18n="us.col.role">Rol</th><th data-i18n="us.col.2fa">2FA</th><th data-i18n="us.col.last_access">Último acceso</th><th data-i18n="us.col.created">Creado</th><th data-i18n="us.col.status">Estado</th><th data-i18n="us.col.actions">Acciones</th></tr></thead>
                         <tbody><tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px" data-i18n="action.loading">Cargando usuarios...</td></tr></tbody>
                     </table>
                 </div>
@@ -6507,7 +6507,7 @@ popheads</textarea>
                             <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="sp.subtitle">Tickets de soporte · categorías · prioridad · asignación · historial conversación · SLA · FAQ TM</p>
                         </div>
                     </div>
-                    <button class="btn btn-accent" onclick="openTicketModal()">+ Nuevo Ticket</button>
+                    <button class="btn btn-accent" onclick="openTicketModal()">+&nbsp;<span data-i18n="sp.new_ticket">Nuevo Ticket</span></button>
                 </div>
             </div>
 
@@ -6517,28 +6517,28 @@ popheads</textarea>
             <!-- Filtros -->
             <div class="card" style="margin-bottom:12px">
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                    <input class="input" id="support-search" placeholder="🔍 buscar ticket..." style="flex:1;min-width:200px;font-size:12px" oninput="filterTickets()">
+                    <input class="input" id="support-search" data-i18n-ph="sp.search_ph" placeholder="🔍 buscar ticket..." style="flex:1;min-width:200px;font-size:12px" oninput="filterTickets()">
                     <select class="input" id="support-filter-status" onchange="filterTickets()" style="width:140px;font-size:11px">
-                        <option value="">Todos estados</option>
-                        <option value="open">🔴 Abierto</option>
-                        <option value="in_progress">🟡 En progreso</option>
-                        <option value="resolved">🟢 Resuelto</option>
-                        <option value="closed">⚫ Cerrado</option>
+                        <option value="" data-i18n="sp.all_status">Todos estados</option>
+                        <option value="open" data-i18n="sp.st.open">🔴 Abierto</option>
+                        <option value="in_progress" data-i18n="sp.st.progress">🟡 En progreso</option>
+                        <option value="resolved" data-i18n="sp.st.resolved">🟢 Resuelto</option>
+                        <option value="closed" data-i18n="sp.st.closed">⚫ Cerrado</option>
                     </select>
                     <select class="input" id="support-filter-priority" onchange="filterTickets()" style="width:140px;font-size:11px">
-                        <option value="">Toda prioridad</option>
-                        <option value="critical">🔥 Crítica</option>
-                        <option value="high">⚡ Alta</option>
-                        <option value="normal">📋 Normal</option>
-                        <option value="low">📝 Baja</option>
+                        <option value="" data-i18n="sp.all_prio">Toda prioridad</option>
+                        <option value="critical" data-i18n="sp.pr.critical">🔥 Crítica</option>
+                        <option value="high" data-i18n="sp.pr.high">⚡ Alta</option>
+                        <option value="normal" data-i18n="sp.pr.normal">📋 Normal</option>
+                        <option value="low" data-i18n="sp.pr.low">📝 Baja</option>
                     </select>
                     <select class="input" id="support-filter-category" onchange="filterTickets()" style="width:140px;font-size:11px">
-                        <option value="">Toda categoría</option>
-                        <option value="bot">🤖 Bot</option>
-                        <option value="queue">🏃 Queue-it</option>
-                        <option value="captcha">🧠 CAPTCHA</option>
-                        <option value="payment">💳 Pago</option>
-                        <option value="other">❓ Otros</option>
+                        <option value="" data-i18n="sp.all_cat">Toda categoría</option>
+                        <option value="bot" data-i18n="sp.cat.bot">🤖 Bot</option>
+                        <option value="queue" data-i18n="sp.cat.queue">🏃 Queue-it</option>
+                        <option value="captcha" data-i18n="sp.cat.captcha">🧠 CAPTCHA</option>
+                        <option value="payment" data-i18n="sp.cat.payment">💳 Pago</option>
+                        <option value="other" data-i18n="sp.cat.other">❓ Otros</option>
                     </select>
                 </div>
             </div>
@@ -6548,7 +6548,7 @@ popheads</textarea>
 
             <!-- Tickets list -->
             <div class="card">
-                <h3 style="margin:0 0 10px;font-size:14px">📋 Tickets abiertos</h3>
+                <h3 style="margin:0 0 10px;font-size:14px">📋&nbsp;<span data-i18n="sp.open_tickets">Tickets abiertos</span></h3>
                 <div id="support-list"></div>
             </div>
 
@@ -6578,8 +6578,19 @@ popheads</textarea>
 
                 <!-- TAB: Quick Start -->
                 <div class="faq-pane" data-faqpane="quickstart" style="display:none">
-                    <h4 style="font-size:13px;color:#22c55e;margin:0 0 10px">🚀 Quick Start — De 0 a comprar en 4 fases</h4>
+                    <h4 style="font-size:13px;color:#22c55e;margin:0 0 10px"><span data-lang-show="es">🚀 Quick Start — De 0 a comprar en 4 fases</span><span data-lang-show="en" style="display:none">🚀 Quick Start — From zero to buying in 4 phases</span></h4>
 
+                    <!-- EN concise version (shown only in English) -->
+                    <div data-lang-show="en" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;font-size:12px;line-height:1.7">
+                        <p><b>Phase 1 — Initial setup (10 min):</b> Setup Wizard in sidebar shows what's missing (green=OK, red=blocking). Add ISP residential proxies, paste CapSolver/2Captcha API key, configure Gmail IMAP for OTP, and add Discord/Telegram webhook for alerts.</p>
+                        <p><b>Phase 2 — TM accounts (mass registration):</b> Download CSV template in <code>Accounts &amp; Cards → Excel</code>. Run <code>python register_account.py --row N</code> per row, or <code>python _pool_manager.py 3</code> for 3 parallel registrations. Validate with <code>POST /api/account-validator/validate-batch</code>.</p>
+                        <p><b>Phase 3 — Events + scan:</b> Import event in <code>Events → 🔍 Search TM</code> with URL or name. Scan venue in <code>Sniper Bot → Seat map → 🔍 Scan venue</code> to capture SVG + offers. Set <code>sale_date</code> in ISO format (e.g. <code>2027-05-13T10:00:00</code>) — without it the scheduler won't fire.</p>
+                        <p><b>Phase 4 — Launch (manual or auto):</b> 3 modes — (1) <i>Manual SIMULATE</i> in <code>Sniper Bot → 🚀 Launch Bot</code> with event dropdown (no risk, no cost, ~5s); (2) <i>Manual LIVE</i> via <code>POST /api/purchase-flow/run</code> with <code>{"mode":"live"}</code>; (3) <i>Auto SCHEDULER</i> recommended for drops via <code>POST /api/onsale-scheduler/register</code>. For important drops, register attack at least 25h ahead so account_warming runs at T-24h.</p>
+                        <div style="margin-top:14px;padding:10px 14px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:8px;font-size:11px;color:#fbbf24">⚠️ <b>For REAL checkout with charge</b>: paste 3 Adyen Customer Area values into <code>adyen_config.json</code>: <code>api_key</code> + <code>live_url_prefix</code> + <code>client_key</code>. Without them stays in mode=test.</div>
+                    </div>
+
+                    <!-- ES detailed version (original, shown only in Spanish) -->
+                    <div data-lang-show="es">
                     <details open class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
                         <summary style="cursor:pointer;font-weight:700;color:#22c55e">FASE 1 — Configuración inicial (10 min)</summary>
                         <ol style="font-size:12px;line-height:1.7;color:var(--text);padding-left:20px;margin-top:10px">
@@ -6625,11 +6636,23 @@ popheads</textarea>
                     </details>
 
                     <div style="margin-top:14px;padding:10px 14px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:8px;font-size:11px;color:#fbbf24">⚠️ <b>Para activar checkout REAL con cobro</b>: pega 3 valores de Adyen Customer Area en <code>adyen_config.json</code>: <code>api_key</code> + <code>live_url_prefix</code> + <code>client_key</code>. Sin estos sigue en mode=test.</div>
+                    </div><!-- /es Quick Start -->
                 </div>
 
                 <!-- TAB: Bot Guide (instrucciones detalladas) -->
                 <div class="faq-pane" data-faqpane="bot-guide" style="display:none">
-                    <h4 style="font-size:13px;color:#a855f7;margin:0 0 10px">🤖 Instrucciones detalladas del Bot — arquitectura, flow y módulos</h4>
+                    <h4 style="font-size:13px;color:#a855f7;margin:0 0 10px"><span data-lang-show="es">🤖 Instrucciones detalladas del Bot — arquitectura, flow y módulos</span><span data-lang-show="en" style="display:none">🤖 Detailed Bot instructions — architecture, flow and modules</span></h4>
+
+                    <!-- EN concise version of bot guide -->
+                    <div data-lang-show="en" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;font-size:12px;line-height:1.7">
+                        <p><b>🏗️ Architecture (39 modules):</b> The bot is split into layers — Orchestration (<code>tm_purchase_flow</code>, <code>tm_real_purchase</code>, <code>onsale_scheduler</code>); Real browser (<code>tm_browser_engine</code>, <code>_compra_parallel</code>, Patchright/Camoufox/MoreLogin); Anti-bot (<code>akamai_sbsd</code>, <code>akamai_sensor_v3</code>, <code>imperva_bypass</code>, <code>hyper_sdk_chain</code>, <code>kasada_solver</code>); Behavior (<code>human_motion</code> Bezier mouse, <code>behavior_chain</code> Markov, <code>session_persistence</code>); HTTP/TLS (<code>cookie_warmer</code> curl_cffi, <code>ja4_spoof</code>, 12 TLS profiles); Accounts (CRUD + validator + warmer + recovery); Events (Discovery API, venue scan, VIP filters); Payment (Adyen tokens, 3DS auto-fill IMAP, card rotation, DFA gate); CAPTCHA (4 solvers); Notifications (Discord/Telegram + WebSocket).</p>
+                        <p><b>📋 Purchase flow — 16 sequential steps:</b> find_event → dfa_compliance → pick_proxy → pin_proxy_session (sticky 30min) → warm_session (Akamai sensor + cookies Chrome 120) → get_session (JA4+ TLS + browser pool) → inject_acpat (Queue-it bypass) → check_onsale_window → simulate_cart (in <code>mode=live</code> delegates to <code>tm_real_purchase</code> → spawns <code>_compra_parallel.py</code> with real browser, OAuth login, real captcha, sectors, real cart) → solve_captcha (CapSolver first, CapMonster fallback, 2C last) → pick_card (smart rotation: 30min cooldown/card, anti-velocity-by-BIN) → tokenize_card (Adyen tokenize, requires real api_key for mode=live) → simulate_checkout → record_card_usage → register_purchase + notify (Discord/Telegram alert). Steps 9-13 have <code>_real_purchase_done</code> guard so they're not re-executed if <code>tm_real_purchase</code> already covered cart+captcha+checkout.</p>
+                        <p><b>⏰ Onsale Scheduler — automatic T-0 firing:</b> Daemon watches <code>events.json</code> and triggers purchases at the EXACT onsale time (sub-second). Has 7 automatic pre-onsale hooks — T-24h: account_warming · T-1h: akamai_sensor_refresh · T-30m: cookie_pool_warming · T-5m: captcha_pool_pre_solve · T-30s: workers_launch_standby · T-3s: workers_arm · T+0: <b>fire</b> (spawn N <code>_compra_parallel.py</code> workers in parallel + "🚀 FIRE" notif). Endpoints: <code>POST /api/onsale-scheduler/register</code>, <code>/cancel/&lt;tm_id&gt;</code>, <code>GET /api/onsale-scheduler/schedule</code>, <code>POST /api/onsale-scheduler/start|stop</code>.</p>
+                        <p><b>🛡️ Advanced anti-bot 2026:</b> TM combines 5+ detection providers — Akamai BMP v3 (<code>_abck</code>, <code>bm_sz</code>, sensor_data) → <code>hyper_sdk_chain</code> live or <code>akamai_sensor_v3</code> local · Akamai SBSD → <code>akamai_sbsd.build_sbsd_payload</code> · Imperva/Incapsula (<code>reese84</code>) → <code>imperva_bypass.bypass()</code> · NuData (mouse trajectory, typing) → <code>human_motion</code> Bezier + Fitts + Markov flight times · Datadome → <code>behavior_chain</code> Markov idle/scroll · Queue-it (<code>AcpAT</code>) → persistent pool + sticky proxy · Kasada → <code>kasada_solver</code> · TLS JA3/JA4 → 12 profiles + curl_cffi Chrome 120 · HTTP/2 fingerprint → curl_cffi impersonate · WebDriver leak → Patchright + Camoufox + CDP-Patches OS-level.</p>
+                    </div>
+
+                    <!-- ES detailed version -->
+                    <div data-lang-show="es">
 
                     <!-- ARQUITECTURA -->
                     <details open class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
@@ -7067,13 +7090,47 @@ popheads</textarea>
                             </ul>
                         </div>
                     </details>
+                    </div><!-- /es Bot Guide -->
 
                 </div>
 
                 <!-- TAB: Troubleshooting -->
                 <div class="faq-pane" data-faqpane="troubleshoot" style="display:none">
-                    <h4 style="font-size:13px;color:#ef4444;margin:0 0 10px">🔧 Troubleshooting — problemas reales y soluciones</h4>
+                    <h4 style="font-size:13px;color:#ef4444;margin:0 0 10px"><span data-lang-show="es">🔧 Troubleshooting — problemas reales y soluciones</span><span data-lang-show="en" style="display:none">🔧 Troubleshooting — real issues and solutions</span></h4>
 
+                    <!-- EN concise version -->
+                    <div data-lang-show="en" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;font-size:12px;line-height:1.7">
+                        <p><b>🤖 Purchase bot:</b></p>
+                        <ul style="padding-left:20px;color:var(--text-muted)">
+                            <li><b>Queue-it blocks constantly:</b> AcpAT pool empty. Launch parallel workers so one captures token, others reuse (TTL ~30min). Use ISP sticky proxies, not datacenter. Verify CapSolver balance &gt; $5.</li>
+                            <li><b>Akamai _abck invalid (HTTP 403):</b> Sensor in <code>mode=simulate</code>. Activate <code>hyper_sdk_chain.mode=live</code> with Hyper Solutions/TakionAPI key. Free fallback: Camoufox (real sensor with browser).</li>
+                            <li><b>NuData / Datadome detection:</b> Verify <code>human_motion</code> integration via <code>GET /api/human-motion/self-test</code>. Login/clicks must use Bezier + Markov flight times. CDP-Patches active in headless=False.</li>
+                            <li><b>Onsale scheduler doesn't fire at T+0:</b> Check <code>GET /api/onsale-scheduler/schedule</code> → <code>daemon_running:true</code>. Otherwise <code>POST /api/onsale-scheduler/start</code>. sale_date must be ISO format.</li>
+                        </ul>
+                        <p><b>👤 TM accounts:</b></p>
+                        <ul style="padding-left:20px;color:var(--text-muted)">
+                            <li><b>Mass BAD_CREDENTIALS at login:</b> TM rotated passwords. Run <code>POST /api/account-recovery/run</code>. Resets via IMAP and persists everywhere.</li>
+                            <li><b>Green accounts blocked at checkout:</b> TM blocks freshly registered accounts. Run <code>account_warmer</code> 24-48h pre-onsale: <code>POST /api/account-warmer/batch</code>.</li>
+                            <li><b>Email/SMS OTP not arriving:</b> iCloud HME throttle after &gt;20 consecutive registrations. Wait 30-60min or rotate. Bot insists up to 12 cycles × 90s.</li>
+                            <li><b>burned_profiles full:</b> After &gt;100 burned the MoreLogin pool depletes. Reset: <code>echo "[]" &gt; burned_profiles.json</code>.</li>
+                        </ul>
+                        <p><b>💳 Payment + 3DS:</b></p>
+                        <ul style="padding-left:20px;color:var(--text-muted)">
+                            <li><b>tokenize_card "api_key required":</b> Adyen in <code>mode=test</code> without api_key. Edit <code>adyen_config.json</code> with real values.</li>
+                            <li><b>Payment rejected PSD3 SCA:</b> 3DS auto-fill via IMAP should handle bank OTP. Verify <code>otp_3ds.enabled=True</code> + IMAP configured.</li>
+                            <li><b>DFA compliance gate aborts:</b> EU face-value buy blocked because listing &gt; face. Adjust threshold via <code>POST /api/compliance/tolerance</code>.</li>
+                        </ul>
+                        <p><b>🌐 Proxies + Browsers:</b></p>
+                        <ul style="padding-left:20px;color:var(--text-muted)">
+                            <li><b>Proxy "alive" goes "dead" fast:</b> Datacenter detected by Akamai. Use residential/ISP (NetNut, BrightData, IPRoyal sticky 30min).</li>
+                            <li><b>MoreLogin won't start profile:</b> App closed. Open it manually. HTTPConnectionPool/WinError 10061 errors are infra (don't count as flaky).</li>
+                            <li><b>Camoufox not found:</b> Run <code>python -m camoufox fetch</code>. Patchright: <code>patchright install chromium</code>.</li>
+                        </ul>
+                        <p><b>🎟 Events:</b> Featured events show demo → API key Discovery placeholder. Use 🧙 Wizard for free key (5000 calls/day) or HTML scraper works without key. Scan venue fails "no_es_profile_available" → reset burned_profiles.</p>
+                        <p><b>🧠 CAPTCHA:</b> Solver fail / low balance → check <code>POST /api/captcha/balance/&lt;svc&gt;</code>. Priority: CapSolver=1, CapMonster=2, 2C=3, AC=4. Auto-rotate to next on failure. Keep ≥$5 in each.</p>
+                    </div>
+
+                    <div data-lang-show="es">
                     <h5 style="font-size:12px;color:#fbbf24;margin:12px 0 6px">🤖 Bot de compra</h5>
                     <details class="faq-item" style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:600">🏃 Queue-it me bloquea constantemente</summary><div style="font-size:11px;color:var(--text-muted);padding:10px 0">Pool AcpAT vacío. Lanza varios workers paralelos para que uno capture token y los otros lo reusen (TTL ~30min). Usa proxies ISP sticky 30min, no datacenter. Verifica CapSolver con saldo &gt; $5.</div></details>
                     <details class="faq-item" style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:600">🔐 Akamai _abck inválido (HTTP 403)</summary><div style="font-size:11px;color:var(--text-muted);padding:10px 0">El sensor está en <code>mode=simulate</code> y devuelve mocks. Activa <code>hyper_sdk_chain.mode=live</code> con api_key Hyper Solutions/TakionAPI. Si no quieres pagar API, fallback a Camoufox (genera sensor real con browser).</div></details>
@@ -7105,11 +7162,25 @@ popheads</textarea>
 
                     <h5 style="font-size:12px;color:#fbbf24;margin:12px 0 6px">🧠 CAPTCHA</h5>
                     <details class="faq-item" style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:600">🤖 CAPTCHA solver fail / saldo bajo</summary><div style="font-size:11px;color:var(--text-muted);padding:10px 0">Verifica <code>POST /api/captcha/balance/&lt;svc&gt;</code>. Priority configurada: CapSolver=1, CapMonster=2, 2C=3, AC=4. Si falla el solver primario, rota automáticamente al siguiente. Mantén ≥$5 en cada uno.</div></details>
+                    </div><!-- /es Troubleshooting -->
                 </div>
 
                 <!-- TAB: FAQ Original (siempre visible default) -->
                 <div class="faq-pane active" data-faqpane="faq" id="support-faq">
-                    <h4 style="font-size:13px;color:#026CDF;margin:0 0 10px">❓ Preguntas Frecuentes</h4>
+                    <h4 style="font-size:13px;color:#026CDF;margin:0 0 10px"><span data-lang-show="es">❓ Preguntas Frecuentes</span><span data-lang-show="en" style="display:none">❓ Frequently Asked Questions</span></h4>
+
+                    <!-- EN concise FAQ -->
+                    <div data-lang-show="en" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;font-size:12px;line-height:1.7">
+                        <p><b>🚀 How do I launch my first attack on a drop?</b><br>Register attack with scheduler via <code>POST /api/onsale-scheduler/register</code> at least 25h before onsale. The daemon automatically runs warming → sensor refresh → captcha pool → fire at T+0. Manual mode: <code>/api/purchase-flow/run</code>.</p>
+                        <p><b>🏃 How to pass Queue-it faster?</b><br>Use ISP sticky proxies TTL 30min. Launch 3-5 parallel workers so one captures AcpAT and others reuse from pool. CapSolver balance &gt; $5. Sticky proxy automatic via <code>pin_proxy_session</code>.</p>
+                        <p><b>🔐 Akamai blocks me (HTTP 403)?</b><br>Sensor in mode=simulate (returns mocks). For production activate <code>hyper_sdk_chain.mode=live</code> with Hyper Solutions/TakionAPI key. Free fallback: Camoufox (real browser sensor).</p>
+                        <p><b>🤖 Why does NuData detect me?</b><br>Verify <code>human_motion</code> integrated: clicks with Bezier curves + Markov flight times. Login/OTP in <code>_compra_parallel.py</code> use <code>_hm_type</code>/<code>_hm_click_button</code> helpers. CDP-Patches active in headless=False.</p>
+                        <p><b>💳 How to activate real Adyen for charging?</b><br>Paste 3 values in <code>adyen_config.json</code>: <code>api_key</code> (from Adyen → Settings → API credentials → ws_user), <code>live_url_prefix</code> (Adyen gives this on activation), <code>client_key</code> (Web Components). Set <code>"mode":"live"</code>.</p>
+                        <p><b>📧 OTP IMAP not arriving?</b><br>Verify <code>otp_3ds.enabled=True</code> + parent IMAP <code>imap.mail.me.com</code> + app-pwd. Default mother is <code>johnlockperdidos@icloud.com</code>. After 12 cycles without arrival = iCloud HME throttle: wait 30-60min or rotate parent.</p>
+                        <p><b>🚫 Why are VIP packages filtered?</b><br>Global rule: <code>venue_scanner.py</code> excludes <i>vip package, vip experience, hospitality, meet &amp; greet, backstage pass, all-access, fan experience, premium experience</i>. Keeps <i>Entrada Platinum Oficial</i> (not VIP, dynamic premium).</p>
+                    </div>
+
+                    <div data-lang-show="es">
 
                     <details class="faq-item" style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><summary style="cursor:pointer;font-size:12px;font-weight:600">🚀 ¿Cómo lanzar mi primer ataque a un drop?</summary><div style="font-size:11px;color:var(--text-muted);padding:8px 0">Registra el ataque en el scheduler con <code>POST /api/onsale-scheduler/register</code> al menos 25h antes del onsale. El daemon ejecuta automáticamente warming → sensor refresh → captcha pool → fire a T+0. Si vas con prisa, modo manual con <code>/api/purchase-flow/run</code>.</div></details>
 
@@ -7134,12 +7205,26 @@ popheads</textarea>
                     <details class="faq-item" style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><summary style="cursor:pointer;font-size:12px;font-weight:600">🦊 ¿Cuándo usar Camoufox vs Patchright?</summary><div style="font-size:11px;color:var(--text-muted);padding:8px 0"><b>Patchright</b>: warming + browse + sites con Akamai. Más estable. <b>Camoufox</b>: targets duros con NuData/Datadome heavy (Firefox patcheado en C++, 0% headless detection). <b>MoreLogin</b>: perfiles persistentes con proxy embebido (default para registros + compras reales).</div></details>
 
                     <details class="faq-item" style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><summary style="cursor:pointer;font-size:12px;font-weight:600">🚫 ¿Por qué se filtran VIP packages?</summary><div style="font-size:11px;color:var(--text-muted);padding:8px 0">Norma global: <code>venue_scanner.py</code> excluye <i>vip package, paquete vip, vip experience, hospitality, meet &amp; greet, m&amp;g, backstage pass, all-access, fan experience, premium experience, premium package, experience package</i>. Conserva <i>Entrada Platinum Oficial</i> (no es VIP, es premium dinámico).</div></details>
+                    </div><!-- /es FAQ -->
                 </div>
 
                 <!-- TAB: GLOSARIO -->
                 <div class="faq-pane" data-faqpane="glossary" style="display:none">
-                    <h4 style="font-size:13px;color:#06b6d4;margin:0 0 10px">📚 Glosario — términos técnicos del bot</h4>
+                    <h4 style="font-size:13px;color:#06b6d4;margin:0 0 10px"><span data-lang-show="es">📚 Glosario — términos técnicos del bot</span><span data-lang-show="en" style="display:none">📚 Glossary — bot technical terms</span></h4>
 
+                    <!-- EN concise glossary -->
+                    <div data-lang-show="en" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;font-size:11px;line-height:1.7;color:var(--text-muted)">
+                        <p><b style="color:#06b6d4">🛡️ Anti-bot:</b> <b>_abck</b> — Akamai BMP v3 main cookie, request-validated, 100+ browser signals payload. <b>bm_sz</b> — Akamai session cookie with expiry/flags. <b>sensor_data</b> — Akamai BMP payload sent to <code>/_sec/cp_challenge/verify</code>, generated by bm.js. <b>SBSD</b> — Akamai v2 server-side bot detection. <b>reese84</b> — Imperva/Incapsula cookie. <b>nds-pmd</b> — NuData behavioral biometrics token (hover, typing, hold time). <b>AcpAT</b> — Queue-it session cookie, TTL ~30min, edge-validated since 2024. <b>x-kpsdk-ct/cd</b> — Kasada anti-bot headers. <b>JA3/JA4/JA4+</b> — TLS fingerprints (cipher + extensions order); JA4+ adds ALPN+SNI. <b>HTTP/2 fingerprint</b> — SETTINGS+WINDOW_UPDATE+PRIORITY+Pseudo-Header order; mismatch with UA = bot. <b>CDP leak</b> — Chrome DevTools Protocol exposes <code>Runtime.enable</code> detected by Datadome since Q1-2025; Patchright eliminates it.</p>
+                        <p><b style="color:#06b6d4">🌐 Browsers + Stealth:</b> <b>Patchright</b> — Playwright fork without Runtime.enable leak (default). <b>Camoufox</b> — Firefox fork patched in C++ (no JS injection). 0% headless detection in CreepJS. <b>Nodriver</b> — successor to undetected-chromedriver, drives Chrome via CDP without WS bridge. <b>MoreLogin</b> — commercial antidetect with persistent profiles (1978 ES available) + embedded Quantum proxy. <b>CDP-Patches</b> — fixes Chrome OS-level mouse coordinates bug (critical for NuData). <b>curl_cffi</b> — Python lib that impersonates Chrome 120 (real JA4+ + HTTP/2 + TLS).</p>
+                        <p><b style="color:#06b6d4">🤖 Internal bot:</b> <b>tm_purchase_flow</b> — 16-step sequential orchestrator. <b>tm_real_purchase</b> — wrapper that delegates real cart+captcha+checkout to <code>_compra_parallel.py</code> subprocess. <b>_compra_parallel.py</b> — standalone script with real MoreLogin browser: OAuth login + sectors + cart + captcha + checkout. <b>onsale_scheduler</b> — T-0 daemon with 7 pre-onsale hooks. <b>account_warmer</b> — login+browse+wishlist 24-48h pre-onsale. <b>account_recovery</b> — auto-reset password via IMAP when TM redirects to signin. <b>account_validator</b> — verifies login OK + fresh storage_state. <b>register_account.py</b> — end-to-end auto registration (profile pick → warming → signup → email/SMS OTP → TOC). <b>_pool_manager.py</b> — orchestrator maintaining N parallel registrations. <b>compliance_gate</b> — DFA EU 2026: aborts face-value purchases if listing &gt; face. <b>burned_profiles.json</b> — burned MoreLogin profiles. <b>email_claims.json</b> — active claims per email/parent (auto-cleanup &gt;30min).</p>
+                        <p><b style="color:#06b6d4">🎯 Human behavior:</b> <b>Cubic Bezier</b> — curves with 2 control points, smooth non-linear cursor trajectories. <b>Fitts's Law</b> — psychomotor model: movement time proportional to <code>log2(D/W + 1)</code>. <b>Markov chain</b> — probabilistic state model (idle, scroll, click, type, navigate) with dwell times. <b>Flight time</b> — gap between keydown/keyup. Human gauss(85ms ±30ms). Bot delay=80 fixed is detectable. <b>Gaussian jitter</b> — random micro-perturbation μ=0, σ=1.5 px. Avoids pixel-perfect movements.</p>
+                        <p><b style="color:#06b6d4">💳 Payment:</b> <b>Adyen</b> — PSP that TM uses for checkout. Modes: simulate (mock), test (Adyen test env), live (real). <b>3DS / SCA</b> — Strong Customer Authentication PSD3 EU. Bank sends OTP that <code>otp_3ds</code> auto-fills via IMAP. <b>RReq</b> — Result Request: bank response indicating SCA needed. <b>BIN</b> — Bank Identification Number (first 6 digits). Velocity-by-BIN: TM blocks many purchases with same BIN. <b>Card rotation</b> — 30min cooldown/card, max 3 uses/day, anti-velocity.</p>
+                        <p><b style="color:#06b6d4">📧 OTP + Accounts:</b> <b>HME</b> — Hide My Email (Apple iCloud). Generates aliases that forward to parent account. <b>Parent</b> — main iCloud account where HME alias emails arrive. Default: <code>johnlockperdidos@icloud.com</code>. <b>5sim / SMSPool</b> — virtual SMS providers (5sim virtual4 most stable; SMSPool $0.18-0.29). <b>App password</b> — specific password generated by Apple/Google for apps that don't support 2FA (needed for IMAP). <b>storage_state</b> — Playwright JSON with cookies+localStorage from authenticated session. TTL ~7 days.</p>
+                        <p><b style="color:#06b6d4">🌍 Proxies:</b> <b>Datacenter proxy</b> — cloud server IP. Easily detected by Akamai. DON'T use. <b>Residential proxy</b> — domestic user IP. Bypasses most defenses. <b>ISP proxy</b> — commercial ISP IP (NetNut, BrightData ISP). Sticky 30+ min, residential-similar quality. <b>Mobile proxy</b> — 4G/5G mobile carrier IP (Coronium = best trust score). <b>Sticky session</b> — TTL configured (30min) during which provider keeps same IP. Critical for queue→checkout.</p>
+                        <p><b style="color:#06b6d4">🧠 CAPTCHA:</b> <b>CapSolver</b> — top AI solver. ~3-5s reCAPTCHA v3. ~$0.80/1000. Priority 1. <b>CapMonster</b> — low-cost AI solver. ~$0.60/1000. Priority 2. <b>2Captcha / Anti-Captcha</b> — human solvers (slower 30-60s). Priority 3 and 4. <b>reCAPTCHA v2/v3</b> — Google. v2 visible (clicks), v3 invisible (score 0-1). <b>hCaptcha</b> — independent privacy-focused. <b>Cloudflare Turnstile</b> — TM added in 2025. <b>FunCaptcha / Arkose Labs</b> — 3D puzzles.</p>
+                    </div>
+
+                    <div data-lang-show="es">
                     <h5 style="font-size:12px;color:#06b6d4;margin:12px 0 6px">🛡️ Anti-bot</h5>
                     <div style="font-size:11px;color:var(--text-muted);line-height:1.7">
                         <p><b>_abck</b> — cookie principal de Akamai Bot Manager v3. Validada por request, contiene un payload encriptado de 100+ señales del browser.</p>
@@ -7227,6 +7312,7 @@ popheads</textarea>
                         <p><b>Cloudflare Turnstile</b> — TM lo añadió en 2025.</p>
                         <p><b>FunCaptcha / Arkose Labs</b> — puzzles 3D.</p>
                     </div>
+                    </div><!-- /es Glossary -->
                 </div>
             </div>
         </div>
@@ -7268,24 +7354,24 @@ popheads</textarea>
                 <div class="card" style="border-color:var(--accent);position:relative;overflow:hidden">
                     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#00c853,#eab308,#ef4444)"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
-                        <div style="display:flex;align-items:center;gap:10px"><h3 style="font-size:16px;margin:0">📝 Nueva Nota</h3><span id="nota-draft-hint" style="display:none;font-size:10px;color:var(--success);background:rgba(0,200,83,.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(0,200,83,.3)"></span></div>
+                        <div style="display:flex;align-items:center;gap:10px"><h3 style="font-size:16px;margin:0">📝&nbsp;<span data-i18n="nt.new_note">Nueva Nota</span></h3><span id="nota-draft-hint" style="display:none;font-size:10px;color:var(--success);background:rgba(0,200,83,.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(0,200,83,.3)"></span></div>
                         <div style="display:flex;align-items:center;gap:10px">
                             <span id="mic-status" style="font-size:11px;color:var(--text-muted);max-width:200px;text-align:right"></span>
                             <span id="mic-field" style="font-size:11px;padding:3px 10px;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;display:none"></span>
-                            <button id="btn-mic" onclick="toggleMic()" style="width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,#ef4444,#b91c1c);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:28px;transition:transform .3s, box-shadow .3s, background .3s;box-shadow:0 4px 15px rgba(239,68,68,.5);color:#fff" title="Dictar por voz — pulsa y habla" aria-label="Dictar por voz">🎙</button>
+                            <button id="btn-mic" onclick="toggleMic()" style="width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,#ef4444,#b91c1c);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:28px;transition:transform .3s, box-shadow .3s, background .3s;box-shadow:0 4px 15px rgba(239,68,68,.5);color:#fff" title="Dictar por voz — pulsa y habla" data-i18n-title="nt.mic_tip" aria-label="Dictar por voz">🎙</button>
                         </div>
                     </div>
-                    <input class="input" id="nota-titulo" placeholder="Título de la nota... (di 'titulo' para dictar aquí)" style="width:100%;margin-bottom:8px;font-size:14px;font-weight:600">
-                    <textarea class="input" id="nota-contenido" placeholder="Descripción, ideas, detalles... (di 'ideas' para dictar aquí)" style="width:100%;min-height:80px;margin-bottom:10px;font-size:12px;resize:vertical"></textarea>
+                    <input class="input" id="nota-titulo" data-i18n-ph="nt.title_ph" placeholder="Título de la nota... (di 'titulo' para dictar aquí)" style="width:100%;margin-bottom:8px;font-size:14px;font-weight:600">
+                    <textarea class="input" id="nota-contenido" data-i18n-ph="nt.content_ph" placeholder="Descripción, ideas, detalles... (di 'ideas' para dictar aquí)" style="width:100%;min-height:80px;margin-bottom:10px;font-size:12px;resize:vertical"></textarea>
                     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-                        <span style="font-size:11px;color:var(--text-muted)">Importancia:</span>
-                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="nota-imp" value="verde" checked><span style="width:14px;height:14px;border-radius:50%;background:#00c853;display:inline-block"></span><span style="font-size:11px">Alta</span></label>
-                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="nota-imp" value="naranja"><span style="width:14px;height:14px;border-radius:50%;background:#ffc107;display:inline-block"></span><span style="font-size:11px">Media</span></label>
-                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="nota-imp" value="rojo"><span style="width:14px;height:14px;border-radius:50%;background:#ef4444;display:inline-block"></span><span style="font-size:11px">Baja</span></label>
+                        <span style="font-size:11px;color:var(--text-muted)" data-i18n="nt.importance">Importancia:</span>
+                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="nota-imp" value="verde" checked><span style="width:14px;height:14px;border-radius:50%;background:#00c853;display:inline-block"></span><span style="font-size:11px" data-i18n="nt.imp.high">Alta</span></label>
+                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="nota-imp" value="naranja"><span style="width:14px;height:14px;border-radius:50%;background:#ffc107;display:inline-block"></span><span style="font-size:11px" data-i18n="nt.imp.med">Media</span></label>
+                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="nota-imp" value="rojo"><span style="width:14px;height:14px;border-radius:50%;background:#ef4444;display:inline-block"></span><span style="font-size:11px" data-i18n="nt.imp.low">Baja</span></label>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <button class="btn btn-accent" onclick="crearNota()">Crear Nota</button>
-                        <label class="btn" style="cursor:pointer"><span>Adjuntar archivo</span><input type="file" id="nota-file-input" style="display:none" multiple></label>
+                        <button class="btn btn-accent" onclick="crearNota()" data-i18n="nt.create_note">Crear Nota</button>
+                        <label class="btn" style="cursor:pointer"><span data-i18n="nt.attach_file">Adjuntar archivo</span><input type="file" id="nota-file-input" style="display:none" multiple></label>
                         <span id="nota-file-names" style="font-size:10px;color:var(--text-muted);align-self:center"></span>
                     </div>
                     <div id="mic-commands" style="display:none;margin-top:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(239,68,68,.05),rgba(234,179,8,.05));border-radius:8px;border:1px solid var(--danger)">
@@ -7301,26 +7387,26 @@ popheads</textarea>
 
                 <!-- Toolbar: búsqueda + ordenamiento -->
                 <div class="nt-toolbar" style="margin-top:14px">
-                    <div class="nt-search"><input id="nt-search-input" placeholder="Buscar en títulos, contenido y etiquetas…" oninput="debouncedLoadNotes()"></div>
+                    <div class="nt-search"><input id="nt-search-input" data-i18n-ph="nt.search_ph" placeholder="Buscar en títulos, contenido y etiquetas…" oninput="debouncedLoadNotes()"></div>
                     <select class="pc-select" id="nt-sort" onchange="loadNotes()">
-                        <option value="pinned_recent">📌 Fijadas + recientes</option>
-                        <option value="recent">🕐 Más recientes</option>
-                        <option value="oldest">🕰 Más antiguas</option>
-                        <option value="importance">⚡ Por prioridad</option>
-                        <option value="alpha">🔤 A-Z</option>
+                        <option value="pinned_recent" data-i18n="nt.sort.pinned_recent">📌 Fijadas + recientes</option>
+                        <option value="recent" data-i18n="nt.sort.recent">🕐 Más recientes</option>
+                        <option value="oldest" data-i18n="nt.sort.oldest">🕰 Más antiguas</option>
+                        <option value="importance" data-i18n="nt.sort.importance">⚡ Por prioridad</option>
+                        <option value="alpha" data-i18n="nt.sort.alpha">🔤 A-Z</option>
                     </select>
                     <span id="nt-count" style="font-size:11px;color:var(--text-muted);font-weight:600"></span>
                 </div>
 
                 <!-- Filtros -->
                 <div class="pc-filters" style="margin-bottom:12px">
-                    <div class="pc-filter active" data-nf="active" onclick="setNoteFilter('active')"><span>📝</span> Activas <span id="nf-active">0</span></div>
-                    <div class="pc-filter" data-nf="pinned" onclick="setNoteFilter('pinned')"><span>📌</span> Fijadas <span id="nf-pinned">0</span></div>
-                    <div class="pc-filter" data-nf="verde" onclick="setNoteFilter('verde')"><span>🟢</span> Alta <span id="nf-verde">0</span></div>
-                    <div class="pc-filter" data-nf="naranja" onclick="setNoteFilter('naranja')"><span>🟠</span> Media <span id="nf-naranja">0</span></div>
-                    <div class="pc-filter" data-nf="rojo" onclick="setNoteFilter('rojo')"><span>🔴</span> Baja <span id="nf-rojo">0</span></div>
-                    <div class="pc-filter" data-nf="sent_to_claude" onclick="setNoteFilter('sent_to_claude')"><span>🤖</span> Enviadas a Claude <span id="nf-claude">0</span></div>
-                    <div class="pc-filter" data-nf="archived" onclick="setNoteFilter('archived')"><span>🗄</span> Archivadas <span id="nf-archived">0</span></div>
+                    <div class="pc-filter active" data-nf="active" onclick="setNoteFilter('active')"><span>📝</span> <span data-i18n="nt.flt.active">Activas</span> <span id="nf-active">0</span></div>
+                    <div class="pc-filter" data-nf="pinned" onclick="setNoteFilter('pinned')"><span>📌</span> <span data-i18n="nt.flt.pinned">Fijadas</span> <span id="nf-pinned">0</span></div>
+                    <div class="pc-filter" data-nf="verde" onclick="setNoteFilter('verde')"><span>🟢</span> <span data-i18n="nt.imp.high">Alta</span> <span id="nf-verde">0</span></div>
+                    <div class="pc-filter" data-nf="naranja" onclick="setNoteFilter('naranja')"><span>🟠</span> <span data-i18n="nt.imp.med">Media</span> <span id="nf-naranja">0</span></div>
+                    <div class="pc-filter" data-nf="rojo" onclick="setNoteFilter('rojo')"><span>🔴</span> <span data-i18n="nt.imp.low">Baja</span> <span id="nf-rojo">0</span></div>
+                    <div class="pc-filter" data-nf="sent_to_claude" onclick="setNoteFilter('sent_to_claude')"><span>🤖</span> <span data-i18n="nt.flt.claude">Enviadas a Claude</span> <span id="nf-claude">0</span></div>
+                    <div class="pc-filter" data-nf="archived" onclick="setNoteFilter('archived')"><span>🗄</span> <span data-i18n="nt.flt.archived">Archivadas</span> <span id="nf-archived">0</span></div>
                 </div>
 
                 <div id="notes-list" style="margin-top:10px"></div>
@@ -7333,18 +7419,18 @@ popheads</textarea>
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
                         <div style="display:flex;align-items:center;gap:14px">
                             <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#29b6f6,#01579b);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(41,182,246,.4)">📌</div>
-                            <div><h3 style="margin:0;font-size:18px;font-weight:700">Recordatorios</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Di "<strong style="color:#29b6f6">recordatorios</strong>" al micro para dictar aquí · una línea por idea · persistente</p></div>
+                            <div><h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="nt.tab.reminders">Recordatorios</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="nt.reminders_subtitle">Di "<strong style="color:#29b6f6">recordatorios</strong>" al micro para dictar aquí · una línea por idea · persistente</p></div>
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button class="btn btn-accent btn-sm" onclick="saveVoicePanel('recordatorios')">💾 Guardar</button>
-                            <button class="btn btn-sm" onclick="loadVoicePanel('recordatorios')">🔄 Recargar</button>
-                            <button class="btn btn-danger btn-sm" onclick="clearVoicePanel('recordatorios')">🗑 Limpiar</button>
+                            <button class="btn btn-accent btn-sm" onclick="saveVoicePanel('recordatorios')">💾&nbsp;<span data-i18n="btn.save">Guardar</span></button>
+                            <button class="btn btn-sm" onclick="loadVoicePanel('recordatorios')">🔄&nbsp;<span data-i18n="btn.reload">Recargar</span></button>
+                            <button class="btn btn-danger btn-sm" onclick="clearVoicePanel('recordatorios')">🗑&nbsp;<span data-i18n="btn.clear">Limpiar</span></button>
                         </div>
                     </div>
                 </div>
                 <div class="card">
-                    <h3 style="margin:0 0 10px;font-size:14px">📌 Mis Recordatorios</h3>
-                    <textarea class="input" id="panel-recordatorios" style="width:100%;min-height:300px;font-size:13px;line-height:1.6;resize:vertical" placeholder="Los recordatorios dictados aparecen aquí..."></textarea>
+                    <h3 style="margin:0 0 10px;font-size:14px">📌&nbsp;<span data-i18n="nt.my_reminders">Mis Recordatorios</span></h3>
+                    <textarea class="input" id="panel-recordatorios" data-i18n-ph="nt.reminders_ph" style="width:100%;min-height:300px;font-size:13px;line-height:1.6;resize:vertical" placeholder="Los recordatorios dictados aparecen aquí..."></textarea>
                     <div id="panel-recordatorios-items" style="margin-top:10px;font-size:11px"></div>
                 </div>
             </div>
@@ -7356,18 +7442,18 @@ popheads</textarea>
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
                         <div style="display:flex;align-items:center;gap:14px">
                             <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#d97706,#78350f);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(217,119,6,.4)">📚</div>
-                            <div><h3 style="margin:0;font-size:18px;font-weight:700">Juanjo Deberes</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Di "<strong style="color:#d97706">juanjo deberes</strong>" al micro para dictar aquí · auto-numerado 1. 2. 3...</p></div>
+                            <div><h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="nt.tab.juanjo">Juanjo Deberes</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="nt.juanjo_subtitle">Di "<strong style="color:#d97706">juanjo deberes</strong>" al micro para dictar aquí · auto-numerado 1. 2. 3...</p></div>
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button class="btn btn-accent btn-sm" onclick="saveVoicePanel('juanjo_deberes')">💾 Guardar</button>
-                            <button class="btn btn-sm" onclick="loadVoicePanel('juanjo_deberes')">🔄 Recargar</button>
-                            <button class="btn btn-danger btn-sm" onclick="clearVoicePanel('juanjo_deberes')">🗑 Limpiar</button>
+                            <button class="btn btn-accent btn-sm" onclick="saveVoicePanel('juanjo_deberes')">💾&nbsp;<span data-i18n="btn.save">Guardar</span></button>
+                            <button class="btn btn-sm" onclick="loadVoicePanel('juanjo_deberes')">🔄&nbsp;<span data-i18n="btn.reload">Recargar</span></button>
+                            <button class="btn btn-danger btn-sm" onclick="clearVoicePanel('juanjo_deberes')">🗑&nbsp;<span data-i18n="btn.clear">Limpiar</span></button>
                         </div>
                     </div>
                 </div>
                 <div class="card">
-                    <h3 style="margin:0 0 10px;font-size:14px">📚 Lista de Deberes (numerados)</h3>
-                    <textarea class="input" id="panel-juanjo_deberes" style="width:100%;min-height:300px;font-size:13px;line-height:1.8;resize:vertical;font-family:Consolas,monospace" placeholder="Los deberes dictados se numeran automáticamente..."></textarea>
+                    <h3 style="margin:0 0 10px;font-size:14px">📚&nbsp;<span data-i18n="nt.deberes_list">Lista de Deberes (numerados)</span></h3>
+                    <textarea class="input" id="panel-juanjo_deberes" data-i18n-ph="nt.deberes_ph" style="width:100%;min-height:300px;font-size:13px;line-height:1.8;resize:vertical;font-family:Consolas,monospace" placeholder="Los deberes dictados se numeran automáticamente..."></textarea>
                     <div id="panel-juanjo_deberes-items" style="margin-top:10px;font-size:11px"></div>
                 </div>
             </div>
@@ -7379,18 +7465,18 @@ popheads</textarea>
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
                         <div style="display:flex;align-items:center;gap:14px">
                             <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#10b981,#047857);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(16,185,129,.4)">📚</div>
-                            <div><h3 style="margin:0;font-size:18px;font-weight:700">Esteban Deberes</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Di "<strong style="color:#10b981">esteban deberes</strong>" al micro para dictar aquí · auto-numerado 1. 2. 3...</p></div>
+                            <div><h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="nt.tab.esteban">Esteban Deberes</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="nt.esteban_subtitle">Di "<strong style="color:#10b981">esteban deberes</strong>" al micro para dictar aquí · auto-numerado 1. 2. 3...</p></div>
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button class="btn btn-accent btn-sm" onclick="saveVoicePanel('esteban_deberes')">💾 Guardar</button>
-                            <button class="btn btn-sm" onclick="loadVoicePanel('esteban_deberes')">🔄 Recargar</button>
-                            <button class="btn btn-danger btn-sm" onclick="clearVoicePanel('esteban_deberes')">🗑 Limpiar</button>
+                            <button class="btn btn-accent btn-sm" onclick="saveVoicePanel('esteban_deberes')">💾&nbsp;<span data-i18n="btn.save">Guardar</span></button>
+                            <button class="btn btn-sm" onclick="loadVoicePanel('esteban_deberes')">🔄&nbsp;<span data-i18n="btn.reload">Recargar</span></button>
+                            <button class="btn btn-danger btn-sm" onclick="clearVoicePanel('esteban_deberes')">🗑&nbsp;<span data-i18n="btn.clear">Limpiar</span></button>
                         </div>
                     </div>
                 </div>
                 <div class="card">
-                    <h3 style="margin:0 0 10px;font-size:14px">📚 Lista de Deberes (numerados)</h3>
-                    <textarea class="input" id="panel-esteban_deberes" style="width:100%;min-height:300px;font-size:13px;line-height:1.8;resize:vertical;font-family:Consolas,monospace" placeholder="Los deberes dictados se numeran automáticamente..."></textarea>
+                    <h3 style="margin:0 0 10px;font-size:14px">📚&nbsp;<span data-i18n="nt.deberes_list">Lista de Deberes (numerados)</span></h3>
+                    <textarea class="input" id="panel-esteban_deberes" data-i18n-ph="nt.deberes_ph" style="width:100%;min-height:300px;font-size:13px;line-height:1.8;resize:vertical;font-family:Consolas,monospace" placeholder="Los deberes dictados se numeran automáticamente..."></textarea>
                     <div id="panel-esteban_deberes-items" style="margin-top:10px;font-size:11px"></div>
                 </div>
             </div>
@@ -7433,7 +7519,7 @@ popheads</textarea>
                     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#026CDF,#7c3aed,#d0006f)"></div>
                     <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
                         <div style="width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,#026CDF,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 3px 10px rgba(0,0,0,.25)">🔬</div>
-                        <div><h3 style="font-size:15px;margin:0;font-weight:700">Estudio de Competidores — Bots Ticketmaster 2025/2026</h3><p style="font-size:11px;color:var(--text-muted);margin:3px 0 0">Catálogo ampliado: AIO (SwiftAIO, Cybersole), ticket-only, anti-detect, CAPTCHA, proxies. Filtra por tipo.</p></div>
+                        <div><h3 style="font-size:15px;margin:0;font-weight:700" data-i18n="nt.competitors_title">Estudio de Competidores — Bots Ticketmaster 2025/2026</h3><p style="font-size:11px;color:var(--text-muted);margin:3px 0 0" data-i18n="nt.competitors_desc">Catálogo ampliado: AIO (SwiftAIO, Cybersole), ticket-only, anti-detect, CAPTCHA, proxies. Filtra por tipo.</p></div>
                         <button class="btn btn-sm" style="margin-left:auto" onclick="renderCompetitorsEstudio()">🔄</button>
                     </div>
                 </div>
@@ -7459,10 +7545,10 @@ popheads</textarea>
                 <!-- Mejoras aplicables -->
                 <div class="card">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
-                        <h3 style="font-size:14px;margin:0">⭐ Mejoras Aplicables a TM PERROS</h3>
+                        <h3 style="font-size:14px;margin:0">⭐&nbsp;<span data-i18n="nt.applicable_title">Mejoras Aplicables a TM PERROS</span></h3>
                         <div style="display:flex;gap:8px;align-items:center"><span id="mejoras-count" style="font-size:10px;color:var(--text-muted);font-family:monospace"></span><button class="btn btn-sm" onclick="renderMejorasEstudio()">🔄</button></div>
                     </div>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Mejoras visibles agrupadas por categoría. Click en una pestaña para filtrar. Al crear una nota desde una tarjeta, esa mejora sale del listado.</p>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="nt.applicable_desc">Mejoras visibles agrupadas por categoría. Click en una pestaña para filtrar. Al crear una nota desde una tarjeta, esa mejora sale del listado.</p>
                     <div id="mejoras-tabs" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)"></div>
                     <div id="mejoras-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px"></div>
                 </div>
@@ -7482,16 +7568,16 @@ popheads</textarea>
                 <summary style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;list-style:none;user-select:none;border-radius:8px">
                     <div class="dash-pane-icon" style="background:linear-gradient(135deg,#0ea5e9,#0369a1);box-shadow:0 6px 18px rgba(14,165,233,.45),0 0 0 1px rgba(255,255,255,.08) inset">📊</div>
                     <div class="dash-pane-title">
-                        <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">Honest Dashboard — Módulos cableados al pipeline real</h3>
-                        <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Clasifica los 176 módulos en pipeline / dashboard_only / auxiliary / scaffold / orphan · Ayuda a saber qué se está usando de verdad</p>
+                        <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff" data-i18n="hd.title">Honest Dashboard — Módulos cableados al pipeline real</h3>
+                        <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="hd.subtitle">Clasifica los 176 módulos en pipeline / dashboard_only / auxiliary / scaffold / orphan · Ayuda a saber qué se está usando de verdad</p>
                     </div>
-                    <span id="hd-summary" style="margin-left:auto;font-size:11px;color:var(--text-muted)">— sin datos</span>
+                    <span id="hd-summary" style="margin-left:auto;font-size:11px;color:var(--text-muted)" data-i18n="hd.no_data">— sin datos</span>
                     <span style="font-size:11px;color:var(--text-muted);margin-left:8px;transition:transform .2s;display:inline-block" class="hd-chev">▶</span>
                 </summary>
                 <div style="padding:0 16px 16px 16px">
                     <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px">
                         <button class="btn btn-sm" onclick="event.preventDefault();loadHonestDashboard()">🔄</button>
-                        <button class="btn btn-sm" onclick="event.preventDefault();loadCoverageMetric()">📈 Cobertura test</button>
+                        <button class="btn btn-sm" onclick="event.preventDefault();loadCoverageMetric()">📈&nbsp;<span data-i18n="hd.test_coverage">Cobertura test</span></button>
                     </div>
                     <div class="ev-hero" id="hd-hero" style="margin-bottom:10px"></div>
                     <div id="hd-categories" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
@@ -7556,36 +7642,36 @@ popheads</textarea>
                 <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#d97706,#026CDF,#d0006f)"></div>
                 <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
                     <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#d97706,#78350f);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(217,119,6,.4)">🧩</div>
-                    <div><h3 style="margin:0;font-size:18px;font-weight:700">🧩 Extensiones del Bot</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:580px;line-height:1.4">Módulos de extensión · queue monitor · price alert · cookie injector · auto-seatmap</p></div>
+                    <div><h3 style="margin:0;font-size:18px;font-weight:700">🧩&nbsp;<span data-i18n="ext.title">Extensiones del Bot</span></h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:580px;line-height:1.4" data-i18n="ext.subtitle">Módulos de extensión · queue monitor · price alert · cookie injector · auto-seatmap</p></div>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
                     <div class="card" style="border-left:3px solid #f59e0b;padding:16px">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:28px">🏃</span><div><div style="font-size:14px;font-weight:700">Queue Monitor</div><div style="font-size:10px;color:var(--text-muted)">Posición en Queue-it en tiempo real</div></div></div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:6px"><input type="checkbox" id="ext-queue-monitor" style="accent-color:#f59e0b" checked><span>Activar Queue Monitor</span></label>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:28px">🏃</span><div><div style="font-size:14px;font-weight:700">Queue Monitor</div><div style="font-size:10px;color:var(--text-muted)" data-i18n="ext.queue.desc">Posición en Queue-it en tiempo real</div></div></div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:6px"><input type="checkbox" id="ext-queue-monitor" style="accent-color:#f59e0b" checked><span data-i18n="ext.queue.activate">Activar Queue Monitor</span></label>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
-                            <div><label style="font-size:9px;color:var(--text-muted);display:block">Intervalo (s)</label><input class="input" type="number" value="5" style="width:100%;font-size:11px;padding:4px"></div>
-                            <div><label style="font-size:9px;color:var(--text-muted);display:block">Alerta pos ≤</label><input class="input" type="number" value="100" style="width:100%;font-size:11px;padding:4px"></div>
+                            <div><label style="font-size:9px;color:var(--text-muted);display:block" data-i18n="ext.queue.interval">Intervalo (s)</label><input class="input" type="number" value="5" style="width:100%;font-size:11px;padding:4px"></div>
+                            <div><label style="font-size:9px;color:var(--text-muted);display:block" data-i18n="ext.queue.alert_pos">Alerta pos ≤</label><input class="input" type="number" value="100" style="width:100%;font-size:11px;padding:4px"></div>
                         </div>
-                        <div id="queue-monitor-status" style="font-size:10px;color:var(--text-muted);margin-top:8px">Sin cola activa</div>
+                        <div id="queue-monitor-status" style="font-size:10px;color:var(--text-muted);margin-top:8px" data-i18n="ext.queue.no_queue">Sin cola activa</div>
                     </div>
                     <div class="card" style="border-left:3px solid #10b981;padding:16px">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:28px">💰</span><div><div style="font-size:14px;font-weight:700">Price Alert</div><div style="font-size:10px;color:var(--text-muted)">Alerta cuando precio cae bajo umbral</div></div></div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:6px"><input type="checkbox" id="ext-price-alert" style="accent-color:#10b981"><span>Activar Price Alert</span></label>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:28px">💰</span><div><div style="font-size:14px;font-weight:700">Price Alert</div><div style="font-size:10px;color:var(--text-muted)" data-i18n="ext.price.desc">Alerta cuando precio cae bajo umbral</div></div></div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:6px"><input type="checkbox" id="ext-price-alert" style="accent-color:#10b981"><span data-i18n="ext.price.activate">Activar Price Alert</span></label>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
-                            <div><label style="font-size:9px;color:var(--text-muted);display:block">Precio máx ($)</label><input class="input" type="number" value="500" style="width:100%;font-size:11px;padding:4px"></div>
-                            <div><label style="font-size:9px;color:var(--text-muted);display:block">Canal</label><select class="input" style="width:100%;font-size:10px;padding:3px"><option>Telegram</option><option>Discord</option></select></div>
+                            <div><label style="font-size:9px;color:var(--text-muted);display:block" data-i18n="ext.price.max">Precio máx ($)</label><input class="input" type="number" value="500" style="width:100%;font-size:11px;padding:4px"></div>
+                            <div><label style="font-size:9px;color:var(--text-muted);display:block" data-i18n="ext.price.channel">Canal</label><select class="input" style="width:100%;font-size:10px;padding:3px"><option>Telegram</option><option>Discord</option></select></div>
                         </div>
                     </div>
                     <div class="card" style="border-left:3px solid #7c3aed;padding:16px">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:28px">🍪</span><div><div style="font-size:14px;font-weight:700">Cookie Injector</div><div style="font-size:10px;color:var(--text-muted)">Inyecta cookies TM pre-autenticadas</div></div></div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:6px"><input type="checkbox" id="ext-cookie-inject" style="accent-color:#7c3aed"><span>Auto-inject cada sesión</span></label>
-                        <div style="margin-top:6px"><label style="font-size:9px;color:var(--text-muted);display:block;margin-bottom:2px">Fuente</label><select class="input" style="width:100%;font-size:10px;padding:3px"><option>Pool local (cookies.json)</option><option>Selenium wire</option><option>Manual import</option></select></div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:28px">🍪</span><div><div style="font-size:14px;font-weight:700">Cookie Injector</div><div style="font-size:10px;color:var(--text-muted)" data-i18n="ext.cookie.desc">Inyecta cookies TM pre-autenticadas</div></div></div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:6px"><input type="checkbox" id="ext-cookie-inject" style="accent-color:#7c3aed"><span data-i18n="ext.cookie.auto">Auto-inject cada sesión</span></label>
+                        <div style="margin-top:6px"><label style="font-size:9px;color:var(--text-muted);display:block;margin-bottom:2px" data-i18n="ext.cookie.source">Fuente</label><select class="input" style="width:100%;font-size:10px;padding:3px"><option data-i18n="ext.cookie.pool">Pool local (cookies.json)</option><option>Selenium wire</option><option data-i18n="ext.cookie.manual">Manual import</option></select></div>
                     </div>
                     <div class="card" style="border-left:3px solid #026CDF;padding:16px">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:28px">🗺️</span><div><div style="font-size:14px;font-weight:700">Auto-Seatmap</div><div style="font-size:10px;color:var(--text-muted)">Selección automática en mapa de asientos</div></div></div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:6px"><input type="checkbox" id="ext-seatmap" style="accent-color:#026CDF"><span>Activar Auto-Seatmap</span></label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:4px"><input type="checkbox" checked><span>Priorizar primera fila</span></label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:11px"><input type="checkbox"><span>Evitar vista restringida</span></label>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:28px">🗺️</span><div><div style="font-size:14px;font-weight:700">Auto-Seatmap</div><div style="font-size:10px;color:var(--text-muted)" data-i18n="ext.seat.desc">Selección automática en mapa de asientos</div></div></div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:6px"><input type="checkbox" id="ext-seatmap" style="accent-color:#026CDF"><span data-i18n="ext.seat.activate">Activar Auto-Seatmap</span></label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:4px"><input type="checkbox" checked><span data-i18n="ext.seat.first_row">Priorizar primera fila</span></label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px"><input type="checkbox"><span data-i18n="ext.seat.no_obstructed">Evitar vista restringida</span></label>
                     </div>
                 </div>
                 <div style="margin-top:12px"><button class="btn btn-accent btn-sm" onclick="saveExtensionsConfig()">💾&nbsp;<span data-i18n="xr.save_extensions">Guardar extensiones</span></button></div>
@@ -7882,6 +7968,18 @@ function applyI18n(root){
     });
     scope.querySelectorAll('[data-i18n-title]').forEach(el=>{
         el.title = t(el.dataset.i18nTitle);
+    });
+    // data-lang-show: muestra el elemento solo si CURRENT_LANG coincide con el atributo.
+    // Útil para bloques grandes de documentación que duplicamos ES/EN side-by-side
+    // sin necesidad de añadir data-i18n a cada frase.
+    scope.querySelectorAll('[data-lang-show]').forEach(el=>{
+        const want = (el.dataset.langShow || '').toLowerCase().trim();
+        el.style.display = (want === CURRENT_LANG) ? '' : 'none';
+    });
+    // data-lang-hide: oculta el elemento cuando CURRENT_LANG coincide.
+    scope.querySelectorAll('[data-lang-hide]').forEach(el=>{
+        const hide = (el.dataset.langHide || '').toLowerCase().trim();
+        el.style.display = (hide === CURRENT_LANG) ? 'none' : '';
     });
     if(!root) document.documentElement.lang = CURRENT_LANG;
 }
@@ -10276,15 +10374,18 @@ async function loadProblems(){
     const r = await api('/api/problems?' + params.toString());
     if(!r || !r.ok) return;
 
-    // Selector categorías (reportar)
+    // Selector categorías (reportar). categories puede venir como ['s', ...] (ES) o [{id,label}] (EN)
+    const _catId = c => (typeof c === 'string') ? c : (c && c.id) || '';
+    const _catLbl = c => (typeof c === 'string') ? c : (c && c.label) || (c && c.id) || '';
     const sel = document.getElementById('pr-cat');
     if(sel && !sel.options.length){
-        sel.innerHTML = r.categories.map(c=>`<option>${esc(c)}</option>`).join('');
+        sel.innerHTML = r.categories.map(c=>`<option value="${esc(_catId(c))}">${esc(_catLbl(c))}</option>`).join('');
     }
     const catFilter = document.getElementById('pc-cat-filter');
+    const allLabel = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en') ? '🌐 All categories' : '🌐 Todas categorías';
     if(catFilter && catFilter.options.length <= 1){
-        catFilter.innerHTML = '<option value="">🌐 Todas categorías</option>' +
-            r.categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        catFilter.innerHTML = `<option value="">${allLabel}</option>` +
+            r.categories.map(c=>`<option value="${esc(_catId(c))}">${esc(_catLbl(c))}</option>`).join('');
     }
 
     // HERO stats
@@ -10315,11 +10416,12 @@ async function loadProblems(){
         ? `<span>${esc(lbls[0])}</span><span>${esc(lbls[Math.floor(lbls.length/2)]||'')}</span><span>${esc(lbls[lbls.length-1])}</span>`
         : '';
 
-    // Breakdown
+    // Breakdown — row.label es el texto localizado (EN), row.category es el ID canónico (ES)
     const bd = r.breakdown || [];
+    const noDataLabel = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en') ? 'No data' : 'Sin datos';
     document.getElementById('pc-breakdown').innerHTML = bd.length
-        ? bd.slice(0,8).map(row=>`<div class="pc-bd-row"><span>${esc(row.category)}</span><b>${row.count}</b></div>`).join('')
-        : '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:12px">Sin datos</div>';
+        ? bd.slice(0,8).map(row=>`<div class="pc-bd-row"><span>${esc(row.label || row.category)}</span><b>${row.count}</b></div>`).join('')
+        : `<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:12px">${noDataLabel}</div>`;
 
     // LISTA
     const list = r.problems || [];
@@ -10332,6 +10434,18 @@ async function loadProblems(){
            </div>`;
 }
 
+function _localizeProblemCategory(cat){
+    if(typeof CURRENT_LANG === 'undefined' || CURRENT_LANG !== 'en') return cat;
+    const map = {
+        'Bot de compra':'Purchase Bot','Filas':'Queues (Queue-it)','Cookies':'Cookies',
+        'CAPTCHA':'CAPTCHA','Fingerprint':'Fingerprint','Navegadores':'Browsers',
+        'Anti-Detect':'Anti-Detect','Extensiones':'Extensions','Bypass':'Bypass',
+        'Anti-Bot':'Anti-Bot','Proxies':'Proxies','Eventos':'Events',
+        'Cuentas/Tarjetas':'Accounts/Cards','Sistema':'System','Dominios':'Domains',
+    };
+    return map[cat] || cat;
+}
+
 function renderProblemCard(p){
     const sev = p.severity || 'low';
     const icon = SEV_ICON[sev] || 'ℹ️';
@@ -10340,13 +10454,14 @@ function renderProblemCard(p){
     const lastSeen = p.last_seen || p.created_at;
     const metaStr = p.meta && Object.keys(p.meta).length ? JSON.stringify(p.meta, null, 2) : '';
     const resolvedCls = p.resolved ? 'resolved' : '';
+    const catDisplay = _localizeProblemCategory(p.category || 'Sistema');
 
     return `<div class="problem-card ${esc(sev)} ${resolvedCls}" onclick="toggleProblemDetails(this,event)">
         <div class="pc-sev-badge ${esc(sev)}">${icon}</div>
         <div class="pc-body">
             <div class="pc-title">${esc(p.title || '(sin título)')}</div>
             <div class="pc-meta">
-                <span class="pc-cat-pill">${esc(p.category || 'Sistema')}</span>
+                <span class="pc-cat-pill">${esc(catDisplay)}</span>
                 ${count > 1 ? `<span class="pc-count-pill">🔁 ${count} veces</span>` : ''}
                 <span class="pc-time">👁 Vista <b>${esc(relTime(lastSeen))}</b></span>
                 ${count > 1 ? `<span class="pc-time">📅 Primera vez <b>${esc(relTime(firstSeen))}</b></span>` : ''}

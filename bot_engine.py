@@ -1,9 +1,83 @@
-"""bot_engine.py — Motor principal del sniper bot de Ticketmaster."""
+"""bot_engine.py — Motor principal del sniper bot de Ticketmaster.
+
+i18n:
+  Los logs del worker se almacenan localizados según `lang` que se
+  guarda en cada Worker/Group cuando se crean. Por defecto 'es'.
+  El frontend del Sniper Bot envía el lang actual al crear grupos.
+"""
 import uuid
 import threading
 from datetime import datetime
 import config
 import json_atomic
+
+
+# ═══════════════════════════════════════════════════════════════
+#  i18n — strings localizados (ES/EN paridad 100%)
+# ═══════════════════════════════════════════════════════════════
+_T = {
+    "es": {
+        "worker.start": "Worker {wid} iniciando | dominio={dom} | evento={ev} | qty={qty} | mode={mode}",
+        "worker.start.offer": " | offer_index={oi}",
+        "worker.mode_quick": "Modo selección: ⚡ rápido (Ver lo mejor disponible)",
+        "worker.mode_seatmap": "Modo selección: 🗺 mapa de asientos",
+        "worker.category_fallback": "Categoría fallback: {cat}",
+        "worker.offer_selected": "Oferta TM seleccionada (offer_index): {oi}",
+        "worker.max_prices": "💰 Precios máx por oferta: {pretty}",
+        "worker.max_prices_raw": "💰 offer_max_prices: {raw}",
+        "worker.target_sections": "🎯 Sectores objetivo ({n}): {list}{ellipsis}",
+        "worker.strict_targets": "   strict_targets={strict} — {explain}",
+        "worker.strict_only": "SOLO buscará en los sectores marcados",
+        "worker.strict_fallback": "priorizará marcados, fallback a otros activos",
+        "worker.venue_cached": "🏟 Recinto cacheado: {vid}",
+        "worker.launching": "Lanzando navegador...",
+        "worker.in_queue": "En Queue-it, esperando posición...",
+        "worker.invoking_orchestrator": "Invocando bot_orchestrator.run_purchase_flow(...) (browser real)",
+        "worker.orch_stage": "orchestrator stage={stage} ok={ok}",
+        "worker.orch_next": "   next: {nxt}",
+        "worker.orch_error": "orchestrator error: {err}",
+        "worker.invoking_flow": "Invocando tm_purchase_flow.run_flow(...)",
+        "worker.flow_result": "flow result: {res}",
+        "worker.flow_signature_mismatch": "run_flow signature mismatch ({err}); skipping deep call",
+        "worker.flow_error": "flow error: {err}",
+        "worker.stopped": "Worker detenido por usuario",
+    },
+    "en": {
+        "worker.start": "Worker {wid} starting | domain={dom} | event={ev} | qty={qty} | mode={mode}",
+        "worker.start.offer": " | offer_index={oi}",
+        "worker.mode_quick": "Selection mode: ⚡ quick (See best available)",
+        "worker.mode_seatmap": "Selection mode: 🗺 seat map",
+        "worker.category_fallback": "Fallback category: {cat}",
+        "worker.offer_selected": "Selected TM offer (offer_index): {oi}",
+        "worker.max_prices": "💰 Max prices per offer: {pretty}",
+        "worker.max_prices_raw": "💰 offer_max_prices: {raw}",
+        "worker.target_sections": "🎯 Target sections ({n}): {list}{ellipsis}",
+        "worker.strict_targets": "   strict_targets={strict} — {explain}",
+        "worker.strict_only": "ONLY searches in marked sections",
+        "worker.strict_fallback": "prioritizes marked, falls back to other active",
+        "worker.venue_cached": "🏟 Cached venue: {vid}",
+        "worker.launching": "Launching browser...",
+        "worker.in_queue": "In Queue-it, waiting for position...",
+        "worker.invoking_orchestrator": "Invoking bot_orchestrator.run_purchase_flow(...) (real browser)",
+        "worker.orch_stage": "orchestrator stage={stage} ok={ok}",
+        "worker.orch_next": "   next: {nxt}",
+        "worker.orch_error": "orchestrator error: {err}",
+        "worker.invoking_flow": "Invoking tm_purchase_flow.run_flow(...)",
+        "worker.flow_result": "flow result: {res}",
+        "worker.flow_signature_mismatch": "run_flow signature mismatch ({err}); skipping deep call",
+        "worker.flow_error": "flow error: {err}",
+        "worker.stopped": "Worker stopped by user",
+    },
+}
+
+
+def _t(key: str, lang: str = "es", **fmt) -> str:
+    """Resuelve key en el lang dado. Fallback a ES si no existe en EN."""
+    s = _T.get(lang, _T["es"]).get(key) or _T["es"].get(key, key)
+    try:
+        return s.format(**fmt) if fmt else s
+    except Exception:
+        return s
 
 
 _ALLOWED_PARAM_KEYS = (
@@ -69,7 +143,7 @@ def _account_blocked_for_event(account_id: str, event_id: str,
 
 
 class Worker:
-    def __init__(self, group_id, event_id, domain_id, account_id=None, params=None):
+    def __init__(self, group_id, event_id, domain_id, account_id=None, params=None, lang="es"):
         self.id = uuid.uuid4().hex[:8]
         self.group_id = group_id
         self.event_id = event_id
@@ -79,6 +153,7 @@ class Worker:
         self.logs = []
         self.started_at = None
         self._thread = None
+        self.lang = lang if lang in ("es", "en") else "es"
         self.params = _filter_params(params or {})  # selection_mode, offer_index, qty, etc.
 
     def log(self, msg, level="info"):
@@ -95,11 +170,11 @@ class Worker:
         sel_mode = self.params.get("selection_mode", "quick")
         qty = self.params.get("quantity")
         offer_idx = self.params.get("offer_index")
-        self.log(
-            f"Worker {self.id} iniciando | dominio={self.domain_id} | evento={self.event_id} "
-            f"| qty={qty} | mode={sel_mode}"
-            + (f" | offer_index={offer_idx}" if offer_idx is not None else "")
-        )
+        line = _t("worker.start", self.lang, wid=self.id, dom=self.domain_id,
+                   ev=self.event_id, qty=qty, mode=sel_mode)
+        if offer_idx is not None:
+            line += _t("worker.start.offer", self.lang, oi=offer_idx)
+        self.log(line)
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -107,31 +182,34 @@ class Worker:
         # Stub orquestador. El executor real (tm_purchase_flow / ticket_selector) se conecta aquí.
         # Por ahora deja constancia clara de que el payload ha viajado correctamente.
         sel_mode = self.params.get("selection_mode", "quick")
-        self.log(f"Modo selección: {'⚡ rápido (Ver lo mejor disponible)' if sel_mode=='quick' else '🗺 mapa de asientos'}")
+        self.log(_t("worker.mode_quick" if sel_mode == "quick" else "worker.mode_seatmap", self.lang))
         if self.params.get("category"):
-            self.log(f"Categoría fallback: {self.params['category']}")
+            self.log(_t("worker.category_fallback", self.lang, cat=self.params["category"]))
         if self.params.get("offer_index") is not None:
-            self.log(f"Oferta TM seleccionada (offer_index): {self.params['offer_index']}")
+            self.log(_t("worker.offer_selected", self.lang, oi=self.params["offer_index"]))
         # Loggear precios máximos si vienen
         omp = self.params.get("offer_max_prices") or {}
         if omp:
             try:
                 pretty = ', '.join(f'#{k}≤{v}€' for k, v in omp.items())
-                self.log(f"💰 Precios máx por oferta: {pretty}")
+                self.log(_t("worker.max_prices", self.lang, pretty=pretty))
             except Exception:
-                self.log(f"💰 offer_max_prices: {omp}")
+                self.log(_t("worker.max_prices_raw", self.lang, raw=omp))
         secs = self.params.get("selected_sections") or []
         if sel_mode == "seatmap" and secs:
             # Default: si el usuario marcó sectores, modo estricto (solo esos).
             strict = self.params.get("strict_targets")
             if strict is None: strict = True
-            self.log(f"🎯 Sectores objetivo ({len(secs)}): {', '.join(secs[:8])}{'...' if len(secs) > 8 else ''}")
-            self.log(f"   strict_targets={strict} — {'SOLO buscará en los sectores marcados' if strict else 'priorizará marcados, fallback a otros activos'}")
+            ell = '...' if len(secs) > 8 else ''
+            self.log(_t("worker.target_sections", self.lang, n=len(secs),
+                         **{"list": ', '.join(secs[:8]), "ellipsis": ell}))
+            explain = _t("worker.strict_only" if strict else "worker.strict_fallback", self.lang)
+            self.log(_t("worker.strict_targets", self.lang, strict=strict, explain=explain))
         if self.params.get("venue_id"):
-            self.log(f"🏟 Recinto cacheado: {self.params['venue_id']}")
-        self.log("Lanzando navegador...")
+            self.log(_t("worker.venue_cached", self.lang, vid=self.params["venue_id"]))
+        self.log(_t("worker.launching", self.lang))
         self.status = "in_queue"
-        self.log("En Queue-it, esperando posicion...")
+        self.log(_t("worker.in_queue", self.lang))
 
         # Derivar prefer_offer_indices / selected_sections / strict_targets
         # ANTES de usarlas en cualquier orquestador (fix F821).
@@ -166,15 +244,16 @@ class Worker:
                 "browser": self.params.get("browser") or "auto",
                 "worker_id": self.id,
             }
-            self.log("Invocando bot_orchestrator.run_purchase_flow(...) (browser real)")
+            self.log(_t("worker.invoking_orchestrator", self.lang))
             try:
                 res = bot_orchestrator.run_purchase_flow(**run_kwargs_browser)
-                self.log(f"orchestrator stage={res.get('stage')} ok={res.get('ok')}")
+                self.log(_t("worker.orch_stage", self.lang,
+                              stage=res.get('stage'), ok=res.get('ok')))
                 if res.get("next_action"):
-                    self.log(f"   next: {res['next_action'][:160]}")
+                    self.log(_t("worker.orch_next", self.lang, nxt=res['next_action'][:160]))
                 self.status = "success" if res.get("ok") else "error"
             except Exception as e:
-                self.log(f"orchestrator error: {e}", level="error")
+                self.log(_t("worker.orch_error", self.lang, err=e), level="error")
                 self.status = "error"
         except ImportError:
             pass
@@ -203,22 +282,22 @@ class Worker:
                 "worker_id": self.id,
             }
             if hasattr(tm_purchase_flow, "run_flow"):
-                self.log("Invocando tm_purchase_flow.run_flow(...)")
+                self.log(_t("worker.invoking_flow", self.lang))
                 # Best-effort: si falla, queda registrado pero el worker no crashea.
                 try:
                     res = tm_purchase_flow.run_flow(**run_kwargs)
-                    self.log(f"flow result: {str(res)[:200]}")
+                    self.log(_t("worker.flow_result", self.lang, res=str(res)[:200]))
                 except TypeError as e:
                     # run_flow no acepta esos kwargs todavía → fallback a sus args originales
-                    self.log(f"run_flow signature mismatch ({e}); skipping deep call")
+                    self.log(_t("worker.flow_signature_mismatch", self.lang, err=e))
                 except Exception as e:
-                    self.log(f"flow error: {e}", level="error")
+                    self.log(_t("worker.flow_error", self.lang, err=e), level="error")
         except ImportError:
             pass
 
     def stop(self):
         self.status = "stopped"
-        self.log("Worker detenido por usuario")
+        self.log(_t("worker.stopped", self.lang))
 
     def to_dict(self):
         return {
@@ -235,7 +314,7 @@ class Worker:
 
 
 class Group:
-    def __init__(self, event_id, domain_ids, name="", params=None):
+    def __init__(self, event_id, domain_ids, name="", params=None, lang="es"):
         self.id = uuid.uuid4().hex[:8]
         self.event_id = event_id
         self.domain_ids = domain_ids if isinstance(domain_ids, list) else [domain_ids]
@@ -244,6 +323,7 @@ class Group:
         self.strategy = (params or {}).get("strategy") or "equal"
         self.status = "idle"
         self.created_at = datetime.now().isoformat()
+        self.lang = lang if lang in ("es", "en") else "es"
         self.params = _filter_params(params or {})  # heredables a workers nuevos
 
     def add_worker(self, account_id=None, params=None):
@@ -259,7 +339,7 @@ class Group:
                     return None
             except Exception:
                 pass
-        w = Worker(self.id, self.event_id, dom, account_id, params=merged)
+        w = Worker(self.id, self.event_id, dom, account_id, params=merged, lang=self.lang)
         self.workers.append(w)
         return w
 
@@ -291,8 +371,8 @@ class BotEngine:
     def __init__(self):
         self.groups = {}
 
-    def create_group(self, event_id, domain_ids, name="", params=None):
-        g = Group(event_id, domain_ids, name, params=params)
+    def create_group(self, event_id, domain_ids, name="", params=None, lang="es"):
+        g = Group(event_id, domain_ids, name, params=params, lang=lang)
         self.groups[g.id] = g
         self._persist()
         return g
@@ -319,3 +399,47 @@ class BotEngine:
 
 
 engine = BotEngine()
+
+
+def self_test() -> dict:
+    """Validación del módulo + paridad i18n ES/EN."""
+    out = {"ok": True, "checks": {}, "errors": []}
+    try:
+        # 1. Engine instanciable
+        out["checks"]["engine_present"] = engine is not None
+        out["checks"]["filter_params_callable"] = callable(_filter_params)
+
+        # 2. i18n parity
+        es_keys = set(_T.get("es", {}).keys())
+        en_keys = set(_T.get("en", {}).keys())
+        only_es = es_keys - en_keys
+        only_en = en_keys - es_keys
+        out["checks"]["i18n_es_keys"] = len(es_keys)
+        out["checks"]["i18n_en_keys"] = len(en_keys)
+        out["checks"]["i18n_parity"] = (len(only_es) == 0 and len(only_en) == 0)
+        if only_es:
+            out["errors"].append(f"only ES: {sorted(only_es)}")
+        if only_en:
+            out["errors"].append(f"only EN: {sorted(only_en)}")
+
+        # 3. _t resolver funciona en ambos lang
+        s_es = _t("worker.launching", "es")
+        s_en = _t("worker.launching", "en")
+        out["checks"]["t_es_present"] = bool(s_es) and "navegador" in s_es
+        out["checks"]["t_en_present"] = bool(s_en) and "browser" in s_en.lower()
+        out["checks"]["t_diff"] = s_es != s_en
+
+        # 4. Worker acepta lang
+        w_en = Worker("g1", "e1", "es", lang="en")
+        out["checks"]["worker_lang_en"] = w_en.lang == "en"
+        w_es = Worker("g1", "e1", "es")  # default
+        out["checks"]["worker_lang_default"] = w_es.lang == "es"
+
+        for k, v in out["checks"].items():
+            if v is False:
+                out["ok"] = False
+                out["errors"].append(f"check failed: {k}")
+    except Exception as e:
+        out["ok"] = False
+        out["errors"].append(f"{type(e).__name__}: {e}")
+    return out

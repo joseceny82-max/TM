@@ -4,12 +4,16 @@ Audita 8 dimensiones y devuelve un checklist con score y acciones recomendadas.
 También provee setup helpers para automatizar lo automatizable.
 
 API:
-    check() -> dict      # checklist completo + score
+    check(lang='es') -> dict   # checklist completo + score (localizado ES/EN)
     auto_setup() -> dict # setup automatizado (proxies demo, AcpAT seed)
     set_captcha_key(provider, key) -> dict
     set_telegram(token, chat_id) -> dict
     seed_acpat(n=5) -> dict
     self_test() -> dict
+
+i18n:
+    Cada string visible en `_T[lang]`. Llama a check(lang='en') para inglés.
+    Cache TTL 30s separado por lang.
 """
 from __future__ import annotations
 import os
@@ -25,9 +29,130 @@ _lock = threading.RLock()
 
 # Caché de check() para reducir el latency a <50ms
 # El check real hace HTTP a Discord/MoreLogin/2captcha (~1.5s)
+# Cache por idioma (es/en) para que el toggle EN no devuelva contenido cached ES
 import time as _time_mod
-_CHECK_CACHE = {"data": None, "ts": 0, "ttl_s": 30}
+_CHECK_CACHE = {"es": {"data": None, "ts": 0}, "en": {"data": None, "ts": 0}, "ttl_s": 30}
 _check_cache_lock = threading.RLock()
+
+
+# ═══════════════════════════════════════════════════════════════
+#  i18n — strings localizados (ES/EN paridad 100%)
+# ═══════════════════════════════════════════════════════════════
+_T = {
+    "es": {
+        # Names (cards/headers visibles en pestaña Sniper Bot)
+        "name.accounts": "Cuentas y Tarjetas",
+        "name.proxies": "Proxies",
+        "name.captcha": "CAPTCHA Solvers",
+        "name.acpat": "AcpAT Pool (Queue-it)",
+        "name.notifications": "Notificaciones",
+        "name.browser": "Browser Engine",
+        "name.critical_2026": "Módulos críticos 2026",
+        "name.csv_sync": "CSV Sync (cuentas/tarjetas)",
+        # Accounts
+        "accounts.ok": "{active} cuentas activas · {cards} tarjetas",
+        "accounts.need_one": "Necesitas al menos 1 cuenta activa con 1 tarjeta",
+        "accounts.fix": "Añadir cuentas en pestaña Cuentas y Tarjetas",
+        "accounts.error": "Error: {err}",
+        "accounts.error_fix": "Revisar account_manager",
+        # Proxies
+        "proxies.ok": "{n} proxies disponibles",
+        "proxies.from_txt": " · {n} en proxies.txt",
+        "proxies.from_json": " · {n} en proxies.json",
+        "proxies.placeholders_only": "⚠️ Solo {n} proxies placeholder — sustitúyelos por reales",
+        "proxies.no_alive": "Sin proxies alive — CRÍTICO para Queue-it",
+        "proxies.fix": "Añadir proxies reales (BrightData, IPRoyal, SOAX, ProxyEmpire) — NO placeholders",
+        "proxies.error_fix": "Revisar proxy_health",
+        # Captcha
+        "captcha.ok": "✅ Configurados: {providers}",
+        "captcha.placeholder_only": "⚠️ Hay key placeholder en '{provider}' — sustitúyela por la real",
+        "captcha.no_key": "Sin API key — el bot no podrá resolver CAPTCHAs",
+        "captcha.fix": "Añadir API key REAL (CapSolver $1=2k captchas) en pestaña CAPTCHA o aquí mismo",
+        # AcpAT
+        "acpat.ok": "{n} tokens válidos en pool",
+        "acpat.empty": "Pool vacío — Queue-it bypass desactivado",
+        "acpat.fix": "Captura tokens AcpAT manualmente o lanza warming",
+        "acpat.error_fix": "Revisar acpat_pool.json",
+        # Notifications
+        "notif.configured_both": "Configurado: Discord + Telegram",
+        "notif.configured_discord": "Configurado: Discord",
+        "notif.configured_telegram": "Configurado: Telegram",
+        "notif.none": "Sin Discord ni Telegram — no recibirás avisos",
+        "notif.fix": "Añadir webhook Discord o token Telegram",
+        # Browser
+        "browser.ok": "{available} navegadores · {antidetect} con anti-detect",
+        "browser.no_playwright": "Playwright no instalado",
+        "browser.fix_install": "Instalar Playwright: python -m playwright install",
+        "browser.fix_install_full": "python -m playwright install chromium firefox",
+        "browser.error_fix": "pip install playwright",
+        # Critical 2026
+        "critical.status": "{loaded}/{expected} módulos cargados",
+        "critical.fix": "Reinstalar módulos críticos faltantes",
+        # CSV sync
+        "csv.ok": "Watcher activo · CSV sincronizado",
+        "csv.inactive": "Watcher inactivo",
+        "csv.fix": "Reinicia dashboard para activar el watcher",
+        "csv.error": "Error: {err}",
+        # generic error
+        "error": "Error: {err}",
+    },
+    "en": {
+        "name.accounts": "Accounts & Cards",
+        "name.proxies": "Proxies",
+        "name.captcha": "CAPTCHA Solvers",
+        "name.acpat": "AcpAT Pool (Queue-it)",
+        "name.notifications": "Notifications",
+        "name.browser": "Browser Engine",
+        "name.critical_2026": "Critical 2026 modules",
+        "name.csv_sync": "CSV Sync (accounts/cards)",
+        "accounts.ok": "{active} active accounts · {cards} cards",
+        "accounts.need_one": "You need at least 1 active account with 1 card",
+        "accounts.fix": "Add accounts in Accounts & Cards tab",
+        "accounts.error": "Error: {err}",
+        "accounts.error_fix": "Check account_manager",
+        "proxies.ok": "{n} proxies available",
+        "proxies.from_txt": " · {n} in proxies.txt",
+        "proxies.from_json": " · {n} in proxies.json",
+        "proxies.placeholders_only": "⚠️ Only {n} placeholder proxies — replace them with real ones",
+        "proxies.no_alive": "No alive proxies — CRITICAL for Queue-it",
+        "proxies.fix": "Add real proxies (BrightData, IPRoyal, SOAX, ProxyEmpire) — NO placeholders",
+        "proxies.error_fix": "Check proxy_health",
+        "captcha.ok": "✅ Configured: {providers}",
+        "captcha.placeholder_only": "⚠️ Placeholder key in '{provider}' — replace it with the real one",
+        "captcha.no_key": "No API key — the bot can't solve CAPTCHAs",
+        "captcha.fix": "Add a REAL API key (CapSolver $1=2k captchas) in CAPTCHA tab or here",
+        "acpat.ok": "{n} valid tokens in pool",
+        "acpat.empty": "Empty pool — Queue-it bypass disabled",
+        "acpat.fix": "Capture AcpAT tokens manually or run warming",
+        "acpat.error_fix": "Check acpat_pool.json",
+        "notif.configured_both": "Configured: Discord + Telegram",
+        "notif.configured_discord": "Configured: Discord",
+        "notif.configured_telegram": "Configured: Telegram",
+        "notif.none": "No Discord nor Telegram — you won't receive alerts",
+        "notif.fix": "Add Discord webhook or Telegram token",
+        "browser.ok": "{available} browsers · {antidetect} with anti-detect",
+        "browser.no_playwright": "Playwright not installed",
+        "browser.fix_install": "Install Playwright: python -m playwright install",
+        "browser.fix_install_full": "python -m playwright install chromium firefox",
+        "browser.error_fix": "pip install playwright",
+        "critical.status": "{loaded}/{expected} modules loaded",
+        "critical.fix": "Reinstall missing critical modules",
+        "csv.ok": "Watcher active · CSV synced",
+        "csv.inactive": "Watcher inactive",
+        "csv.fix": "Restart dashboard to activate the watcher",
+        "csv.error": "Error: {err}",
+        "error": "Error: {err}",
+    },
+}
+
+
+def _t(key: str, lang: str = "es", **fmt) -> str:
+    """Resuelve key en el lang dado. Fallback a ES si no existe en EN."""
+    s = _T.get(lang, _T["es"]).get(key) or _T["es"].get(key, key)
+    try:
+        return s.format(**fmt) if fmt else s
+    except Exception:
+        return s
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -53,7 +178,7 @@ def _safe_save(key: str, data: Any) -> bool:
 # ═══════════════════════════════════════════════════════════════
 # Individual checks
 # ═══════════════════════════════════════════════════════════════
-def _check_accounts() -> Dict[str, Any]:
+def _check_accounts(lang: str = "es") -> Dict[str, Any]:
     try:
         import account_manager
         accs = account_manager.account_manager.list_accounts()
@@ -61,7 +186,7 @@ def _check_accounts() -> Dict[str, Any]:
         active = [a for a in accs if a.get("status") == "active"]
         ok = len(active) >= 1 and len(cards) >= 1
         return {
-            "name": "Cuentas y Tarjetas",
+            "name": _t("name.accounts", lang),
             "ok": ok,
             "weight": 15,
             "stats": {
@@ -69,14 +194,14 @@ def _check_accounts() -> Dict[str, Any]:
                 "active_accounts": len(active),
                 "cards": len(cards),
             },
-            "msg": (f"{len(active)} cuentas activas · {len(cards)} tarjetas"
-                    if ok else "Necesitas al menos 1 cuenta activa con 1 tarjeta"),
+            "msg": (_t("accounts.ok", lang, active=len(active), cards=len(cards))
+                    if ok else _t("accounts.need_one", lang)),
             "fix_url": "/dashboard#cuentas",
-            "fix_action": "Añadir cuentas en pestaña Cuentas y Tarjetas",
+            "fix_action": _t("accounts.fix", lang),
         }
     except Exception as e:
-        return {"name": "Cuentas y Tarjetas", "ok": False, "weight": 15,
-                "msg": f"Error: {e}", "fix_action": "Revisar account_manager"}
+        return {"name": _t("name.accounts", lang), "ok": False, "weight": 15,
+                "msg": _t("accounts.error", lang, err=e), "fix_action": _t("accounts.error_fix", lang)}
 
 
 def _read_proxies_txt() -> List[Dict[str, Any]]:
@@ -127,7 +252,7 @@ def _read_proxies_txt() -> List[Dict[str, Any]]:
     return items
 
 
-def _check_proxies() -> Dict[str, Any]:
+def _check_proxies(lang: str = "es") -> Dict[str, Any]:
     try:
         # Fuente 1: proxies.json
         json_proxies: List[Dict[str, Any]] = []
@@ -165,20 +290,20 @@ def _check_proxies() -> Dict[str, Any]:
         ok = len(alive_real) >= 1
 
         if ok:
-            msg = f"{len(alive_real)} proxies disponibles"
+            msg = _t("proxies.ok", lang, n=len(alive_real))
             if txt_proxies:
-                msg += f" · {len(txt_proxies)} en proxies.txt"
+                msg += _t("proxies.from_txt", lang, n=len(txt_proxies))
             if json_proxies and not all(p.get("is_placeholder") for p in json_proxies):
                 json_real = sum(1 for p in json_proxies if not p.get("is_placeholder"))
                 if json_real > 0:
-                    msg += f" · {json_real} en proxies.json"
+                    msg += _t("proxies.from_json", lang, n=json_real)
         elif placeholders:
-            msg = f"⚠️ Solo {len(placeholders)} proxies placeholder — sustitúyelos por reales"
+            msg = _t("proxies.placeholders_only", lang, n=len(placeholders))
         else:
-            msg = "Sin proxies alive — CRÍTICO para Queue-it"
+            msg = _t("proxies.no_alive", lang)
 
         return {
-            "name": "Proxies",
+            "name": _t("name.proxies", lang),
             "ok": ok,
             "weight": 20,
             "stats": {
@@ -190,15 +315,15 @@ def _check_proxies() -> Dict[str, Any]:
                 "from_json": len(json_proxies),
             },
             "msg": msg,
-            "fix_action": "Añadir proxies reales (BrightData, IPRoyal, SOAX, ProxyEmpire) — NO placeholders",
+            "fix_action": _t("proxies.fix", lang),
             "fix_url": "/dashboard#bot/proxies",
         }
     except Exception as e:
-        return {"name": "Proxies", "ok": False, "weight": 20,
-                "msg": f"Error: {e}", "fix_action": "Revisar proxy_health"}
+        return {"name": _t("name.proxies", lang), "ok": False, "weight": 20,
+                "msg": _t("error", lang, err=e), "fix_action": _t("proxies.error_fix", lang)}
 
 
-def _check_captcha() -> Dict[str, Any]:
+def _check_captcha(lang: str = "es") -> Dict[str, Any]:
     """Detecta API keys en MÚLTIPLES estructuras posibles (compat amplia)."""
     services = {"capsolver": False, "2captcha": False, "anticaptcha": False, "capmonster": False}
     primary_key = ""
@@ -245,24 +370,24 @@ def _check_captcha() -> Dict[str, Any]:
     configured = [s for s, v in services.items() if v]
     ok = len(configured) >= 1
     if ok:
-        msg = f"✅ Configurados: {', '.join(configured)}"
+        msg = _t("captcha.ok", lang, providers=", ".join(configured))
     elif is_placeholder_only:
-        msg = f"⚠️ Hay key placeholder en '{primary_provider}' — sustitúyela por la real"
+        msg = _t("captcha.placeholder_only", lang, provider=primary_provider)
     else:
-        msg = "Sin API key — el bot no podrá resolver CAPTCHAs"
+        msg = _t("captcha.no_key", lang)
 
     return {
-        "name": "CAPTCHA Solvers",
+        "name": _t("name.captcha", lang),
         "ok": ok,
         "weight": 20,
         "stats": services,
         "msg": msg,
-        "fix_action": "Añadir API key REAL (CapSolver $1=2k captchas) en pestaña CAPTCHA o aquí mismo",
+        "fix_action": _t("captcha.fix", lang),
         "fix_url": "/dashboard#bot/captcha",
     }
 
 
-def _check_acpat() -> Dict[str, Any]:
+def _check_acpat(lang: str = "es") -> Dict[str, Any]:
     try:
         d = _safe_load("acpat_pool.json", default={"tokens": []})
         tokens = d.get("tokens", [])
@@ -272,21 +397,21 @@ def _check_acpat() -> Dict[str, Any]:
         valid = [t for t in tokens if (now - (t.get("captured_at_ts", now))) < 1800]
         ok = len(valid) >= 1
         return {
-            "name": "AcpAT Pool (Queue-it)",
+            "name": _t("name.acpat", lang),
             "ok": ok,
             "weight": 10,
             "stats": {"total": len(tokens), "valid": len(valid)},
-            "msg": (f"{len(valid)} tokens válidos en pool"
-                    if ok else "Pool vacío — Queue-it bypass desactivado"),
-            "fix_action": "Captura tokens AcpAT manualmente o lanza warming",
+            "msg": (_t("acpat.ok", lang, n=len(valid))
+                    if ok else _t("acpat.empty", lang)),
+            "fix_action": _t("acpat.fix", lang),
             "fix_url": "/dashboard#bot/bypass",
         }
     except Exception as e:
-        return {"name": "AcpAT Pool (Queue-it)", "ok": False, "weight": 10,
-                "msg": f"Error: {e}", "fix_action": "Revisar acpat_pool.json"}
+        return {"name": _t("name.acpat", lang), "ok": False, "weight": 10,
+                "msg": _t("error", lang, err=e), "fix_action": _t("acpat.error_fix", lang)}
 
 
-def _check_notifications() -> Dict[str, Any]:
+def _check_notifications(lang: str = "es") -> Dict[str, Any]:
     discord = telegram = False
     try:
         import notifications
@@ -301,19 +426,27 @@ def _check_notifications() -> Dict[str, Any]:
     except Exception:
         pass
     ok = discord or telegram
+    if ok:
+        if discord and telegram:
+            msg = _t("notif.configured_both", lang)
+        elif discord:
+            msg = _t("notif.configured_discord", lang)
+        else:
+            msg = _t("notif.configured_telegram", lang)
+    else:
+        msg = _t("notif.none", lang)
     return {
-        "name": "Notificaciones",
+        "name": _t("name.notifications", lang),
         "ok": ok,
         "weight": 5,
         "stats": {"discord": discord, "telegram": telegram},
-        "msg": (f"Configurado: {'Discord' if discord else ''}{' + ' if discord and telegram else ''}{'Telegram' if telegram else ''}"
-                if ok else "Sin Discord ni Telegram — no recibirás avisos"),
-        "fix_action": "Añadir webhook Discord o token Telegram",
+        "msg": msg,
+        "fix_action": _t("notif.fix", lang),
         "fix_url": "/dashboard#notif",
     }
 
 
-def _check_browser() -> Dict[str, Any]:
+def _check_browser(lang: str = "es") -> Dict[str, Any]:
     try:
         import tm_browser_engine
         chk = tm_browser_engine.check_playwright()
@@ -322,22 +455,22 @@ def _check_browser() -> Dict[str, Any]:
             available = [b for b, info in browsers.items() if info.get("available")]
             antidetect = [b for b, info in browsers.items() if info.get("antidetect")]
             return {
-                "name": "Browser Engine",
+                "name": _t("name.browser", lang),
                 "ok": len(available) >= 1,
                 "weight": 10,
                 "stats": {"available": available, "antidetect": antidetect},
-                "msg": f"{len(available)} navegadores · {len(antidetect)} con anti-detect",
-                "fix_action": "Instalar Playwright: python -m playwright install",
+                "msg": _t("browser.ok", lang, available=len(available), antidetect=len(antidetect)),
+                "fix_action": _t("browser.fix_install", lang),
             }
-        return {"name": "Browser Engine", "ok": False, "weight": 10,
-                "msg": "Playwright no instalado",
-                "fix_action": "python -m playwright install chromium firefox"}
+        return {"name": _t("name.browser", lang), "ok": False, "weight": 10,
+                "msg": _t("browser.no_playwright", lang),
+                "fix_action": _t("browser.fix_install_full", lang)}
     except Exception as e:
-        return {"name": "Browser Engine", "ok": False, "weight": 10,
-                "msg": f"Error: {e}", "fix_action": "pip install playwright"}
+        return {"name": _t("name.browser", lang), "ok": False, "weight": 10,
+                "msg": _t("error", lang, err=e), "fix_action": _t("browser.error_fix", lang)}
 
 
-def _check_critical_2026() -> Dict[str, Any]:
+def _check_critical_2026(lang: str = "es") -> Dict[str, Any]:
     """Los 10 módulos críticos 2026 instalados y operativos."""
     mods = ["ja4_pinning", "http2_fingerprint", "safetix_handler",
             "compliance_gate", "datadome_proxy_hooks", "uach_grease_validator",
@@ -352,30 +485,31 @@ def _check_critical_2026() -> Dict[str, Any]:
             pass
     ok = len(loaded) == len(mods)
     return {
-        "name": "Módulos críticos 2026",
+        "name": _t("name.critical_2026", lang),
         "ok": ok,
         "weight": 10,
         "stats": {"loaded": len(loaded), "expected": len(mods)},
-        "msg": f"{len(loaded)}/{len(mods)} módulos cargados",
-        "fix_action": "Reinstalar módulos críticos faltantes",
+        "msg": _t("critical.status", lang, loaded=len(loaded), expected=len(mods)),
+        "fix_action": _t("critical.fix", lang),
     }
 
 
-def _check_csv_sync() -> Dict[str, Any]:
+def _check_csv_sync(lang: str = "es") -> Dict[str, Any]:
     try:
         import accounts_csv_sync
         st = accounts_csv_sync.get_status()
         ok = bool(st.get("watcher_running") and st.get("csv_exists"))
         return {
-            "name": "CSV Sync (cuentas/tarjetas)",
+            "name": _t("name.csv_sync", lang),
             "ok": ok,
             "weight": 5,
             "stats": st,
-            "msg": "Watcher activo · CSV sincronizado" if ok else "Watcher inactivo",
-            "fix_action": "Reinicia dashboard para activar el watcher",
+            "msg": _t("csv.ok", lang) if ok else _t("csv.inactive", lang),
+            "fix_action": _t("csv.fix", lang),
         }
     except Exception as e:
-        return {"name": "CSV Sync", "ok": False, "weight": 5, "msg": f"Error: {e}"}
+        return {"name": _t("name.csv_sync", lang), "ok": False, "weight": 5,
+                "msg": _t("csv.error", lang, err=e)}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -394,15 +528,16 @@ ALL_CHECKS = [
 
 
 def invalidate_cache() -> None:
-    """Fuerza recomputo del próximo check()."""
+    """Fuerza recomputo del próximo check() para todos los idiomas."""
     with _check_cache_lock:
-        _CHECK_CACHE["data"] = None
-        _CHECK_CACHE["ts"] = 0
+        for lg in ("es", "en"):
+            _CHECK_CACHE[lg]["data"] = None
+            _CHECK_CACHE[lg]["ts"] = 0
 
 
-def _check_uncached() -> Dict[str, Any]:
-    """Ejecuta todas las verificaciones y devuelve el checklist."""
-    items = [c() for c in ALL_CHECKS]
+def _check_uncached(lang: str = "es") -> Dict[str, Any]:
+    """Ejecuta todas las verificaciones y devuelve el checklist (localizado)."""
+    items = [c(lang) for c in ALL_CHECKS]
     total_weight = sum(it.get("weight", 0) for it in items)
     earned = sum(it.get("weight", 0) for it in items if it.get("ok"))
     score = round(100 * earned / total_weight, 1) if total_weight > 0 else 0
@@ -413,6 +548,7 @@ def _check_uncached() -> Dict[str, Any]:
     ready_for_live = score >= 75 and len(blockers) == 0
     return {
         "ok": True,
+        "lang": lang,
         "score": score,
         "ready_for_live": ready_for_live,
         "blockers": blockers,
@@ -427,12 +563,16 @@ def _check_uncached() -> Dict[str, Any]:
     }
 
 
-def check(force: bool = False) -> Dict[str, Any]:
-    """Versión cacheada del check (TTL 30s). Para forzar recomputo: force=True."""
+def check(force: bool = False, lang: str = "es") -> Dict[str, Any]:
+    """Versión cacheada del check (TTL 30s, separado por lang).
+    Para forzar recomputo: force=True. Soporta lang='es'|'en'."""
+    if lang not in ("es", "en"):
+        lang = "es"
     now = _time_mod.time()
     with _check_cache_lock:
-        cached = _CHECK_CACHE.get("data")
-        cached_ts = _CHECK_CACHE.get("ts", 0)
+        bucket = _CHECK_CACHE.get(lang) or {"data": None, "ts": 0}
+        cached = bucket.get("data")
+        cached_ts = bucket.get("ts", 0)
         ttl = _CHECK_CACHE.get("ttl_s", 30)
         if (not force) and cached and (now - cached_ts) < ttl:
             # Hit caché — añadir hint de que viene de cache
@@ -440,10 +580,10 @@ def check(force: bool = False) -> Dict[str, Any]:
                     "_cache_age_s": round(now - cached_ts, 1)}
 
     # Miss caché → recomputar (puede tardar 1-2s)
-    fresh = _check_uncached()
+    fresh = _check_uncached(lang)
     with _check_cache_lock:
-        _CHECK_CACHE["data"] = fresh
-        _CHECK_CACHE["ts"] = now
+        _CHECK_CACHE[lang]["data"] = fresh
+        _CHECK_CACHE[lang]["ts"] = now
     return {**fresh, "_cache_hit": False}
 
 
@@ -669,7 +809,7 @@ def add_demo_proxies(n: int = 3) -> Dict[str, Any]:
         return {"ok": False, "error": str(e)}
 
 
-def auto_setup() -> Dict[str, Any]:
+def auto_setup(lang: str = "es") -> Dict[str, Any]:
     """Configuración automatizada de lo que se puede hacer sin credenciales del usuario."""
     actions = []
     # 1. Seed AcpAT pool si está vacío
@@ -684,8 +824,8 @@ def auto_setup() -> Dict[str, Any]:
         r = add_demo_proxies(3)
         actions.append({"step": "add_demo_proxies", "result": r})
 
-    # 3. Re-check
-    final = check()
+    # 3. Re-check (forzar recomputo y respetar lang)
+    final = check(force=True, lang=lang)
     return {"ok": True, "actions": actions, "score_after": final["score"],
             "items": final["items"]}
 
@@ -733,6 +873,23 @@ def self_test() -> Dict[str, Any]:
     r6 = set_telegram("", "chat")
     checks["telegram_requires_token"] = not r6.get("ok")
 
+    # 8. i18n parity ES/EN
+    es_keys = set(_T.get("es", {}).keys())
+    en_keys = set(_T.get("en", {}).keys())
+    only_es = es_keys - en_keys
+    only_en = en_keys - es_keys
+    checks["i18n_parity_es_en"] = (len(only_es) == 0 and len(only_en) == 0)
+    checks["i18n_es_keys_present"] = len(es_keys) >= 30
+    checks["i18n_en_keys_present"] = len(en_keys) >= 30
+
+    # 9. check(lang='en') devuelve strings localizados
+    r_en = check(force=True, lang="en")
+    checks["check_en_runs"] = r_en.get("ok") is True
+    # Sample: msg de accounts en EN no debe contener 'cuentas activas'
+    items_en = r_en.get("items", [])
+    en_strings = " ".join((it.get("name", "") + " " + it.get("msg", "") + " " + it.get("fix_action", "")) for it in items_en)
+    checks["check_en_no_spanish_leak"] = ("cuentas activas" not in en_strings.lower()) and ("añadir" not in en_strings.lower())
+
     total = len(checks)
     passed = sum(1 for v in checks.values() if v)
     return {
@@ -740,6 +897,8 @@ def self_test() -> Dict[str, Any]:
         "total_checks": total,
         "passed_checks": passed,
         "checks": checks,
+        "i18n_only_es": sorted(only_es),
+        "i18n_only_en": sorted(only_en),
     }
 
 

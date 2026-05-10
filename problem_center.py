@@ -5,6 +5,11 @@ Mejoras inspiradas en Sentry:
 - Contador de ocurrencias (count), first_seen, last_seen
 - Timeline últimas 24h, búsqueda, orden por frecuencia
 - Auto-resolve de problemas antiguos
+
+i18n:
+  Las categorías canónicas se almacenan en español (compat backwards).
+  Para mostrar al usuario en EN, get_categories(lang='en') y
+  get_category_breakdown(lang='en') devuelven `label` localizado.
 """
 import uuid
 import hashlib
@@ -18,6 +23,34 @@ CATEGORIES = [
     "Navegadores", "Anti-Detect", "Extensiones", "Bypass", "Anti-Bot",
     "Proxies", "Eventos", "Cuentas/Tarjetas", "Sistema", "Dominios",
 ]
+
+# Mapa categoría_canónica → label EN. La key ES sigue siendo el ID
+# para compatibilidad con problemas ya almacenados.
+_CATEGORY_LABELS_EN = {
+    "Bot de compra": "Purchase Bot",
+    "Filas": "Queues (Queue-it)",
+    "Cookies": "Cookies",
+    "CAPTCHA": "CAPTCHA",
+    "Fingerprint": "Fingerprint",
+    "Navegadores": "Browsers",
+    "Anti-Detect": "Anti-Detect",
+    "Extensiones": "Extensions",
+    "Bypass": "Bypass",
+    "Anti-Bot": "Anti-Bot",
+    "Proxies": "Proxies",
+    "Eventos": "Events",
+    "Cuentas/Tarjetas": "Accounts/Cards",
+    "Sistema": "System",
+    "Dominios": "Domains",
+}
+
+
+def _category_label(cat: str, lang: str = "es") -> str:
+    """Devuelve el label localizado para una categoría canónica."""
+    if lang == "en":
+        return _CATEGORY_LABELS_EN.get(cat, cat)
+    return cat
+
 
 SEVERITY_ORDER = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 
@@ -218,14 +251,19 @@ def get_timeline(hours=24):
     return {"labels": labels, "values": buckets}
 
 
-def get_category_breakdown():
-    """Conteo de problemas abiertos agrupados por categoría."""
+def get_category_breakdown(lang: str = "es"):
+    """Conteo de problemas abiertos agrupados por categoría.
+
+    `category` es el ID canónico (ES). `label` es el texto a mostrar
+    (localizado por lang). Frontend nuevo debe usar `label` para render.
+    """
     items = get_problems(include_resolved=False)
     by_cat = {}
     for p in items:
         c = p.get("category", "Sistema")
         by_cat[c] = by_cat.get(c, 0) + p.get("count", 1)
-    return [{"category": k, "count": v} for k, v in sorted(by_cat.items(), key=lambda x: -x[1])]
+    return [{"category": k, "label": _category_label(k, lang), "count": v}
+            for k, v in sorted(by_cat.items(), key=lambda x: -x[1])]
 
 
 def get_stats():
@@ -244,5 +282,42 @@ def get_stats():
     }
 
 
-def get_categories():
+def get_categories(lang: str = "es"):
+    """Lista de categorías. Si lang='en' devuelve dicts {id, label} en EN.
+    Por compat con frontend antiguo, lang='es' (default) sigue devolviendo lista de strings.
+    """
+    if lang == "en":
+        return [{"id": c, "label": _category_label(c, "en")} for c in CATEGORIES]
     return CATEGORIES
+
+
+def self_test() -> dict:
+    """Validación básica (política proyecto, módulos >50 LOC).
+    Verifica funciones públicas + i18n ES/EN del category mapping.
+    """
+    out = {"ok": True, "checks": {}, "errors": []}
+    try:
+        for fn in ("get_problems", "report_problem", "resolve_problem",
+                    "get_stats", "get_category_breakdown", "get_categories",
+                    "_category_label"):
+            present = fn in globals() and callable(globals()[fn])
+            out["checks"][f"fn:{fn}"] = present
+            if not present:
+                out["ok"] = False
+                out["errors"].append(f"fn missing: {fn}")
+        out["checks"]["categories_count"] = len(CATEGORIES)
+        cat_labels_en = globals().get("_CATEGORY_LABELS_EN", {})
+        out["checks"]["category_labels_en_count"] = len(cat_labels_en)
+        es_list = get_categories("es")
+        en_list = get_categories("en")
+        out["checks"]["es_returns_list"] = isinstance(es_list, list) and len(es_list) > 0
+        out["checks"]["en_returns_dicts"] = (isinstance(en_list, list) and
+                                              len(en_list) > 0 and
+                                              isinstance(en_list[0], dict) and
+                                              "label" in en_list[0])
+        ps = get_problems()
+        out["checks"]["get_problems_returns_list"] = isinstance(ps, list)
+    except Exception as e:
+        out["ok"] = False
+        out["errors"].append(f"{type(e).__name__}: {e}")
+    return out
