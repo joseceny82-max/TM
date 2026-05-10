@@ -155,12 +155,77 @@ def get_recent_alerts(limit: int = 20) -> List[Dict]:
 
 
 def schedule_daily_check() -> Dict:
-    """Marca que el cron debería correr daily.
-    En producción: integrar con scheduler (APScheduler, cron).
-    """
+    """LEGACY: marcador de cron schedule. Usar start_scheduler()."""
     return {"ok": True, "scheduled": True,
             "domains": MONITORED_DOMAINS,
-            "note": "Llamar a detect_changes() para cada domain en cron diario"}
+            "note": "Usa start_scheduler() para arrancar el thread real"}
+
+
+# ═══════════════════════════════════════════
+#  SCHEDULER REAL (24h, rate-limited 60s entre dominios)
+# ═══════════════════════════════════════════
+_scheduler = {"running": False, "thread": None, "stop_event": None,
+              "started_at": "", "iterations": 0}
+
+
+def _scheduler_loop(stop_event: threading.Event, interval_hours: int):
+    """Bucle background: cada `interval_hours`, comprueba todos los dominios.
+    Inter-dominio sleep 60s para no martillar crt.sh API.
+    """
+    # Espera 30s al arranque para no sobrecargar boot del dashboard
+    if stop_event.wait(30):
+        return
+    while not stop_event.is_set():
+        try:
+            for d in MONITORED_DOMAINS:
+                if stop_event.is_set(): return
+                try:
+                    detect_changes(d)
+                except Exception:
+                    pass
+                _scheduler["iterations"] += 1
+                # 60s entre dominios para respetar crt.sh (~11 dominios = ~11min total)
+                if stop_event.wait(60):
+                    return
+        except Exception:
+            pass
+        # Espera hasta el siguiente ciclo (24h por default)
+        if stop_event.wait(max(3600, interval_hours * 3600)):
+            return
+
+
+def start_scheduler(interval_hours: int = 24) -> Dict:
+    """Arranca scheduler background. Idempotent: no duplica si ya corre."""
+    if _scheduler["running"]:
+        return {"ok": True, "already_running": True}
+    stop = threading.Event()
+    t = threading.Thread(target=_scheduler_loop, args=(stop, interval_hours),
+                         daemon=True, name="tls-ct-monitor-scheduler")
+    _scheduler.update({
+        "running": True, "thread": t, "stop_event": stop,
+        "started_at": datetime.now().isoformat(),
+    })
+    t.start()
+    return {"ok": True, "started": True, "interval_hours": interval_hours,
+            "domains": len(MONITORED_DOMAINS)}
+
+
+def stop_scheduler() -> Dict:
+    if not _scheduler["running"]:
+        return {"ok": True, "not_running": True}
+    ev = _scheduler.get("stop_event")
+    if ev: ev.set()
+    _scheduler.update({"running": False, "thread": None, "stop_event": None})
+    return {"ok": True, "stopped": True}
+
+
+def scheduler_status() -> Dict:
+    return {
+        "running": _scheduler["running"],
+        "started_at": _scheduler.get("started_at", ""),
+        "iterations": _scheduler.get("iterations", 0),
+        "monitored_domains": len(MONITORED_DOMAINS),
+    }
 
 
 def get_stats() -> Dict:

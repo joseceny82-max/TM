@@ -11610,6 +11610,57 @@ if __name__ == "__main__":
     except Exception as e:
         log.warning(f"proxy_health scheduler no arrancó: {e}")
 
+    # Browser pool manager: respeta el flag auto_start del config (per-user opt-in).
+    # Si auto_start=True, mantiene N contextos pre-warmed para checkout sub-segundo.
+    # Sin auto_start: el manager queda dormido (la UI puede arrancarlo on-demand).
+    try:
+        import browser_pool as _bp_boot
+        _bp_cfg = _bp_boot.get_config()
+        if _bp_cfg.get("auto_start") and os.environ.get("TM_AUTO_BROWSER_POOL", "1") == "1":
+            _bps = _bp_boot.start_manager()
+            log.info(f"Browser pool manager: {_bps} (pool_size={_bp_cfg.get('pool_size')})")
+        else:
+            log.info(f"Browser pool: idle (auto_start={_bp_cfg.get('auto_start')}, activable desde UI)")
+    except Exception as e:
+        log.warning(f"browser_pool boot init failed: {e}")
+
+    # TLS CT Monitor scheduler (24h): detecta rotaciones de certs TM/Queue-it/CDN.
+    # Early warning si TM/Akamai migra WAF — antes era stub, ahora thread real.
+    # Rate-limited 60s entre dominios (11 dominios → ~11 min por ciclo).
+    try:
+        import tls_ct_monitor as _tcm_boot
+        if os.environ.get("TM_AUTO_TLS_CT", "1") == "1":
+            _tcms = _tcm_boot.start_scheduler(
+                interval_hours=int(os.environ.get("TM_TLS_CT_INTERVAL_HOURS", "24")))
+            log.info(f"TLS CT monitor scheduler: {_tcms}")
+    except Exception as e:
+        log.warning(f"tls_ct_monitor scheduler no arrancó: {e}")
+
+    # Safetix Handler bridge: marca el handler activo para capturar tickets
+    # SafeTix mobile (rotación 15s tokens) cuando llegue una compra real.
+    # NO abre puerto/listener — solo flag setter (la WS opcional se levanta aparte).
+    try:
+        import safetix_handler as _sx_boot
+        _sxs = _sx_boot.start_bridge(port=int(os.environ.get("TM_SAFETIX_PORT", "8765")))
+        log.info(f"Safetix bridge: {_sxs}")
+    except Exception as e:
+        log.warning(f"safetix bridge no arrancó: {e}")
+
+    # OTP 3DS listener: arrancar polling IMAP solo si user lo configuró
+    # (config.enabled=True). Si está deshabilitado o en modo sms_webhook,
+    # el loop interno ya se queda dormido — start_listener es seguro.
+    try:
+        import otp_3ds as _o3_boot
+        _o3_cfg = _o3_boot.get_config()
+        if _o3_cfg.get("enabled") and _o3_cfg.get("mode") in ("imap", "both"):
+            _o3s = _o3_boot.start_listener()
+            log.info(f"OTP 3DS listener: {_o3s} (mode={_o3_cfg.get('mode')})")
+        else:
+            log.info(f"OTP 3DS listener: idle (enabled={_o3_cfg.get('enabled')}, "
+                     f"mode={_o3_cfg.get('mode')}) — webhook SMS sigue activo")
+    except Exception as e:
+        log.warning(f"otp_3ds listener no arrancó: {e}")
+
     # Arrancar watcher CSV bidireccional de Cuentas/Tarjetas
     try:
         accounts_csv_sync.init()
