@@ -40,19 +40,22 @@
             -webkit-font-smoothing:antialiased;
         }
 
-        /* ═══ FONDO ANIMADO: gradient mesh + grid ═══ */
+        /* ═══ FONDO ANIMADO: gradient mesh con más colores + más movimiento ═══ */
         .bg-gradient{
             position:fixed;inset:0;z-index:0;pointer-events:none;
             background:
-                radial-gradient(ellipse 80% 50% at 20% 30%, rgba(2,108,223,.28), transparent 55%),
-                radial-gradient(ellipse 60% 60% at 80% 70%, rgba(208,0,111,.18), transparent 60%),
-                radial-gradient(ellipse 100% 80% at 50% 100%, rgba(124,58,237,.16), transparent 60%);
-            animation: bgShift 16s ease-in-out infinite alternate;
+                radial-gradient(ellipse 70% 50% at 20% 30%, rgba(2,108,223,.45), transparent 55%),
+                radial-gradient(ellipse 55% 60% at 80% 70%, rgba(208,0,111,.40), transparent 60%),
+                radial-gradient(ellipse 65% 55% at 70% 20%, rgba(124,58,237,.35), transparent 60%),
+                radial-gradient(ellipse 60% 50% at 30% 80%, rgba(245,158,11,.22), transparent 60%),
+                radial-gradient(ellipse 80% 60% at 50% 100%, rgba(34,197,94,.18), transparent 60%);
+            animation: bgShift 12s ease-in-out infinite alternate;
         }
         @keyframes bgShift{
-            0%   { transform:scale(1) translate(0,0); }
-            50%  { transform:scale(1.05) translate(-2%,-1%); }
-            100% { transform:scale(1) translate(2%,1%); }
+            0%   { transform:scale(1) translate(0,0); filter:hue-rotate(0deg); }
+            33%  { transform:scale(1.08) translate(-3%,-2%); filter:hue-rotate(15deg); }
+            66%  { transform:scale(1.04) translate(2%,3%); filter:hue-rotate(-10deg); }
+            100% { transform:scale(1.1) translate(3%,-1%); filter:hue-rotate(5deg); }
         }
         .bg-grid{
             position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -64,49 +67,134 @@
             -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 75%);
         }
 
-        /* ═══ TICKETS Y NOTAS MUSICALES FLOTANTES ═══ */
-        .float-layer{
-            position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;
+        /* ═══ FOCOS DE ESCENARIO (spotlights barriendo) ═══ */
+        .spotlights{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;mix-blend-mode:screen}
+        .spotlight{
+            position:absolute;top:-5%;left:50%;width:280px;height:140vh;
+            transform-origin:50% 0;
+            background:linear-gradient(180deg,
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,.05) 5%,
+                rgba(2,108,223,.18) 30%,
+                rgba(2,108,223,.08) 60%,
+                transparent 95%);
+            filter:blur(8px);
+            animation: spotlightSweep 8s ease-in-out infinite;
         }
-        .float-icon{
-            position:absolute;font-size:32px;opacity:.07;
-            animation: floatY 18s ease-in-out infinite;
-            filter:drop-shadow(0 0 8px rgba(2,108,223,.4));
-        }
-        .float-icon.f1{top:8%;left:10%;font-size:42px;animation-delay:0s}
-        .float-icon.f2{top:18%;left:88%;font-size:36px;animation-delay:-3s}
-        .float-icon.f3{top:75%;left:8%;font-size:38px;animation-delay:-6s}
-        .float-icon.f4{top:82%;left:90%;font-size:30px;animation-delay:-9s}
-        .float-icon.f5{top:45%;left:5%;font-size:28px;animation-delay:-12s}
-        .float-icon.f6{top:30%;left:92%;font-size:34px;animation-delay:-15s}
-        .float-icon.f7{top:62%;left:15%;font-size:30px;animation-delay:-2s}
-        .float-icon.f8{top:12%;left:50%;font-size:28px;animation-delay:-7s}
-        @keyframes floatY{
-            0%,100% { transform:translateY(0) rotate(-8deg); opacity:.07; }
-            50%     { transform:translateY(-30px) rotate(8deg); opacity:.14; }
+        .spotlight.s1{ animation-delay:0s; left:25%; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.06) 5%, rgba(2,108,223,.22) 30%, transparent 95%); }
+        .spotlight.s2{ animation-delay:-2.7s; left:50%; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.06) 5%, rgba(208,0,111,.20) 30%, transparent 95%); animation-duration:9s; }
+        .spotlight.s3{ animation-delay:-5.3s; left:75%; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.06) 5%, rgba(124,58,237,.20) 30%, transparent 95%); animation-duration:10s; }
+        @keyframes spotlightSweep{
+            0%,100% { transform:translateX(-50%) rotate(-22deg); opacity:.55; }
+            50%     { transform:translateX(-50%) rotate(22deg); opacity:.85; }
         }
 
-        /* ═══ PARTÍCULAS FLOTANTES (puntos brillantes) ═══ */
+        /* ═══ CONFETTI CAYENDO (tickets pequeños y notas) ═══ */
+        .confetti-layer{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+        .confetti{
+            position:absolute;top:-50px;
+            font-size:18px;
+            animation: confettiFall linear infinite;
+            opacity:0;
+            will-change:transform,opacity;
+            filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));
+        }
+        @keyframes confettiFall{
+            0%   { transform:translateY(-50px) rotate(0deg); opacity:0; }
+            8%   { opacity:1; }
+            92%  { opacity:.9; }
+            100% { transform:translateY(105vh) rotate(720deg); opacity:0; }
+        }
+
+        /* ═══ ICONOS FLOTANTES MÁS VIVOS Y COLORIDOS ═══ */
+        .float-layer{ position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden; }
+        .float-icon{
+            position:absolute;font-size:38px;opacity:.18;
+            animation: floatY 14s ease-in-out infinite;
+            filter:drop-shadow(0 0 16px rgba(2,108,223,.6));
+            will-change:transform,opacity;
+        }
+        .float-icon.f1{ top:8%;  left:10%; font-size:50px; animation-delay:0s;   filter:drop-shadow(0 0 18px rgba(245,158,11,.7)); }
+        .float-icon.f2{ top:14%; left:85%; font-size:44px; animation-delay:-2s;  filter:drop-shadow(0 0 16px rgba(208,0,111,.7)); }
+        .float-icon.f3{ top:72%; left:6%;  font-size:46px; animation-delay:-4s;  filter:drop-shadow(0 0 16px rgba(124,58,237,.7)); }
+        .float-icon.f4{ top:82%; left:88%; font-size:40px; animation-delay:-6s;  filter:drop-shadow(0 0 14px rgba(34,197,94,.7)); }
+        .float-icon.f5{ top:42%; left:4%;  font-size:36px; animation-delay:-8s;  filter:drop-shadow(0 0 14px rgba(2,108,223,.7)); }
+        .float-icon.f6{ top:28%; left:92%; font-size:42px; animation-delay:-10s; filter:drop-shadow(0 0 16px rgba(245,158,11,.7)); }
+        .float-icon.f7{ top:60%; left:14%; font-size:38px; animation-delay:-1s;  filter:drop-shadow(0 0 14px rgba(208,0,111,.7)); }
+        .float-icon.f8{ top:10%; left:48%; font-size:36px; animation-delay:-5s;  filter:drop-shadow(0 0 14px rgba(124,58,237,.7)); }
+        .float-icon.f9{ top:50%; left:90%; font-size:40px; animation-delay:-3s;  filter:drop-shadow(0 0 16px rgba(34,197,94,.7)); }
+        .float-icon.f10{ top:88%;left:48%; font-size:38px; animation-delay:-7s;  filter:drop-shadow(0 0 14px rgba(2,108,223,.7)); }
+        .float-icon.f11{ top:25%; left:18%; font-size:34px; animation-delay:-9s; filter:drop-shadow(0 0 14px rgba(245,158,11,.7)); }
+        .float-icon.f12{ top:65%; left:82%; font-size:42px; animation-delay:-11s; filter:drop-shadow(0 0 16px rgba(208,0,111,.7)); }
+        @keyframes floatY{
+            0%,100% { transform:translateY(0) rotate(-12deg) scale(1); opacity:.18; }
+            25%     { transform:translateY(-24px) rotate(8deg) scale(1.08); opacity:.34; }
+            50%     { transform:translateY(-44px) rotate(15deg) scale(1.12); opacity:.40; }
+            75%     { transform:translateY(-22px) rotate(-6deg) scale(1.05); opacity:.30; }
+        }
+
+        /* ═══ ESTRELLAS TWINKLING ═══ */
+        .stars{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+        .star{
+            position:absolute;width:3px;height:3px;border-radius:50%;
+            background:#fff;
+            box-shadow:0 0 6px #fff, 0 0 12px rgba(2,108,223,.6);
+            animation: twinkle 3s ease-in-out infinite;
+        }
+        @keyframes twinkle{
+            0%,100% { opacity:.2; transform:scale(.6); }
+            50%     { opacity:1; transform:scale(1.4); }
+        }
+
+        /* ═══ PARTÍCULAS FLOTANTES (puntos brillantes ascendentes) ═══ */
         .particles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
         .particle{
-            position:absolute;width:3px;height:3px;border-radius:50%;
-            background:rgba(2,108,223,.6);
-            box-shadow:0 0 12px rgba(2,108,223,.8), 0 0 24px rgba(2,108,223,.4);
-            animation: particleFloat 12s linear infinite;
+            position:absolute;width:4px;height:4px;border-radius:50%;
+            background:rgba(2,108,223,.7);
+            box-shadow:0 0 14px rgba(2,108,223,.9), 0 0 28px rgba(2,108,223,.5);
+            animation: particleFloat 10s linear infinite;
         }
-        .particle.p1{top:90%;left:15%;animation-delay:0s}
-        .particle.p2{top:90%;left:35%;animation-delay:-2.5s;background:rgba(208,0,111,.6);box-shadow:0 0 12px rgba(208,0,111,.8)}
-        .particle.p3{top:90%;left:55%;animation-delay:-5s}
-        .particle.p4{top:90%;left:75%;animation-delay:-7.5s;background:rgba(124,58,237,.6);box-shadow:0 0 12px rgba(124,58,237,.8)}
-        .particle.p5{top:90%;left:25%;animation-delay:-3s}
-        .particle.p6{top:90%;left:65%;animation-delay:-9s;background:rgba(34,197,94,.6);box-shadow:0 0 12px rgba(34,197,94,.8)}
-        .particle.p7{top:90%;left:45%;animation-delay:-11s}
-        .particle.p8{top:90%;left:85%;animation-delay:-1s}
+        .particle.p1 {top:95%;left:6%; animation-delay:0s}
+        .particle.p2 {top:95%;left:18%;animation-delay:-1.2s; background:rgba(208,0,111,.7);box-shadow:0 0 14px rgba(208,0,111,.9),0 0 28px rgba(208,0,111,.5)}
+        .particle.p3 {top:95%;left:30%;animation-delay:-2.4s}
+        .particle.p4 {top:95%;left:42%;animation-delay:-3.6s; background:rgba(124,58,237,.7);box-shadow:0 0 14px rgba(124,58,237,.9),0 0 28px rgba(124,58,237,.5)}
+        .particle.p5 {top:95%;left:54%;animation-delay:-4.8s}
+        .particle.p6 {top:95%;left:66%;animation-delay:-6s;   background:rgba(34,197,94,.7);box-shadow:0 0 14px rgba(34,197,94,.9),0 0 28px rgba(34,197,94,.5)}
+        .particle.p7 {top:95%;left:78%;animation-delay:-7.2s; background:rgba(245,158,11,.7);box-shadow:0 0 14px rgba(245,158,11,.9),0 0 28px rgba(245,158,11,.5)}
+        .particle.p8 {top:95%;left:88%;animation-delay:-8.4s}
+        .particle.p9 {top:95%;left:12%;animation-delay:-3s;   background:rgba(245,158,11,.7);box-shadow:0 0 14px rgba(245,158,11,.9)}
+        .particle.p10{top:95%;left:60%;animation-delay:-5.5s; background:rgba(208,0,111,.7);box-shadow:0 0 14px rgba(208,0,111,.9)}
+        .particle.p11{top:95%;left:36%;animation-delay:-7s}
+        .particle.p12{top:95%;left:84%;animation-delay:-9s;   background:rgba(124,58,237,.7);box-shadow:0 0 14px rgba(124,58,237,.9)}
         @keyframes particleFloat{
             0%   { transform:translateY(0) scale(.5); opacity:0; }
             10%  { opacity:1; }
-            90%  { opacity:.6; }
-            100% { transform:translateY(-100vh) scale(1.2); opacity:0; }
+            90%  { opacity:.7; }
+            100% { transform:translateY(-110vh) scale(1.4); opacity:0; }
+        }
+
+        /* ═══ ECUALIZADOR PULSANTE EN BASE ═══ */
+        .equalizer{
+            position:fixed;left:0;right:0;bottom:0;z-index:1;
+            display:flex;justify-content:center;align-items:flex-end;gap:5px;
+            height:120px;padding:0 20px;pointer-events:none;
+            opacity:.55;
+            mask-image:linear-gradient(180deg, transparent 0%, #000 60%);
+            -webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 60%);
+        }
+        .eq-bar{
+            width:7px;
+            background:linear-gradient(180deg, #d0006f, #7c3aed, #026CDF);
+            border-radius:3px 3px 0 0;
+            box-shadow:0 0 10px rgba(2,108,223,.5);
+            animation: eqBeat 1s ease-in-out infinite;
+            transform-origin:bottom;
+        }
+        @keyframes eqBeat{
+            0%,100% { transform:scaleY(.18); }
+            25%     { transform:scaleY(.65); }
+            50%     { transform:scaleY(1); }
+            75%     { transform:scaleY(.45); }
         }
 
         /* ═══ TARJETA DE LOGIN — GLASSMORPHISM ═══ */
@@ -364,7 +452,17 @@
     <div class="bg-gradient" aria-hidden="true"></div>
     <div class="bg-grid" aria-hidden="true"></div>
 
-    <!-- Iconos flotantes (tickets, notas musicales, estrellas) -->
+    <!-- Focos de escenario barriendo -->
+    <div class="spotlights" aria-hidden="true">
+        <div class="spotlight s1"></div>
+        <div class="spotlight s2"></div>
+        <div class="spotlight s3"></div>
+    </div>
+
+    <!-- Estrellas twinkling (generadas por JS para dispersión natural) -->
+    <div class="stars" id="starsLayer" aria-hidden="true"></div>
+
+    <!-- Iconos flotantes (tickets, notas musicales, estrellas) — 12 unidades -->
     <div class="float-layer" aria-hidden="true">
         <span class="float-icon f1">🎟️</span>
         <span class="float-icon f2">🎵</span>
@@ -374,9 +472,16 @@
         <span class="float-icon f6">🎫</span>
         <span class="float-icon f7">🎭</span>
         <span class="float-icon f8">🎼</span>
+        <span class="float-icon f9">🥁</span>
+        <span class="float-icon f10">🎹</span>
+        <span class="float-icon f11">🪩</span>
+        <span class="float-icon f12">🎺</span>
     </div>
 
-    <!-- Partículas brillantes flotando hacia arriba -->
+    <!-- Confetti cayendo continuamente (generado por JS) -->
+    <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+
+    <!-- Partículas brillantes flotando hacia arriba — 12 unidades -->
     <div class="particles" aria-hidden="true">
         <span class="particle p1"></span>
         <span class="particle p2"></span>
@@ -386,7 +491,14 @@
         <span class="particle p6"></span>
         <span class="particle p7"></span>
         <span class="particle p8"></span>
+        <span class="particle p9"></span>
+        <span class="particle p10"></span>
+        <span class="particle p11"></span>
+        <span class="particle p12"></span>
     </div>
+
+    <!-- Ecualizador estilo concierto en la base -->
+    <div class="equalizer" id="equalizer" aria-hidden="true"></div>
 
     <div class="login-wrap">
         <form class="login-box" id="loginBox" onsubmit="doLogin(event)">
@@ -470,6 +582,71 @@
         }
         function setLoginLang(l){ LANG=l; localStorage.setItem('tm_lang', l); applyLoginI18n(); }
         applyLoginI18n();
+
+        // ═══ ESTRELLAS TWINKLING (40 dispersas aleatoriamente) ═══
+        (function genStars(){
+            const layer = document.getElementById('starsLayer');
+            if(!layer) return;
+            for(let i=0;i<40;i++){
+                const s = document.createElement('span');
+                s.className = 'star';
+                s.style.top = (Math.random()*100)+'%';
+                s.style.left = (Math.random()*100)+'%';
+                s.style.animationDelay = (Math.random()*3)+'s';
+                s.style.animationDuration = (2.5 + Math.random()*2.5)+'s';
+                // Tamaño aleatorio
+                const size = 1.5 + Math.random()*2.5;
+                s.style.width = size+'px';
+                s.style.height = size+'px';
+                layer.appendChild(s);
+            }
+        })();
+
+        // ═══ ECUALIZADOR (28 barras, animación phase-shifted) ═══
+        (function genEqualizer(){
+            const eq = document.getElementById('equalizer');
+            if(!eq) return;
+            for(let i=0;i<28;i++){
+                const b = document.createElement('span');
+                b.className = 'eq-bar';
+                // Cada barra con altura base aleatoria + delay distinto
+                b.style.height = (40 + Math.random()*70)+'px';
+                b.style.animationDelay = (-Math.random()*1.2)+'s';
+                b.style.animationDuration = (0.7 + Math.random()*0.8)+'s';
+                eq.appendChild(b);
+            }
+        })();
+
+        // ═══ CONFETTI INFINITO (tickets, estrellas, notas cayendo) ═══
+        (function genConfetti(){
+            const layer = document.getElementById('confettiLayer');
+            if(!layer) return;
+            const symbols = ['🎟️','⭐','🎵','✨','🎉','🎊','🎶','💫'];
+            // Spawn inicial 18 piezas con offsets escalonados
+            for(let i=0;i<18;i++){
+                spawnConfetti(layer, symbols, true);
+            }
+            // Spawn continuo: una pieza nueva cada ~700ms
+            setInterval(()=>spawnConfetti(layer, symbols, false), 700);
+        })();
+        function spawnConfetti(layer, symbols, initial){
+            const c = document.createElement('span');
+            c.className = 'confetti';
+            c.textContent = symbols[Math.floor(Math.random()*symbols.length)];
+            c.style.left = (Math.random()*100)+'%';
+            c.style.fontSize = (14 + Math.random()*16)+'px';
+            const dur = 8 + Math.random()*10;
+            c.style.animationDuration = dur+'s';
+            // Si es spawn inicial, escalonar el delay para que ya estén dispersos
+            if(initial){
+                c.style.animationDelay = (-Math.random()*dur)+'s';
+            }
+            // Color tint aleatorio (filtro hue rotate)
+            c.style.filter = `drop-shadow(0 2px 6px rgba(0,0,0,.4)) hue-rotate(${Math.floor(Math.random()*360)}deg)`;
+            layer.appendChild(c);
+            // Limpieza tras animación para no acumular nodos
+            setTimeout(()=>{ try{ c.remove(); }catch(_){} }, (dur+1)*1000);
+        }
 
         async function doLogin(e){
             e.preventDefault();
