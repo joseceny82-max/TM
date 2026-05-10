@@ -159,14 +159,41 @@ def _step_captcha() -> dict:
 
 
 def _step_notifications() -> dict:
-    """Lee notifications.get_config()."""
+    """Lee notifications.get_config() — soporta schema nested (actual) y
+    top-level legacy. Filtra valores placeholder para no dar falsos
+    positivos cuando el config tiene strings tipo 'PLACEHOLDER' o 'YOUR_*'.
+    """
     try:
         import notifications
         cfg = notifications.get_config() if hasattr(notifications, "get_config") else {}
     except Exception:
         cfg = {}
-    has_discord = bool(cfg.get("discord_webhook"))
-    has_telegram = bool(cfg.get("telegram_bot_token") and cfg.get("telegram_chat_id"))
+
+    def _is_real(v):
+        """True si v es un valor configurado real (no vacío, no placeholder)."""
+        if not v:
+            return False
+        s = str(v).strip()
+        if not s or len(s) < 4:
+            return False
+        upper = s.upper()
+        for marker in ("PLACEHOLDER", "YOUR_", "EXAMPLE", "XXXX", "TG-PLACEHOLDER"):
+            if marker in upper:
+                return False
+        return True
+
+    # Discord: nested actual O top-level legacy
+    discord_url = (cfg.get("discord") or {}).get("webhook") or cfg.get("discord_webhook")
+    discord_enabled = (cfg.get("discord") or {}).get("enabled", True)
+    has_discord = _is_real(discord_url) and bool(discord_enabled)
+
+    # Telegram: nested actual O top-level legacy
+    tg = cfg.get("telegram") or {}
+    tg_token = tg.get("token") or cfg.get("telegram_bot_token")
+    tg_chat = tg.get("chat_id") or cfg.get("telegram_chat_id")
+    tg_enabled = tg.get("enabled", True)
+    has_telegram = _is_real(tg_token) and _is_real(tg_chat) and bool(tg_enabled)
+
     ok = has_discord or has_telegram
     return {
         "id": "notifications",
