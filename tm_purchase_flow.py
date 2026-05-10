@@ -272,11 +272,17 @@ def step_inject_acpat(ctx: dict) -> dict:
             ctx["acpat_token"] = r.get("token")
             ctx["acpat_used_count"] = r.get("entry", {}).get("used_count", 0)
             ctx["acpat_source"] = "cookie_warmer_pool"
-        return {"step": "inject_acpat", "ok": r.get("ok", False),
+            return {"step": "inject_acpat", "ok": True,
+                    "elapsed_ms": int((time.time()-started)*1000),
+                    "data": {"source": "cookie_warmer_pool",
+                             "used_count": r.get("entry", {}).get("used_count")}}
+        # Sin tokens en pool → skip cleanly. El bot esperará la cola normalmente
+        # si TM activa Queue-it. No es bug ni fail crítico — es estado normal
+        # cuando el pool está vacío. Los tokens se capturan automáticamente en
+        # runs reales cuando un worker pasa por la cola.
+        return {"step": "inject_acpat", "ok": True,
                 "elapsed_ms": int((time.time()-started)*1000),
-                "data": {"source": "cookie_warmer_pool",
-                         "used_count": r.get("entry", {}).get("used_count")} if r.get("ok") else None,
-                "error": None if r.get("ok") else r.get("error", "sin tokens disponibles")}
+                "data": {"skipped": "acpat_pool_empty (queue waited normally if needed)"}}
     except Exception as e:
         return {"step": "inject_acpat", "ok": False,
                 "elapsed_ms": int((time.time()-started)*1000),
@@ -568,10 +574,28 @@ def step_pick_card(ctx: dict) -> dict:
 
 
 def step_tokenize_card(ctx: dict) -> dict:
-    """Paso 8c: pre-tokeniza la tarjeta con Adyen para checkout < 2s."""
+    """Paso 8c: pre-tokeniza la tarjeta con Adyen para checkout < 2s.
+
+    OPCIONAL — el flow real `_compra_parallel.py:fill_card()` pega la tarjeta
+    directamente en el form HTML de TM (como un humano), sin necesidad de
+    Adyen API. Si no hay api_key configurada, este paso skipea OK y el flow
+    continúa — checkout será 4-8s en lugar de <2s pero igual funcional.
+    """
     started = time.time()
     try:
-        import adyen_tokenizer
+        import adyen_tokenizer, json as _json, os as _os, config as _cfg
+        # Verificar si Adyen está configurado. Si no, skip cleanly.
+        try:
+            ad_path = _cfg.ruta('adyen_config.json') if hasattr(_cfg, 'ruta') else 'adyen_config.json'
+            if _os.path.exists(ad_path):
+                ad_cfg = _json.loads(open(ad_path, encoding='utf-8').read())
+            else:
+                ad_cfg = {}
+            if not ad_cfg.get('api_key'):
+                return {"step": "tokenize_card", "ok": True,
+                        "elapsed_ms": int((time.time()-started)*1000),
+                        "data": {"skipped": "adyen_api_key_not_configured (form fill fallback)"}}
+        except Exception: pass
         card = ctx.get("card") or {}
         if not card.get("number"):
             # simulate-safe: sin PAN, generamos fake token
@@ -1100,3 +1124,51 @@ def run_many(event_id: str, count: int = 3, mode: str = "simulate",
 
 def get_strategies() -> List[dict]:
     return [{"id": k, "name": v} for k, v in STRATEGIES.items()]
+
+
+def self_test() -> dict:
+    """Validación básica del orquestador (política proyecto, módulos >50 LOC).
+
+    Verifica que las 16 funciones step_* existen y son callables, y que las
+    constantes de configuración están definidas. NO ejecuta el flow real
+    (eso requiere event_id válido + browser + red).
+    """
+    out = {'ok': True, 'checks': {}, 'errors': []}
+    expected_steps = [
+        'step_dfa_compliance', 'step_pick_proxy', 'step_pin_proxy_session',
+        'step_warm_session', 'step_get_session', 'step_inject_acpat',
+        'step_find_event', 'step_check_onsale_window', 'step_try_presale_code',
+        'step_simulate_cart', 'step_pick_card', 'step_tokenize_card',
+        'step_simulate_checkout', 'step_record_card_usage',
+        'step_register_purchase', 'step_notify',
+    ]
+    try:
+        for fn in expected_steps + ['run_flow', 'run_many', 'get_strategies']:
+            present = fn in globals() and callable(globals()[fn])
+            out['checks'][f'fn:{fn}'] = present
+            if not present:
+                out['ok'] = False
+                out['errors'].append(f'fn missing: {fn}')
+        for c in ('STRATEGIES',):
+            out['checks'][f'const:{c}'] = c in globals()
+            if c not in globals():
+                out['ok'] = False
+                out['errors'].append(f'const missing: {c}')
+        # Strategies tiene al menos best_available
+        if 'STRATEGIES' in globals():
+            stg = globals()['STRATEGIES']
+            out['checks']['strategies:has_best_available'] = 'best_available' in stg
+        # Imports laterales clave
+        for mod in ('event_manager', 'cookie_warmer', 'queue_manager',
+                    'proxy_health', 'ja4_spoof', 'purchases_manager'):
+            try:
+                __import__(mod)
+                out['checks'][f'import:{mod}'] = True
+            except Exception as e:
+                out['checks'][f'import:{mod}'] = False
+                out['errors'].append(f'{mod}: {type(e).__name__}: {str(e)[:60]}')
+                out['ok'] = False
+    except Exception as e:
+        out['ok'] = False
+        out['errors'].append(f'{type(e).__name__}: {e}')
+    return out
