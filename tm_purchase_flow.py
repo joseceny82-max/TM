@@ -467,6 +467,28 @@ def step_simulate_cart(ctx: dict) -> dict:
                 "error": "queue-it 429", "error_type": "queue", "retriable": True}
 
 
+def step_wait_queue(ctx: dict) -> dict:
+    """Paso 7b: cuando step_simulate_cart devuelve queue-it 429, espera N segundos
+    antes del retry. Solo se invoca en mode=simulate — en mode=live el wrapper
+    interno (`_compra_parallel.py`) ya gestiona queue-it con polling de 3min,
+    así que reintentar a este nivel arriesgaría doble-purchase.
+
+    Backoff fijo conservador: 5s. La probabilidad de 2× queue 429 consecutivos
+    en simulate es 0.08² ≈ 0.6%, así que 1 retry cubre el 99.4% de casos.
+    """
+    started = time.time()
+    wait_s = float(ctx.get("queue_wait_s", 5))
+    try:
+        time.sleep(wait_s)
+        return {"step": "wait_queue", "ok": True,
+                "elapsed_ms": int((time.time()-started)*1000),
+                "data": {"waited_s": wait_s, "reason": "queue-it_429_backoff"}}
+    except Exception as e:
+        return {"step": "wait_queue", "ok": False,
+                "elapsed_ms": int((time.time()-started)*1000),
+                "error": f"{type(e).__name__}: {e}"}
+
+
 def step_solve_captcha(ctx: dict) -> dict:
     """Paso 8: resuelve CAPTCHA si el anterior lo requirió.
 
@@ -981,6 +1003,22 @@ def run_flow(event_id: str, quantity: int = 2, mode: str = "simulate",
             _append_log(flow_id, r)
             if broadcast: broadcast("purchase_flow_step", {"flow_id": flow_id, "step": r})
 
+    # 8b. queue-it 429 retry (SOLO simulate — en live el wrapper interno
+    # `_compra_parallel.py` gestiona queue-it con polling 3min, reintentar
+    # aquí causaría doble-spawn de browser + posible doble-purchase).
+    # Max 1 retry con backoff 5s — suficiente para 99.4% de casos en simulate.
+    elif (not r["ok"] and r.get("error_type") == "queue"
+            and r.get("retriable") and ctx.get("mode") == "simulate"):
+        wq = step_wait_queue(ctx)
+        result["steps"].append(wq)
+        _append_log(flow_id, wq)
+        if broadcast: broadcast("purchase_flow_step", {"flow_id": flow_id, "step": wq})
+        if wq["ok"]:
+            r = step_simulate_cart(ctx)
+            result["steps"].append(r)
+            _append_log(flow_id, r)
+            if broadcast: broadcast("purchase_flow_step", {"flow_id": flow_id, "step": r})
+
     if not r["ok"]:
         result["error"] = r.get("error")
         result["elapsed_ms"] = int((time.time()-started_all)*1000)
@@ -1138,9 +1176,9 @@ def self_test() -> dict:
         'step_dfa_compliance', 'step_pick_proxy', 'step_pin_proxy_session',
         'step_warm_session', 'step_get_session', 'step_inject_acpat',
         'step_find_event', 'step_check_onsale_window', 'step_try_presale_code',
-        'step_simulate_cart', 'step_pick_card', 'step_tokenize_card',
-        'step_simulate_checkout', 'step_record_card_usage',
-        'step_register_purchase', 'step_notify',
+        'step_simulate_cart', 'step_wait_queue', 'step_solve_captcha',
+        'step_pick_card', 'step_tokenize_card', 'step_simulate_checkout',
+        'step_record_card_usage', 'step_register_purchase', 'step_notify',
     ]
     try:
         for fn in expected_steps + ['run_flow', 'run_many', 'get_strategies']:

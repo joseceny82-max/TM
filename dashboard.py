@@ -3572,6 +3572,73 @@ def api_adyen_del(tid):
 
 
 # ==========================================
+#  API — EXTENSION RECOMMENDER (catálogo bot)
+# ==========================================
+@app.route("/api/extensions/recommendations")
+@login_required
+def api_extensions_list():
+    import extension_recommender
+    status = request.args.get("status") or None
+    tier = request.args.get("tier") or None
+    return jsonify({
+        "ok": True,
+        "recommendations": extension_recommender.list_recommendations(
+            filter_status=status, filter_tier=tier),
+        "stats": extension_recommender.get_stats(),
+    })
+
+
+@app.route("/api/extensions/search")
+@login_required
+def api_extensions_search():
+    import extension_recommender
+    q = request.args.get("q") or ""
+    limit = int(request.args.get("limit") or 20)
+    return jsonify({
+        "ok": True, "query": q,
+        "matches": extension_recommender.search(q, limit=limit),
+    })
+
+
+@app.route("/api/extensions/<ext_id>")
+@login_required
+def api_extensions_detail(ext_id):
+    import extension_recommender
+    ext = extension_recommender.get_extension(ext_id)
+    if not ext:
+        return jsonify({"ok": False, "error": "not_found"}), 404
+    return jsonify({"ok": True, "extension": ext})
+
+
+@app.route("/api/extensions/<ext_id>/interest", methods=["POST"])
+@login_required
+def api_extensions_interest(ext_id):
+    import extension_recommender
+    interested = bool((request.get_json() or {}).get("interested", True))
+    return jsonify(extension_recommender.mark_interest(ext_id, interested))
+
+
+@app.route("/api/extensions/<ext_id>/install", methods=["POST"])
+@login_required
+def api_extensions_install(ext_id):
+    """Marca extensión como instalada por el usuario.
+
+    No instala nada automáticamente — solo registra el evento. La activación
+    real depende del módulo (algunos: start_scheduler endpoint, otros: config
+    + restart, otros: código nuevo a implementar).
+    """
+    import extension_recommender
+    return jsonify(extension_recommender.mark_installed(ext_id))
+
+
+@app.route("/api/extensions/self-test", methods=["POST"])
+@login_required
+def api_extensions_selftest():
+    import extension_recommender
+    return jsonify(extension_recommender.self_test())
+
+
+# ==========================================
 #  API — Mobile 4G/5G Proxies
 # ==========================================
 @app.route("/api/mobile-proxies/config", methods=["GET", "POST"])
@@ -11530,6 +11597,18 @@ if __name__ == "__main__":
             log.info("Discovery scheduler: inactivo (activable desde UI)")
     except Exception as e:
         log.warning(f"Discovery scheduler no arrancó: {e}")
+
+    # Arrancar scheduler de proxy_health (benchmark periódico cada 30 min)
+    # Detecta proxies muertos antes del drop sin necesidad de manual check.
+    try:
+        if os.environ.get("TM_AUTO_PROXY_HEALTH", "1") == "1":
+            _phs = proxy_health.start_scheduler(
+                interval_min=int(os.environ.get("TM_PROXY_HEALTH_INTERVAL_MIN", "30")),
+                broadcast=(lambda evt, payload: socketio.emit(evt, payload)) if socketio else None,
+            )
+            log.info(f"Proxy health scheduler: {_phs}")
+    except Exception as e:
+        log.warning(f"proxy_health scheduler no arrancó: {e}")
 
     # Arrancar watcher CSV bidireccional de Cuentas/Tarjetas
     try:

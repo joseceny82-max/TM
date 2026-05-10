@@ -1542,7 +1542,7 @@
                         <div class="dash-pane-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);box-shadow:0 6px 18px rgba(2,108,223,.45),0 0 0 1px rgba(255,255,255,.08) inset">🌍</div>
                         <div class="dash-pane-title">
                             <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">🌍 <span data-i18n="domain.current">Dominio actual</span></h3>
-                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Región TM activa · modo multi-dominio</p>
+                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="dash.domain.subtitle">Región TM activa · modo multi-dominio</p>
                         </div>
                         <span id="ws-status-dot" class="ws-dot" title="WebSocket">●</span>
                     </div>
@@ -1557,8 +1557,8 @@
                     <div class="dash-pane-head">
                         <div class="dash-pane-icon" style="background:linear-gradient(135deg,#10b981,#047857);box-shadow:0 6px 18px rgba(16,185,129,.45),0 0 0 1px rgba(255,255,255,.08) inset">📡</div>
                         <div class="dash-pane-title">
-                            <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">📡 Última actividad</h3>
-                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Últimos eventos del bot en vivo</p>
+                            <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">📡 <span data-i18n="dash.activity.title">Última actividad</span></h3>
+                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="dash.activity.subtitle">Últimos eventos del bot en vivo</p>
                         </div>
                         <button class="btn btn-sm" style="font-size:10px;padding:4px 10px" onclick="loadDashboard()">🔄</button>
                     </div>
@@ -1615,12 +1615,12 @@
             <!-- TIMELINE + BREAKDOWN -->
             <div class="grid-2">
                 <div class="pc-timeline">
-                    <h4>📈 Actividad últimas 24h</h4>
+                    <h4 data-i18n="pc.timeline_24h">📈 Actividad últimas 24h</h4>
                     <div class="pc-tl-bars" id="pc-timeline-bars"></div>
                     <div class="pc-tl-labels" id="pc-timeline-labels"></div>
                 </div>
                 <div class="pc-timeline">
-                    <h4>📊 Por categoría</h4>
+                    <h4 data-i18n="pc.by_category">📊 Por categoría</h4>
                     <div class="pc-breakdown" id="pc-breakdown"></div>
                 </div>
             </div>
@@ -1782,8 +1782,8 @@
                             <div style="display:flex;align-items:center;gap:12px">
                                 <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 18px rgba(124,58,237,.45)">🔭</div>
                                 <div style="flex:1">
-                                    <h3 style="margin:0;font-size:16px;font-weight:800;color:#fff">Obtener tu API key Discovery de Ticketmaster</h3>
-                                    <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Gratuito · 5.000 peticiones/día · ~2 minutos</p>
+                                    <h3 style="margin:0;font-size:16px;font-weight:800;color:#fff" data-i18n="disc.howto_title">Obtener tu API key Discovery de Ticketmaster</h3>
+                                    <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="disc.howto_free">Gratuito · 5.000 peticiones/día · ~2 minutos</p>
                                 </div>
                                 <button class="btn btn-sm" onclick="closeDiscoveryWizard()">✕</button>
                             </div>
@@ -1871,10 +1871,10 @@
                     <button class="btn btn-sm" onclick="toggleAllSites(true)" title="Activar todos los sitios">✓&nbsp;<span data-i18n="sites.all_on">Todos ON</span></button>
                     <button class="btn btn-sm" onclick="toggleAllSites(false)" title="Desactivar todos los sitios">✗&nbsp;<span data-i18n="sites.all_off">Todos OFF</span></button>
                     <span style="width:1px;height:20px;background:var(--border);margin:0 4px"></span>
-                    <button class="btn btn-sm" onclick="bulkByCategory('Oficial',true)">🎫&nbsp;Solo Oficial</button>
-                    <button class="btn btn-sm" onclick="bulkByCategory('LiveNation',true)">🎤&nbsp;Solo Live Nation</button>
-                    <button class="btn btn-sm" onclick="bulkByCategory('Reventa',true)">🔄&nbsp;Solo Reventa</button>
-                    <button class="btn btn-sm" onclick="bulkByFavorites(true)">⭐&nbsp;Solo Favoritos</button>
+                    <button class="btn btn-sm" onclick="bulkByCategory('Oficial',true)" data-i18n="ev.bulk_official">🎫&nbsp;Solo Oficial</button>
+                    <button class="btn btn-sm" onclick="bulkByCategory('LiveNation',true)" data-i18n="ev.bulk_livenation">🎤&nbsp;Solo Live Nation</button>
+                    <button class="btn btn-sm" onclick="bulkByCategory('Reventa',true)" data-i18n="ev.bulk_resale">🔄&nbsp;Solo Reventa</button>
+                    <button class="btn btn-sm" onclick="bulkByFavorites(true)" data-i18n="ev.bulk_favorites">⭐&nbsp;Solo Favoritos</button>
                 </div>
 
                 <!-- Filtros pills + búsqueda integrada -->
@@ -1981,20 +1981,20 @@
                 <div style="display:flex;align-items:center;gap:14px">
                     <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#026CDF,#0052b4);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(2,108,223,.4)">🤖</div>
                     <div>
-                        <h3 style="margin:0;font-size:18px;font-weight:700">Sniper Bot</h3>
-                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Workers · Queue-it · PerimeterX · proxies · captchas · navegadores · lanzamiento multi-bot</p>
+                        <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="bot.title">Sniper Bot</h3>
+                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="bot.subtitle">Workers · Queue-it · PerimeterX · proxies · captchas · navegadores · lanzamiento multi-bot</p>
                     </div>
                 </div>
             </div>
 
             <!-- SUB-TABS -->
             <div class="sub-tabs" style="flex-wrap:wrap;margin-top:0;border-top:1px solid var(--border)">
-                <div class="sub-tab active" data-sub="workers" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(2,108,223,.35);color:#fff">🤖</span>Workers</div>
-                <div class="sub-tab" data-sub="strategies"><span class="sub-icon" style="background:linear-gradient(135deg,#10b981,#047857);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(16,185,129,.35);color:#fff">🎯</span>Estrategias</div>
-                <div class="sub-tab" data-sub="proxies"><span class="sub-icon" style="background:linear-gradient(135deg,#0077b6,#023e8a);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(0,119,182,.35);color:#fff">🔀</span>Proxies</div>
-                <div class="sub-tab" data-sub="antibot"><span class="sub-icon" style="background:linear-gradient(135deg,#dc2626,#7f1d1d);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(220,38,38,.35);color:#fff">🛡</span>Anti-Bot</div>
-                <div class="sub-tab" data-sub="captcha"><span class="sub-icon" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(124,58,237,.4);color:#fff">🧠</span>CAPTCHA</div>
-                <div class="sub-tab" data-sub="browsers"><span class="sub-icon" style="background:linear-gradient(135deg,#0e9f6e,#014737);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(14,159,110,.35);color:#fff">🧪</span>Navegadores</div>
+                <div class="sub-tab active" data-sub="workers" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(2,108,223,.35);color:#fff">🤖</span><span data-i18n="bot.tab.workers">Workers</span></div>
+                <div class="sub-tab" data-sub="strategies"><span class="sub-icon" style="background:linear-gradient(135deg,#10b981,#047857);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(16,185,129,.35);color:#fff">🎯</span><span data-i18n="bot.tab.strategies">Estrategias</span></div>
+                <div class="sub-tab" data-sub="proxies"><span class="sub-icon" style="background:linear-gradient(135deg,#0077b6,#023e8a);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(0,119,182,.35);color:#fff">🔀</span><span data-i18n="bot.tab.proxies">Proxies</span></div>
+                <div class="sub-tab" data-sub="antibot"><span class="sub-icon" style="background:linear-gradient(135deg,#dc2626,#7f1d1d);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(220,38,38,.35);color:#fff">🛡</span><span data-i18n="bot.tab.antibot">Anti-Bot</span></div>
+                <div class="sub-tab" data-sub="captcha"><span class="sub-icon" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(124,58,237,.4);color:#fff">🧠</span><span data-i18n="bot.tab.captcha">CAPTCHA</span></div>
+                <div class="sub-tab" data-sub="browsers"><span class="sub-icon" style="background:linear-gradient(135deg,#0e9f6e,#014737);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(14,159,110,.35);color:#fff">🧪</span><span data-i18n="bot.tab.browsers">Navegadores</span></div>
                 <div class="sub-tab" data-sub="bypass" title="Bypass clásico + Bypass Pro 2026" data-i18n-title="tip.bypass_classic_pro"><span class="sub-icon" style="background:linear-gradient(135deg,#d0006f,#7c3aed,#026CDF);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(208,0,111,.4);color:#fff">⚡🧬</span>Bypass</div>
                                 <div class="sub-tab" data-sub="purchase-flow"><span class="sub-icon" style="background:linear-gradient(135deg,#22c55e,#15803d);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(34,197,94,.45);color:#fff">🎯</span><span data-i18n="pf.tab">Flujo de compra</span></div>
             </div>
@@ -2006,30 +2006,30 @@
                     <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
                         <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#00c853,#1b5e20);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 12px rgba(0,200,83,.35)">⚙️</div>
                         <div>
-                            <h3 style="margin:0;font-size:16px;font-weight:700">Automatización del Worker</h3>
-                            <p style="font-size:11px;color:var(--text-muted);margin:2px 0 0;max-width:520px;line-height:1.4">Toggle qué hace el bot automáticamente. Si desactivas Auto-compra, el bot pasa Queue-it + login + selección pero NO pulsa Pay Now.</p>
+                            <h3 style="margin:0;font-size:16px;font-weight:700" data-i18n="bot.automation.title">Automatización del Worker</h3>
+                            <p style="font-size:11px;color:var(--text-muted);margin:2px 0 0;max-width:520px;line-height:1.4" data-i18n="bot.automation.desc">Toggle qué hace el bot automáticamente. Si desactivas Auto-compra, el bot pasa Queue-it + login + selección pero NO pulsa Pay Now.</p>
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
                         <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer">
                             <input type="checkbox" id="wk-auto-buy" onchange="saveBotSettings()" style="width:18px;height:18px;accent-color:#00c853;cursor:pointer">
-                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">🛒 Auto-compra <span id="wk-auto-buy-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">Click Pay Now final (tarjeta + tokenize TM)</div></div>
+                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">🛒 <span data-i18n="bot.toggle.auto_buy">Auto-compra</span> <span id="wk-auto-buy-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px" data-i18n="bot.toggle.auto_buy_desc">Click Pay Now final (tarjeta + tokenize TM)</div></div>
                         </label>
                         <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer">
                             <input type="checkbox" id="wk-auto-fill" onchange="saveBotSettings()" style="width:18px;height:18px;accent-color:#29b6f6;cursor:pointer">
-                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">💳 Rellenar tarjeta <span id="wk-auto-fill-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">Auto-rellena CC en iframes de pago TM</div></div>
+                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">💳 <span data-i18n="bot.toggle.auto_fill">Rellenar tarjeta</span> <span id="wk-auto-fill-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px" data-i18n="bot.toggle.auto_fill_desc">Auto-rellena CC en iframes de pago TM</div></div>
                         </label>
                         <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer">
                             <input type="checkbox" id="wk-keep-open" onchange="saveBotSettings()" style="width:18px;height:18px;accent-color:#ff9100;cursor:pointer">
-                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">🔓 Mantener abierto <span id="wk-keep-open-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">No cerrar navegador tras completar</div></div>
+                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">🔓 <span data-i18n="bot.toggle.keep_open">Mantener abierto</span> <span id="wk-keep-open-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px" data-i18n="bot.toggle.keep_open_desc">No cerrar navegador tras completar</div></div>
                         </label>
                         <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer">
                             <input type="checkbox" id="wk-headless" onchange="saveBotSettings()" style="width:18px;height:18px;accent-color:#026CDF;cursor:pointer">
-                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">👻 Headless <span id="wk-headless-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">Sin ventana visible (Chromium propio)</div></div>
+                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">👻 <span data-i18n="bot.toggle.headless">Headless</span> <span id="wk-headless-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px" data-i18n="bot.toggle.headless_desc">Sin ventana visible (Chromium propio)</div></div>
                         </label>
                         <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer">
                             <input type="checkbox" id="wk-behavioral" onchange="saveBotSettings()" style="width:18px;height:18px;accent-color:#26a69a;cursor:pointer">
-                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">🧠 Behavioral <span id="wk-behavioral-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">Mouse + scroll + timing humano (anti-detección)</div></div>
+                            <div style="flex:1"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">🧠 <span data-i18n="bot.toggle.behavioral">Behavioral</span> <span id="wk-behavioral-state" style="font-size:9px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.08);font-weight:600">OFF</span></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px" data-i18n="bot.toggle.behavioral_desc">Mouse + scroll + timing humano (anti-detección)</div></div>
                         </label>
                     </div>
                     <div id="wk-save-status" style="font-size:10px;color:var(--text-muted);margin-top:10px;min-height:14px"></div>
@@ -2037,15 +2037,15 @@
 
                 <div class="card" style="border-color:var(--accent);position:relative;overflow:hidden">
                     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2),#d0006f)"></div>
-                    <h3 style="font-size:18px;margin-bottom:4px">🚀 Lanzar Bot de Compra</h3>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px">Selecciona evento, dominio TM y cuenta. El bot entra en Queue-it, resuelve protecciones, selecciona sección y compra.</p>
+                    <h3 style="font-size:18px;margin-bottom:4px" data-i18n="bot.launch.title">🚀 Lanzar Bot de Compra</h3>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px" data-i18n="bot.launch.desc">Selecciona evento, dominio TM y cuenta. El bot entra en Queue-it, resuelve protecciones, selecciona sección y compra.</p>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-                        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Dominio Ticketmaster</label><select class="input" id="bot-site" style="width:100%"><option value="">Selecciona dominio...</option></select></div>
-                        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Cuenta TM</label><select class="input" id="bot-account" style="width:100%"><option value="">Auto-rotación</option></select></div>
+                        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px" data-i18n="bot.lbl.domain">Dominio Ticketmaster</label><select class="input" id="bot-site" style="width:100%"><option value="" data-i18n="bot.lbl.select_domain">Selecciona dominio...</option></select></div>
+                        <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px" data-i18n="bot.lbl.account">Cuenta TM</label><select class="input" id="bot-account" style="width:100%"><option value="" data-i18n="bot.lbl.auto_rotate">Auto-rotación</option></select></div>
                     </div>
                     <div class="card" style="border:1px solid var(--accent);border-left:5px solid var(--accent);padding:14px;margin-bottom:10px;background:rgba(2,108,223,.04)">
                         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-                            <div><h3 style="margin:0;font-size:14px;display:flex;align-items:center;gap:6px">🎯 Evento objetivo</h3><p style="font-size:10px;color:var(--text-muted);margin:2px 0 0">Elige un evento del desplegable (rápido) o marca varios en el grid.</p></div>
+                            <div><h3 style="margin:0;font-size:14px;display:flex;align-items:center;gap:6px">🎯 <span data-i18n="bot.lbl.target">Evento objetivo</span></h3><p style="font-size:10px;color:var(--text-muted);margin:2px 0 0" data-i18n="bot.lbl.target_desc">Elige un evento del desplegable (rápido) o marca varios en el grid.</p></div>
                             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                                 <span id="bot-event-count" style="font-size:11px;color:var(--success);font-weight:700;background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:14px">0 marcados</span>
                                 <button class="btn btn-sm" onclick="loadBotEventsList()" title="Recargar desde pestaña Eventos" data-i18n-title="tip.reload_from_events">🔄</button>
@@ -2058,7 +2058,7 @@
                             <select id="bot-event-select" class="input" onchange="selectBotEventFromDropdown(this.value)" style="flex:1;font-size:12px;font-weight:600;padding:8px 10px">
                                 <option value="">— Selecciona un evento de la lista —</option>
                             </select>
-                            <button type="button" class="btn btn-sm" id="bot-scan-event-btn" onclick="scanCurrentEventFull()" title="Escanea el evento: detecta ofertas + mapa del recinto + sectores. Se cachea por venue para futuros eventos del mismo estadio." style="background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;border:none;font-size:11px;font-weight:700;white-space:nowrap">🔍 Escanear evento</button>
+                            <button type="button" class="btn btn-sm" id="bot-scan-event-btn" onclick="scanCurrentEventFull()" title="Escanea el evento: detecta ofertas + mapa del recinto + sectores. Se cachea por venue para futuros eventos del mismo estadio." data-i18n-title="bot.btn.scan_event_t" style="background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;border:none;font-size:11px;font-weight:700;white-space:nowrap" data-i18n="bot.btn.scan_event">🔍 Escanear evento</button>
                         </div>
 
                         <!-- Buscador + grid con multi-select -->
@@ -2131,7 +2131,7 @@
                             <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer" id="bot-selmode-seatmap-label">
                                 <input type="radio" name="bot-selection-mode" id="bot-selmode-seatmap" value="seatmap" style="margin:0" onchange="updateSeatmapPanelVisibility()">
                                 <div>
-                                    <div style="font-size:12px;font-weight:700">🗺 Mapa de asientos</div>
+                                    <div style="font-size:12px;font-weight:700" data-i18n="bot.seatmap.title">🗺 Mapa de asientos</div>
                                     <div style="font-size:10px;color:var(--text-muted)">Selección manual sobre mapa — más control, más lento</div>
                                 </div>
                             </label>
@@ -2142,13 +2142,13 @@
                     <div id="bot-seatmap-panel" style="display:none;margin-bottom:10px;border:1px solid var(--border);border-left:5px solid #d0006f;border-radius:8px;background:rgba(208,0,111,.04);padding:10px">
                         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
                             <div>
-                                <h3 style="margin:0;font-size:13px;font-weight:800">🏟 Mapa del recinto</h3>
+                                <h3 style="margin:0;font-size:13px;font-weight:800" data-i18n="bot.venue.title">🏟 Mapa del recinto</h3>
                                 <p style="margin:2px 0 0;font-size:10px;color:var(--text-muted)" id="bot-venue-status">Selecciona un evento y pulsa "Escanear estadio"</p>
                             </div>
                             <div style="display:flex;gap:6px">
-                                <button class="btn btn-sm" type="button" onclick="scanVenueForCurrentEvent()" id="bot-scan-venue-btn" title="Lanza un perfil MoreLogin nuevo, abre el evento, captura mapa+sectores">🔍 Escanear estadio</button>
-                                <button class="btn btn-sm" type="button" onclick="showVenueTab('image')" id="bot-venue-tab-image">📷 Imagen</button>
-                                <button class="btn btn-sm" type="button" onclick="showVenueTab('sections')" id="bot-venue-tab-sections">📋 Sectores</button>
+                                <button class="btn btn-sm" type="button" onclick="scanVenueForCurrentEvent()" id="bot-scan-venue-btn" title="Lanza un perfil MoreLogin nuevo, abre el evento, captura mapa+sectores" data-i18n="bot.venue.scan">🔍 Escanear estadio</button>
+                                <button class="btn btn-sm" type="button" onclick="showVenueTab('image')" id="bot-venue-tab-image" data-i18n="bot.venue.image">📷 Imagen</button>
+                                <button class="btn btn-sm" type="button" onclick="showVenueTab('sections')" id="bot-venue-tab-sections" data-i18n="bot.venue.sectors">📋 Sectores</button>
                             </div>
                         </div>
                         <!-- Clip 1: Imagen -->
@@ -2165,21 +2165,21 @@
                                 <span style="font-size:11px;font-weight:700">Sectores detectados: <span id="bot-venue-sections-count">0</span></span>
                                 <span id="bot-venue-sections-selected" style="font-size:10px;color:var(--success);font-weight:700">0 seleccionados</span>
                                 <span style="display:flex;gap:4px">
-                                    <button class="btn btn-sm" type="button" onclick="bulkSectionsSelection('all')" title="Marcar todos">☑ Todos</button>
-                                    <button class="btn btn-sm" type="button" onclick="bulkSectionsSelection('active')" title="Solo activos (data-active=true)">✅ Activos</button>
+                                    <button class="btn btn-sm" type="button" onclick="bulkSectionsSelection('all')" title="Marcar todos" data-i18n="bot.btn.all">☑ Todos</button>
+                                    <button class="btn btn-sm" type="button" onclick="bulkSectionsSelection('active')" title="Solo activos (data-active=true)" data-i18n="bot.btn.active">✅ Activos</button>
                                     <button class="btn btn-sm" type="button" onclick="bulkSectionsSelection('clear')" title="Desmarcar todos">☐</button>
                                 </span>
                             </div>
                             <div id="bot-venue-sections-grid" style="max-height:240px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px;padding:4px;border:1px solid var(--border);border-radius:6px"></div>
-                            <p style="margin:6px 0 0;font-size:10px;color:#22c55e;font-weight:700">⚡ El bot SOLO buscará y comprará en los sectores marcados (verde). Si no marcas ninguno → intentará cualquier sector activo.</p>
+                            <p style="margin:6px 0 0;font-size:10px;color:#22c55e;font-weight:700" data-i18n="bot.warn.bot_buy">⚡ El bot SOLO buscará y comprará en los sectores marcados (verde). Si no marcas ninguno → intentará cualquier sector activo.</p>
                         </div>
                     </div>
                     <div style="margin-bottom:10px">
                         <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">URL de compra (se rellena al seleccionar evento, o pega URL manual)</label>
                         <div style="display:flex;gap:6px">
                             <input class="input" type="text" id="bot-url" placeholder="https://www.ticketmaster.com/event/..." style="flex:1;font-size:11px;font-family:monospace">
-                            <button class="btn btn-sm" onclick="document.getElementById('bot-url').value='https://www.ticketmaster.com'">🏪 TM</button>
-                            <button class="btn btn-sm" onclick="document.getElementById('bot-url').value='https://www.ticketmaster.com/resale'">🔄 Reventa</button>
+                            <button class="btn btn-sm" onclick="document.getElementById('bot-url').value='https://www.ticketmaster.com'" data-i18n="bot.btn.tm">🏪 TM</button>
+                            <button class="btn btn-sm" onclick="document.getElementById('bot-url').value='https://www.ticketmaster.com/resale'" data-i18n="bot.btn.resale">🔄 Reventa</button>
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -2198,9 +2198,9 @@
                         </div>
                     </div>
                     <details style="margin-bottom:10px">
-                        <summary style="cursor:pointer;font-size:11px;font-weight:600;color:var(--accent)">⚙ Opciones avanzadas</summary>
+                        <summary style="cursor:pointer;font-size:11px;font-weight:600;color:var(--accent)" data-i18n="bot.advanced">⚙ Opciones avanzadas</summary>
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;padding:10px;background:var(--bg);border-radius:6px">
-                            <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Reintentos</label><input class="input" type="number" id="bot-retries" value="3" min="0" max="10" style="width:100%"></div>
+                            <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px" data-i18n="bot.lbl.retries">Reintentos</label><input class="input" type="number" id="bot-retries" value="3" min="0" max="10" style="width:100%"></div>
                             <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Delay reintentos (s)</label><input class="input" type="number" id="bot-retry-delay" value="5" min="1" max="60" style="width:100%"></div>
                             <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Timeout Queue-it (min)</label><input class="input" type="number" id="bot-queue-timeout" value="120" min="1" max="360" style="width:100%"></div>
                             <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Cooldown cuenta (min)</label><input class="input" type="number" id="bot-cooldown" value="30" min="0" max="120" style="width:100%"></div>
@@ -2210,22 +2210,22 @@
                     <div id="bot-launch-preview" style="display:none;margin-bottom:10px;padding:10px 12px;background:linear-gradient(90deg,rgba(2,108,223,.1),rgba(2,108,223,.02));border:1px solid rgba(2,108,223,.3);border-radius:8px"></div>
 
                     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                        <button class="btn btn-accent" id="bot-launch-main-btn" onclick="launchBot()" style="padding:10px 28px;font-size:14px;font-weight:700">🚀 Lanzar 1 Bot</button>
-                        <button class="btn" id="bot-launch-triple-btn" onclick="launchBot();launchBot();launchBot()" style="font-size:12px">🚀×3 Triple</button>
-                        <button class="btn" onclick="saveBotPreset()" title="Guarda los eventos marcados + config como preset reutilizable" data-i18n-title="tip.save_preset" style="background:linear-gradient(135deg,#06b6d4,#0e7490);color:#fff;border:none;font-size:12px">💾 Guardar selección</button>
-                        <button class="btn" onclick="openBotPresetsModal()" title="Cargar un preset guardado" style="font-size:12px">📂 Presets</button>
+                        <button class="btn btn-accent" id="bot-launch-main-btn" onclick="launchBot()" style="padding:10px 28px;font-size:14px;font-weight:700" data-i18n="bot.btn.launch1">🚀 Lanzar 1 Bot</button>
+                        <button class="btn" id="bot-launch-triple-btn" onclick="launchBot();launchBot();launchBot()" style="font-size:12px" data-i18n="bot.btn.launch3">🚀×3 Triple</button>
+                        <button class="btn" onclick="saveBotPreset()" title="Guarda los eventos marcados + config como preset reutilizable" data-i18n-title="tip.save_preset" style="background:linear-gradient(135deg,#06b6d4,#0e7490);color:#fff;border:none;font-size:12px"><span style="display:inline-block">💾 </span><span data-i18n="bot.btn.save_selection">Guardar selección</span></button>
+                        <button class="btn" onclick="openBotPresetsModal()" title="Cargar un preset guardado" style="font-size:12px" data-i18n="bot.btn.presets">📂 Presets</button>
                         <button class="btn btn-danger" onclick="stopAllBots(event)">⛔&nbsp;<span data-i18n="btn.stop_all">Detener Todos</span></button>
                         <span id="bot-multi-badge" style="font-size:10px;color:var(--text-muted);margin-left:auto"></span>
                     </div>
                     <div id="bot-polling-hint" style="display:none;margin-top:10px;padding:8px 12px;background:linear-gradient(90deg,rgba(2,108,223,.12),rgba(0,82,180,.08));border-left:3px solid #026CDF;border-radius:6px;font-size:11px;line-height:1.5">
-                        <strong style="color:#026CDF">🔄 Modo polling rotatorio</strong> — el worker itera los eventos marcados comprobando stock. Sale al pulsar Stop, expirar sesión, o encontrar stock y completar compra.
+                        <strong style="color:#026CDF" data-i18n="bot.warn.polling">🔄 Modo polling rotatorio</strong> — <span data-i18n="bot.warn.polling_desc">el worker itera los eventos marcados comprobando stock. Sale al pulsar Stop, expirar sesión, o encontrar stock y completar compra.</span>
                     </div>
                 </div>
                 <div class="stats-grid">
-                    <div class="stat-card" style="border-left:3px solid var(--info)"><div class="label">Workers Activos</div><div class="value blue" id="bot-active">0</div></div>
-                    <div class="stat-card" style="border-left:3px solid var(--warning)"><div class="label">En Queue-it</div><div class="value yellow" id="bot-inqueue">0</div></div>
-                    <div class="stat-card" style="border-left:3px solid var(--success)"><div class="label">Completados</div><div class="value green" id="bot-completed">0</div></div>
-                    <div class="stat-card" style="border-left:3px solid var(--danger)"><div class="label">Errores</div><div class="value red" id="bot-errors">0</div></div>
+                    <div class="stat-card" style="border-left:3px solid var(--info)"><div class="label" data-i18n="bot.stat.active">Workers Activos</div><div class="value blue" id="bot-active">0</div></div>
+                    <div class="stat-card" style="border-left:3px solid var(--warning)"><div class="label" data-i18n="bot.stat.in_queue">En Queue-it</div><div class="value yellow" id="bot-inqueue">0</div></div>
+                    <div class="stat-card" style="border-left:3px solid var(--success)"><div class="label" data-i18n="bot.stat.completed">Completados</div><div class="value green" id="bot-completed">0</div></div>
+                    <div class="stat-card" style="border-left:3px solid var(--danger)"><div class="label" data-i18n="bot.stat.errors">Errores</div><div class="value red" id="bot-errors">0</div></div>
                 </div>
                 <div id="bot-workers-list"></div>
                 <div id="bot-groups-list" style="margin-top:10px"></div>
@@ -2705,9 +2705,9 @@
                     </summary>
                     <div style="padding:0 16px 14px">
                         <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-                            <button class="btn btn-accent btn-sm" onclick="runHealthCheck()">🩺 Health Check</button>
-                            <button class="btn btn-sm" onclick="benchmarkAll()">🧪 Benchmark TM</button>
-                            <button class="btn btn-danger btn-sm" onclick="autoDisableBad()">🗑 Desactivar malos</button>
+                            <button class="btn btn-accent btn-sm" onclick="runHealthCheck()" data-i18n="hth.health_check">🩺 Health Check</button>
+                            <button class="btn btn-sm" onclick="benchmarkAll()" data-i18n="hth.bench_tm">🧪 Benchmark TM</button>
+                            <button class="btn btn-danger btn-sm" onclick="autoDisableBad()" data-i18n="hth.deactivate_bad">🗑 Desactivar malos</button>
                         </div>
                         <div id="proxy-alerts" style="margin-top:8px"></div>
                     </div>
@@ -2752,7 +2752,7 @@
                     <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#dc2626,#026CDF,#d0006f)"></div>
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#dc2626,#7f1d1d);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(220,38,38,.45)">🛡</div>
-                        <div><h3 style="margin:0;font-size:18px;font-weight:700">Anti-Bot — Protecciones TM</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:580px;line-height:1.4">Queue-it virtual queue · PerimeterX · Imperva · Shape Security · reCAPTCHA · stealth patches</p></div>
+                        <div><h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="ab.section_title">Anti-Bot — Protecciones TM</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:580px;line-height:1.4" data-i18n="ab.section_subtitle">Queue-it virtual queue · PerimeterX · Imperva · Shape Security · reCAPTCHA · stealth patches</p></div>
                     </div>
                 </div>
                 <!-- Queue-it Pool -->
@@ -2768,10 +2768,10 @@
                     </summary>
                     <div style="padding:0 16px 14px">
                         <div class="stats-grid" style="margin:10px 0">
-                            <div class="stat-card" style="border-left:3px solid var(--success)"><div class="label">Tokens válidos</div><div class="value green" id="queueit-valid">0</div></div>
-                            <div class="stat-card" style="border-left:3px solid var(--warning)"><div class="label">Expirados</div><div class="value yellow" id="queueit-expired">0</div></div>
-                            <div class="stat-card" style="border-left:3px solid var(--info)"><div class="label">En uso</div><div class="value blue" id="queueit-in-use">0</div></div>
-                            <div class="stat-card" style="border-left:3px solid var(--danger)"><div class="label">Fallidos</div><div class="value red" id="queueit-failed">0</div></div>
+                            <div class="stat-card" style="border-left:3px solid var(--success)"><div class="label" data-i18n="stat.tokens_valid">Tokens válidos</div><div class="value green" id="queueit-valid">0</div></div>
+                            <div class="stat-card" style="border-left:3px solid var(--warning)"><div class="label" data-i18n="stat.expired">Expirados</div><div class="value yellow" id="queueit-expired">0</div></div>
+                            <div class="stat-card" style="border-left:3px solid var(--info)"><div class="label" data-i18n="stat.in_use">En uso</div><div class="value blue" id="queueit-in-use">0</div></div>
+                            <div class="stat-card" style="border-left:3px solid var(--danger)"><div class="label" data-i18n="stat.failed">Fallidos</div><div class="value red" id="queueit-failed">0</div></div>
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
                             <button class="btn btn-accent btn-sm" onclick="queueitFarmTokens(3)">Farm 3</button>
@@ -2992,7 +2992,7 @@
                     <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#7c3aed,#026CDF,#10b981)"></div>
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(124,58,237,.4)">🧠</div>
-                        <div><h3 style="margin:0;font-size:18px;font-weight:700">Captchas</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">7 proveedores inteligentes · rotación automática · pre-farming · balances en vivo · reCAPTCHA + hCaptcha TM</p></div>
+                        <div><h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="cap.section_title">Captchas</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="cap.subtitle">7 proveedores inteligentes · rotación automática · pre-farming · balances en vivo · reCAPTCHA + hCaptcha TM</p></div>
                     </div>
                 </div>
                 <!-- Smart Providers -->
@@ -3004,7 +3004,7 @@
                         </div>
                         <div style="display:flex;gap:4px;align-items:center" onclick="event.stopPropagation()">
                             <label style="display:flex;align-items:center;gap:5px;font-size:10px;padding:4px 8px;background:var(--bg);border-radius:6px;border:1px solid var(--border);cursor:pointer"><input type="checkbox" id="smart-rotation-toggle" onclick="event.stopPropagation()"><span>Smart rotation</span></label>
-                            <button class="btn btn-sm" onclick="event.preventDefault();event.stopPropagation();testAllProviders()">🧪 Test todos</button>
+                            <button class="btn btn-sm" onclick="event.preventDefault();event.stopPropagation();testAllProviders()" data-i18n="cap.test_all">🧪 Test todos</button>
                             <button class="btn btn-sm" onclick="event.preventDefault();event.stopPropagation();loadProviders()">♻</button>
                         </div>
                     </summary>
@@ -3013,8 +3013,8 @@
                 <!-- Config completa -->
                 <div class="card" style="margin-bottom:12px;border-left:4px solid #7c3aed;position:relative;overflow:hidden">
                     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7c3aed,#026CDF)"></div>
-                    <h3 style="margin-top:4px">🔓 Captcha — Configuración Completa</h3>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Para Ticketmaster: reCAPTCHA v2/v3 + hCaptcha. Vinculado a settings.json → antibot.captcha.</p>
+                    <h3 style="margin-top:4px" data-i18n="cap.title">🔓 Captcha — Configuración Completa</h3>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="cap.providers_desc">Para Ticketmaster: reCAPTCHA v2/v3 + hCaptcha. Vinculado a settings.json → antibot.captcha.</p>
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
                         <label style="font-size:13px;font-weight:600">Modo:</label>
                         <select class="input" id="captcha-mode" style="width:240px">
@@ -3039,7 +3039,7 @@
                     <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:6px">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                             <span style="font-size:12px;font-weight:600">💰 Balances de Proveedores</span>
-                            <button class="btn btn-sm" onclick="checkAllBalances()">Comprobar balances</button>
+                            <button class="btn btn-sm" onclick="checkAllBalances()" data-i18n="cap.balances">Comprobar balances</button>
                         </div>
                         <div id="captcha-balances" style="font-size:11px;color:var(--text-muted)">Pulsa "Comprobar balances" para consultar crédito.</div>
                     </div>
@@ -3047,8 +3047,8 @@
                     <!-- Pre-farming -->
                     <div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--accent)">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                            <div><span style="font-size:13px;font-weight:700;color:var(--accent)">🚜 Captcha Pre-farming</span><p style="font-size:10px;color:var(--text-muted);margin:2px 0 0">Pre-resuelve tokens antes del drop. Reduce checkout 10-20s.</p></div>
-                            <button class="btn btn-sm" onclick="refreshPool()">♻ Pool</button>
+                            <div><span style="font-size:13px;font-weight:700;color:var(--accent)">🚜 <span data-i18n="cap.prefarm_title2">Captcha Pre-farming</span></span><p style="font-size:10px;color:var(--text-muted);margin:2px 0 0" data-i18n="cap.prefarm_desc">Pre-resuelve tokens antes del drop. Reduce checkout 10-20s.</p></div>
+                            <button class="btn btn-sm" onclick="refreshPool()" data-i18n="cap.pool">♻ Pool</button>
                         </div>
                         <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
                             <button class="btn btn-accent btn-sm" onclick="prefarmTokens(3)">Farm 3</button>
@@ -3060,7 +3060,7 @@
                         <div style="border-top:1px dashed var(--border);padding-top:10px">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                                 <div style="display:flex;align-items:center;gap:6px"><span style="font-size:12px;font-weight:700;color:#00c853">🤖 Auto Pre-farm</span><span id="autofarm-state" style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.06);color:var(--text-muted);font-weight:700">OFF</span></div>
-                                <div style="display:flex;gap:4px"><button id="autofarm-start-btn" class="btn btn-success btn-sm" onclick="startAutoFarm()">▶ Iniciar</button><button id="autofarm-stop-btn" class="btn btn-danger btn-sm" onclick="stopAutoFarm()" style="display:none">⏹ Parar</button></div>
+                                <div style="display:flex;gap:4px"><button id="autofarm-start-btn" class="btn btn-success btn-sm" onclick="startAutoFarm()" data-i18n="cap.start">▶ Iniciar</button><button id="autofarm-stop-btn" class="btn btn-danger btn-sm" onclick="stopAutoFarm()" style="display:none" data-i18n="cap.stop">⏹ Parar</button></div>
                             </div>
                             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
                                 <div><label style="font-size:9px;color:var(--text-muted);display:block;margin-bottom:2px">Target pool</label><input class="input" type="number" id="autofarm-target" value="8" min="1" max="30" style="width:100%;font-size:11px;padding:4px 6px"></div>
@@ -3070,7 +3070,7 @@
                             <div id="autofarm-stats" style="font-size:10px;color:var(--text-muted);font-family:Consolas,monospace;padding:6px 8px;background:var(--card);border-radius:4px;border:1px solid var(--border);min-height:18px">Sin actividad — pulsa Iniciar</div>
                         </div>
                     </div>
-                    <button class="btn btn-accent btn-sm" style="margin-top:12px" onclick="saveFullCaptchaConfig()">💾 Guardar Captcha</button>
+                    <button class="btn btn-accent btn-sm" style="margin-top:12px" onclick="saveFullCaptchaConfig()" data-i18n="cap.save">💾 Guardar Captcha</button>
                 </div>
                 <div id="captcha-panel"></div>
 
@@ -3145,19 +3145,19 @@
                 <div class="card" style="border-color:var(--accent);position:relative;overflow:hidden">
                     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--success),var(--accent),var(--danger))"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                        <div><h3 style="font-size:16px;margin-bottom:4px">🧪 Navegadores — 8 motores disponibles</h3><p style="font-size:11px;color:var(--text-muted)">Marca los que quieras usar. Los bloqueados por TM se descartan automáticamente.</p></div>
+                        <div><h3 style="font-size:16px;margin-bottom:4px" data-i18n="br.title">🧪 Navegadores — 8 motores disponibles</h3><p style="font-size:11px;color:var(--text-muted)" data-i18n="br.subtitle">Marca los que quieras usar. Los bloqueados por TM se descartan automáticamente.</p></div>
                         <div style="display:flex;gap:6px">
-                            <button class="btn btn-accent btn-sm" onclick="testBrowsers()" id="btn-test-browsers">🧪 Test TM</button>
+                            <button class="btn btn-accent btn-sm" onclick="testBrowsers()" id="btn-test-browsers" data-i18n="br.test_tm">🧪 Test TM</button>
                             <button class="btn btn-sm" onclick="loadBrowserConfig()">♻</button>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg);border-radius:6px;margin-bottom:12px">
                         <label class="toggle"><input type="checkbox" id="br-multi-enabled"><span class="slider"></span></label>
-                        <div><span style="font-size:12px;font-weight:600">Multi-navegador</span><p style="font-size:10px;color:var(--text-muted);margin:0">Lanza workers con diferentes navegadores a la vez.</p></div>
+                        <div><span style="font-size:12px;font-weight:600" data-i18n="br.multi_title">Multi-navegador</span><p style="font-size:10px;color:var(--text-muted);margin:0" data-i18n="br.multi_desc">Lanza workers con diferentes navegadores a la vez.</p></div>
                     </div>
                     <div id="browsers-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"></div>
                     <div id="browser-test-status" style="font-size:11px;color:var(--text-muted);margin-bottom:10px"></div>
-                    <button class="btn btn-accent" onclick="saveBrowserConfig()">Guardar Configuración</button>
+                    <button class="btn btn-accent" onclick="saveBrowserConfig()" data-i18n="br.save_config">Guardar Configuración</button>
                 </div>
                 <details class="card" style="margin-top:10px;border-left:3px solid #10b981;padding:0" open>
                     <summary style="cursor:pointer;list-style:none;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -3189,41 +3189,41 @@
                     <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#d0006f,#7c3aed,#026CDF)"></div>
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#d0006f,#7c3aed 50%,#026CDF);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 14px rgba(208,0,111,.4)">⚡🧬</div>
-                        <div><h3 style="margin:0;font-size:18px;font-weight:700">Bypass</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:640px;line-height:1.4">Queue-it · Cookie injection · PerimeterX · Deep-links + 🧬 Pro 2026: Cookie warming sintético · AcpAT pool · JA4+ TLS spoof · Browser pool · 3DS autofill</p></div>
+                        <div><h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="ab.bypass_title">Bypass</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:640px;line-height:1.4" data-i18n="ab.antibot_subtitle">Queue-it · Cookie injection · PerimeterX · Deep-links + 🧬 Pro 2026: Cookie warming sintético · AcpAT pool · JA4+ TLS spoof · Browser pool · 3DS autofill</p></div>
                     </div>
                 </div>
 
                 <!-- Sub-tabs internos: clásico vs Pro -->
                 <div class="sub-tabs" style="margin-bottom:14px">
-                    <div class="sub-tab active" data-bypsub="classic" onclick="switchBypassTab('classic')" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#d0006f,#86004a);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(208,0,111,.4);color:#fff">⚡</span>Clásico</div>
-                    <div class="sub-tab" data-bypsub="pro" onclick="switchBypassTab('pro')"><span class="sub-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(2,108,223,.45);color:#fff">🧬</span>Pro 2026</div>
+                    <div class="sub-tab active" data-bypsub="classic" onclick="switchBypassTab('classic')" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#d0006f,#86004a);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(208,0,111,.4);color:#fff">⚡</span><span data-i18n="bp.tab.classic">Clásico</span></div>
+                    <div class="sub-tab" data-bypsub="pro" onclick="switchBypassTab('pro')"><span class="sub-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(2,108,223,.45);color:#fff">🧬</span><span data-i18n="bp.tab.pro2026">Pro 2026</span></div>
                 </div>
 
                 <!-- Pane: clásico -->
                 <div data-byppane="classic">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                     <div class="card" style="border-left:3px solid #f59e0b;padding:16px">
-                        <h3 style="font-size:14px;margin-bottom:8px">🏃 Queue-it Token Bypass</h3>
-                        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Genera una URL con token Queue-it pre-válido. Útil para saltar la cola virtual.</p>
+                        <h3 style="font-size:14px;margin-bottom:8px" data-i18n="ab.queue_url_title2">🏃 Queue-it Token Bypass</h3>
+                        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="ab.queue_url_desc">Genera una URL con token Queue-it pre-válido. Útil para saltar la cola virtual.</p>
                         <div style="margin-bottom:8px"><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">URL evento TM</label><input class="input" id="bypass-event-url" placeholder="https://www.ticketmaster.com/event/..." style="width:100%;font-size:11px;font-family:monospace"></div>
                         <div style="margin-bottom:8px"><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Queue-IT Customer ID</label><input class="input" id="bypass-queueit-id" placeholder="ticketmaster" style="width:100%"></div>
-                        <button class="btn btn-accent btn-sm" onclick="generateQueueitBypass()">⚡ Generar URL bypass</button>
+                        <button class="btn btn-accent btn-sm" onclick="generateQueueitBypass()" data-i18n="ab.queue_btn">⚡ Generar URL bypass</button>
                         <div id="bypass-queueit-result" style="margin-top:8px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--success)"></div>
                     </div>
                     <div class="card" style="border-left:3px solid #7c3aed;padding:16px">
                         <h3 style="font-size:14px;margin-bottom:8px">🍪 Cookie Injection URL</h3>
-                        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Genera URLs únicas con token para pre-cargar cookies TM en navegadores antidetect.</p>
+                        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="ab.deeplink_desc">Genera URLs únicas con token para pre-cargar cookies TM en navegadores antidetect.</p>
                         <div style="margin-bottom:8px"><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Cuenta TM</label><select class="input" id="bypass-account" style="width:100%"><option>Selecciona cuenta...</option></select></div>
                         <div style="margin-bottom:8px"><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Dominio TM</label><select class="input" id="bypass-domain" style="width:100%"><option>ticketmaster.com</option><option>ticketmaster.co.uk</option><option>ticketmaster.de</option></select></div>
-                        <button class="btn btn-accent btn-sm" onclick="generateCookieBypassURL()">🍪 Generar URL + token</button>
+                        <button class="btn btn-accent btn-sm" onclick="generateCookieBypassURL()" data-i18n="ab.deeplink_btn">🍪 Generar URL + token</button>
                         <div id="bypass-cookie-result" style="margin-top:8px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--success)"></div>
                     </div>
                     <div class="card" style="border-left:3px solid #dc2626;padding:16px">
                         <h3 style="font-size:14px;margin-bottom:8px">🔐 PerimeterX Bypass</h3>
-                        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Resolución de desafíos PX manualmente o mediante solvers externos.</p>
+                        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="ab.px_desc">Resolución de desafíos PX manualmente o mediante solvers externos.</p>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-                            <button class="btn btn-sm" onclick="resolvePXChallenge()">🔐 Resolver PX</button>
-                            <button class="btn btn-sm" onclick="clearPXCookies()">🗑 Limpiar cookies PX</button>
+                            <button class="btn btn-sm" onclick="resolvePXChallenge()" data-i18n="ab.px_solve">🔐 Resolver PX</button>
+                            <button class="btn btn-sm" onclick="clearPXCookies()" data-i18n="ab.px_clear">🗑 Limpiar cookies PX</button>
                         </div>
                         <div id="px-bypass-status" style="font-size:11px;color:var(--text-muted)">Sin desafío PX activo</div>
                     </div>
@@ -3232,9 +3232,9 @@
                         <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Genera links directos a secciones TM, pre-sale, fan-verify y reventa.</p>
                         <div style="margin-bottom:8px"><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Event ID (TM)</label><input class="input" id="deeplink-event-id" placeholder="Z7r9jZ1A7df8e" style="width:100%"></div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button class="btn btn-sm" onclick="genDeeplink('checkout')">💳 Checkout</button>
-                            <button class="btn btn-sm" onclick="genDeeplink('presale')">🎫 Pre-sale</button>
-                            <button class="btn btn-sm" onclick="genDeeplink('resale')">🔄 Reventa</button>
+                            <button class="btn btn-sm" onclick="genDeeplink('checkout')" data-i18n="ab.checkout">💳 Checkout</button>
+                            <button class="btn btn-sm" onclick="genDeeplink('presale')" data-i18n="ab.presale">🎫 Pre-sale</button>
+                            <button class="btn btn-sm" onclick="genDeeplink('resale')" data-i18n="bot.btn.resale">🔄 Reventa</button>
                         </div>
                         <div id="deeplink-result" style="margin-top:8px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--success)"></div>
                     </div>
@@ -3248,7 +3248,7 @@
                     <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#026CDF,#7c3aed,#d0006f)"></div>
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#026CDF,#0052b4);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(2,108,223,.45),0 0 0 1px rgba(255,255,255,.08) inset">🧬</div>
-                        <div><h3 style="margin:0;font-size:18px;font-weight:700">🧬 Bypass Pro — 2026</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:620px;line-height:1.4">Cookie warming sintético · AcpAT token pool (Queue-it) · JA4+ TLS fingerprint spoof · WebSocket tiempo real</p></div>
+                        <div><h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="bp.title">🧬 Bypass Pro — 2026</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:620px;line-height:1.4" data-i18n="bp.subtitle">Cookie warming sintético · AcpAT token pool (Queue-it) · JA4+ TLS fingerprint spoof · WebSocket tiempo real</p></div>
                     </div>
                 </div>
 
@@ -3258,27 +3258,27 @@
                     <!-- ①  COOKIE WARMING -->
                     <div class="card" style="border-left:3px solid #a16207;position:relative;overflow:hidden">
                         <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#a16207,#eab308)"></div>
-                        <h3 style="display:flex;align-items:center;gap:10px;font-size:15px">🍪 Cookie Warming sintético</h3>
-                        <p style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px">
+                        <h3 style="display:flex;align-items:center;gap:10px;font-size:15px" data-i18n="bp.cw.title">🍪 Cookie Warming sintético</h3>
+                        <p style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px" data-i18n="bp.cw.desc">
                             Genera cookies TM (pxhd, visid_incap_*, AcpAT…) 15-30 min antes del drop visitando el dominio de forma natural.
                         </p>
                         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
-                            <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Dominio</label>
+                            <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px" data-i18n="bp.cw.domain">Dominio</label>
                                 <select class="input" id="cw-domain" style="min-width:110px">
                                     <option value="us">🇺🇸 US</option><option value="es">🇪🇸 ES</option><option value="uk">🇬🇧 UK</option>
                                     <option value="de">🇩🇪 DE</option><option value="fr">🇫🇷 FR</option><option value="it">🇮🇹 IT</option>
                                     <option value="ca">🇨🇦 CA</option><option value="mx">🇲🇽 MX</option><option value="au">🇦🇺 AU</option>
                                 </select>
                             </div>
-                            <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Páginas</label>
+                            <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px" data-i18n="bp.cw.pages">Páginas</label>
                                 <input class="input" id="cw-pages" type="number" value="4" min="1" max="8" style="width:70px">
                             </div>
-                            <button class="btn btn-accent" onclick="runCookieWarm()" id="cw-btn" style="padding:8px 14px">🚀 Warm now</button>
+                            <button class="btn btn-accent" onclick="runCookieWarm()" id="cw-btn" style="padding:8px 14px" data-i18n="bp.cw.warm_now_btn">🚀 Warm now</button>
                         </div>
-                        <div id="cw-result" style="font-size:11px;color:var(--text-muted);min-height:40px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px">Pulsa <b>Warm now</b> para lanzar.</div>
+                        <div id="cw-result" style="font-size:11px;color:var(--text-muted);min-height:40px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px" data-i18n="bp.cw.instruction">Pulsa <b>Warm now</b> para lanzar.</div>
                         <div style="margin-top:10px">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                                <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">Historial reciente</span>
+                                <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700" data-i18n="bp.cw.history">Historial reciente</span>
                                 <button class="btn btn-sm" onclick="loadCookieWarmLog()" style="font-size:9px;padding:3px 8px">🔄</button>
                             </div>
                             <div id="cw-log" style="font-size:10.5px;max-height:140px;overflow-y:auto"></div>
@@ -3288,21 +3288,21 @@
                     <!-- ②  JA4+ TLS Spoof -->
                     <div class="card" style="border-left:3px solid #06b6d4;position:relative;overflow:hidden">
                         <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#06b6d4,#0891b2)"></div>
-                        <h3 style="display:flex;align-items:center;gap:10px;font-size:15px">🧬 JA4+ TLS fingerprint spoof</h3>
-                        <p style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px">
+                        <h3 style="display:flex;align-items:center;gap:10px;font-size:15px" data-i18n="bp.ja4.title">🧬 JA4+ TLS fingerprint spoof</h3>
+                        <p style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px" data-i18n="bp.ja4.desc">
                             Imita el client hello TLS de Chrome/Firefox/Safari reales. JA3 quedó obsoleto en 2023. JA4+ es el estándar 2024+ (Cloudflare/AWS/VT).
                         </p>
                         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
-                            <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px">Perfil</label>
+                            <div><label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px" data-i18n="bp.ja4.profile">Perfil</label>
                                 <select class="input" id="ja4-profile" style="min-width:150px"></select>
                             </div>
-                            <button class="btn" onclick="runJa4SelfTest()" style="padding:8px 12px">✓ Self-test</button>
-                            <button class="btn btn-accent" onclick="runJa4Handshake()" style="padding:8px 14px">🔬 Test handshake</button>
+                            <button class="btn" onclick="runJa4SelfTest()" style="padding:8px 12px" data-i18n="bp.ja4.self_test_btn">✓ Self-test</button>
+                            <button class="btn btn-accent" onclick="runJa4Handshake()" style="padding:8px 14px" data-i18n="bp.ja4.handshake_btn">🔬 Test handshake</button>
                         </div>
-                        <div id="ja4-result" style="font-size:11px;color:var(--text-muted);min-height:40px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px">Selecciona perfil y pulsa Self-test o Test handshake.</div>
+                        <div id="ja4-result" style="font-size:11px;color:var(--text-muted);min-height:40px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px" data-i18n="bp.ja4.instruction">Selecciona perfil y pulsa Self-test o Test handshake.</div>
                         <div style="margin-top:10px">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                                <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">Historial de tests</span>
+                                <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700" data-i18n="bp.ja4.history">Historial de tests</span>
                                 <button class="btn btn-sm" onclick="loadJa4Log()" style="font-size:9px;padding:3px 8px">🔄</button>
                             </div>
                             <div id="ja4-log" style="font-size:10.5px;max-height:140px;overflow-y:auto"></div>
@@ -3316,8 +3316,8 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
                         <h3 style="display:flex;align-items:center;gap:10px;font-size:15px;margin:0">🔑 AcpAT Token Pool (Queue-it injection)</h3>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button class="btn btn-sm" onclick="loadAcpatPool()">🔄 Refrescar</button>
-                            <button class="btn btn-sm btn-danger" onclick="clearAcpatPool()">🗑 Vaciar pool</button>
+                            <button class="btn btn-sm" onclick="loadAcpatPool()" data-i18n="bp.acp.refresh">🔄 Refrescar</button>
+                            <button class="btn btn-sm btn-danger" onclick="clearAcpatPool()" data-i18n="bp.acp.clear_btn">🗑 Vaciar pool</button>
                         </div>
                     </div>
                     <p style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px">
@@ -3330,7 +3330,7 @@
                     <!-- Capture manual -->
                     <div class="grid-2">
                         <div>
-                            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px">📥 Capturar token (manual)</h4>
+                            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px" data-i18n="bp.acp.capture_title">📥 Capturar token (manual)</h4>
                             <div class="input-group">
                                 <input id="acp-token" class="input" placeholder="Token AcpAT... (AKEsxxx...)">
                                 <select id="acp-domain" class="input" style="max-width:80px">
@@ -3338,18 +3338,18 @@
                                     <option value="de">DE</option><option value="fr">FR</option><option value="it">IT</option>
                                 </select>
                                 <input id="acp-event" class="input" placeholder="event_id (opcional)" style="max-width:140px">
-                                <button class="btn btn-accent" onclick="captureAcpat()">📥 Capturar</button>
+                                <button class="btn btn-accent" onclick="captureAcpat()" data-i18n="bp.acp.capture_btn2">📥 Capturar</button>
                             </div>
                         </div>
                         <div>
-                            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px">💉 Inyectar (probar)</h4>
+                            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px" data-i18n="bp.acp.inject_title">💉 Inyectar (probar)</h4>
                             <div class="input-group">
                                 <select id="inj-domain" class="input" style="max-width:80px">
                                     <option value="us">US</option><option value="es">ES</option><option value="uk">UK</option>
                                     <option value="de">DE</option><option value="fr">FR</option><option value="it">IT</option>
                                 </select>
                                 <input id="inj-event" class="input" placeholder="event_id (opcional)" style="max-width:140px">
-                                <button class="btn btn-accent" onclick="injectAcpat()">💉 Inyectar token</button>
+                                <button class="btn btn-accent" onclick="injectAcpat()" data-i18n="bp.acp.inject_btn2">💉 Inyectar token</button>
                             </div>
                             <div id="acp-inject-result" style="font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;min-height:30px"></div>
                         </div>
@@ -3358,7 +3358,7 @@
                     <!-- Pool list -->
                     <div style="margin-top:14px">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                            <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">Tokens en pool (enmascarados)</span>
+                            <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700" data-i18n="bp.acp.pool_label">Tokens en pool (enmascarados)</span>
                         </div>
                         <div id="acpat-pool-list" style="font-size:10.5px;max-height:200px;overflow-y:auto"></div>
                     </div>
@@ -3369,10 +3369,10 @@
                     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                         <div style="font-size:24px">📡</div>
                         <div style="flex:1;min-width:200px">
-                            <h3 style="font-size:14px;margin:0">WebSocket en tiempo real</h3>
+                            <h3 style="font-size:14px;margin:0" data-i18n="bp.ws.title">WebSocket en tiempo real</h3>
                             <div id="ws-details" style="font-size:11px;color:var(--text-muted);margin-top:4px" data-i18n="action.loading">Cargando estado…</div>
                         </div>
-                        <button class="btn btn-sm" onclick="loadWsStatus()">🔄 Comprobar</button>
+                        <button class="btn btn-sm" onclick="loadWsStatus()" data-i18n="bp.ws.check_btn">🔄 Comprobar</button>
                     </div>
                 </div>
 
@@ -3459,37 +3459,6 @@
                         <button class="btn btn-sm" onclick="subscribeAcpat()">🔔&nbsp;<span data-i18n="ai.subscribe">Suscribir</span></button>
                     </div>
                     <div id="ai-log" style="margin-top:10px;font-size:10.5px;max-height:160px;overflow-y:auto"></div>
-                </div>
-
-                <!-- 💳 ADYEN TOKENIZER -->
-                <div class="card dash-pane" style="margin-top:14px">
-                    <div class="dash-pane-head">
-                        <div class="dash-pane-icon" style="background:linear-gradient(135deg,#10b981,#047857);box-shadow:0 6px 18px rgba(16,185,129,.45),0 0 0 1px rgba(255,255,255,.08) inset">💳</div>
-                        <div class="dash-pane-title">
-                            <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">💳&nbsp;<span data-i18n="ay.title">Adyen Tokenizer (pre-checkout)</span></h3>
-                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="ay.subtitle">Pre-tokenizar tarjetas antes del drop · recurringDetailReference · checkout < 2s</p>
-                        </div>
-                        <button class="btn btn-sm" style="margin-left:auto" onclick="loadAdyen()">🔄</button>
-                    </div>
-                    <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px;margin-top:10px;font-size:11px;color:var(--text)">
-                        <b style="color:#fbbf24">⚠️ Aviso:</b> Usa SOLO con tarjetas propias o con consentimiento. Modo simulate por defecto.
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:12px">
-                        <input id="ay-key" type="password" class="input" placeholder="API Key Adyen">
-                        <input id="ay-merchant" class="input" placeholder="Merchant Account">
-                        <select id="ay-mode" class="input">
-                            <option value="simulate">🧪 Simulate</option>
-                            <option value="test">🧪 Test (checkout-test)</option>
-                            <option value="live">🚨 LIVE</option>
-                        </select>
-                        <button class="btn btn-sm btn-accent" onclick="saveAdyenConfig()">💾</button>
-                        <button class="btn btn-sm" onclick="adyenSelfTest()">🧪&nbsp;<span data-i18n="ay.self_test">Self-test</span></button>
-                    </div>
-                    <div id="ay-status" style="margin-top:10px;font-size:11px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px"></div>
-                    <div style="margin-top:10px">
-                        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px">🎫&nbsp;<span data-i18n="ay.tokens">Tokens activos</span></div>
-                        <div id="ay-tokens" style="font-size:10.5px;max-height:180px;overflow-y:auto"></div>
-                    </div>
                 </div>
 
                 <!-- 🔄 MULTI-CARD ROTATION (anti-fraude) -->
@@ -3589,17 +3558,17 @@
                     <div class="dash-pane-head">
                         <div class="dash-pane-icon" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);box-shadow:0 6px 18px rgba(124,58,237,.45),0 0 0 1px rgba(255,255,255,.08) inset">🚀</div>
                         <div class="dash-pane-title">
-                            <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">🚀&nbsp;<span data-i18n="bp.title">Browser Pool (pre-warmed)</span></h3>
-                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="bp.subtitle">2-3 contextos Playwright ya abiertos · cookies PX inyectadas · checkout &lt; 500 ms</p>
+                            <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">🚀&nbsp;<span data-i18n="bpool.title">Browser Pool (pre-warmed)</span></h3>
+                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="bpool.subtitle">2-3 contextos Playwright ya abiertos · cookies PX inyectadas · checkout &lt; 500 ms</p>
                         </div>
                         <button class="btn btn-sm" style="margin-left:auto" onclick="loadBrowserPool()">🔄</button>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:12px">
-                        <div class="stat-card"><div class="label" data-i18n="bp.ready">Ready</div><div class="value green" id="bp-ready">0</div></div>
-                        <div class="stat-card"><div class="label" data-i18n="bp.in_use">En uso</div><div class="value blue" id="bp-inuse">0</div></div>
-                        <div class="stat-card"><div class="label" data-i18n="bp.hit_rate">Hit rate %</div><div class="value yellow" id="bp-hitrate">0</div></div>
-                        <div class="stat-card"><div class="label" data-i18n="bp.avg_acquire">Avg acquire</div><div class="value cyan" id="bp-avgacq">—</div></div>
-                        <div class="stat-card"><div class="label" data-i18n="bp.avg_create">Avg create</div><div class="value pink" id="bp-avgcrt">—</div></div>
+                        <div class="stat-card"><div class="label" data-i18n="bpool.ready">Ready</div><div class="value green" id="bp-ready">0</div></div>
+                        <div class="stat-card"><div class="label" data-i18n="bpool.in_use">En uso</div><div class="value blue" id="bp-inuse">0</div></div>
+                        <div class="stat-card"><div class="label" data-i18n="bpool.hit_rate">Hit rate %</div><div class="value yellow" id="bp-hitrate">0</div></div>
+                        <div class="stat-card"><div class="label" data-i18n="bpool.avg_acquire">Avg acquire</div><div class="value cyan" id="bp-avgacq">—</div></div>
+                        <div class="stat-card"><div class="label" data-i18n="bpool.avg_create">Avg create</div><div class="value pink" id="bp-avgcrt">—</div></div>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-top:12px">
                         <input id="bp-size" type="number" min="1" max="5" value="2" class="input" title="Pool size">
@@ -3618,8 +3587,8 @@
                         <button class="btn btn-sm btn-accent" onclick="saveBrowserPoolConfig()">💾</button>
                     </div>
                     <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-                        <button class="btn btn-sm" onclick="toggleBrowserPoolManager()">▶️&nbsp;<span data-i18n="bp.toggle_mgr">Manager ON/OFF</span></button>
-                        <button class="btn btn-sm" onclick="acquireBrowserPool()">🎯&nbsp;<span data-i18n="bp.acquire_test">Acquire test</span></button>
+                        <button class="btn btn-sm" onclick="toggleBrowserPoolManager()">▶️&nbsp;<span data-i18n="bpool.toggle_mgr">Manager ON/OFF</span></button>
+                        <button class="btn btn-sm" onclick="acquireBrowserPool()">🎯&nbsp;<span data-i18n="bpool.acquire_test">Acquire test</span></button>
                         <button class="btn btn-sm" onclick="selfTestBrowserPool()">🧪</button>
                     </div>
                     <div id="bp-contexts" style="margin-top:10px;font-size:10.5px;max-height:180px;overflow-y:auto"></div>
@@ -3670,8 +3639,8 @@
                 <div style="display:flex;align-items:center;gap:14px">
                     <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#b45309);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(245,158,11,.4)">🏃</div>
                     <div>
-                        <h3 style="margin:0;font-size:18px;font-weight:700">Filas — Queue-it Manager</h3>
-                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:680px;line-height:1.4">Sesiones ilimitadas · swarm broadcast · auto-rejoin · position tracking · integración con bot de compras (auto-buy on accepted)</p>
+                        <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="qc.section_title">Filas — Queue-it Manager</h3>
+                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:680px;line-height:1.4" data-i18n="qc.subtitle">Sesiones ilimitadas · swarm broadcast · auto-rejoin · position tracking · integración con bot de compras (auto-buy on accepted)</p>
                     </div>
                 </div>
             </div>
@@ -3719,8 +3688,8 @@
                 <div class="dash-pane-head">
                     <div class="dash-pane-icon" style="background:linear-gradient(135deg,#22c55e,#15803d);box-shadow:0 6px 18px rgba(34,197,94,.45),0 0 0 1px rgba(255,255,255,.08) inset">🚀</div>
                     <div class="dash-pane-title">
-                        <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff">Lanzar sesiones de cola — ILIMITADAS</h3>
-                        <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Crea N sesiones para 1 evento · cuentas asignadas round-robin · auto-rejoin · auto-buy on accepted</p>
+                        <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff" data-i18n="qc.launch_unlim">Lanzar sesiones de cola — ILIMITADAS</h3>
+                        <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="qc.create_desc">Crea N sesiones para 1 evento · cuentas asignadas round-robin · auto-rejoin · auto-buy on accepted</p>
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:14px">
@@ -4464,16 +4433,16 @@
                     <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#3f51b5,#1a237e);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(63,81,181,.4)">👤</div>
                     <div>
                         <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="acc.section.title">Cuentas y Tarjetas</h3>
-                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Import/export Excel · gestión de cuentas + tarjetas · vinculación · rotación automática</p>
+                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="ac.subtitle">Import/export Excel · gestión de cuentas + tarjetas · vinculación · rotación automática</p>
                     </div>
                 </div>
             </div>
 
             <!-- SUB-TABS -->
             <div class="sub-tabs">
-                <div class="sub-tab active" data-sub="ct-excel" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#10b981,#047857);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(16,185,129,.4);color:#fff">📊</span>Excel (Importar/Exportar)</div>
+                <div class="sub-tab active" data-sub="ct-excel" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#10b981,#047857);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(16,185,129,.4);color:#fff">📊</span><span data-i18n="ac.tab.excel">Excel (Importar/Exportar)</span></div>
                 <div class="sub-tab" data-sub="ct-cuentas"><span class="sub-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(2,108,223,.4);color:#fff">👤</span><span data-i18n="acc.section.tab">Cuentas + Tarjetas</span></div>
-                <div class="sub-tab" data-sub="ct-creator"><span class="sub-icon" style="background:linear-gradient(135deg,#a855f7,#7c3aed);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(168,85,247,.4);color:#fff">🧙</span>Creator Wizard</div>
+                <div class="sub-tab" data-sub="ct-creator"><span class="sub-icon" style="background:linear-gradient(135deg,#a855f7,#7c3aed);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(168,85,247,.4);color:#fff">🧙</span><span data-i18n="ac.tab.creator">Creator Wizard</span></div>
             </div>
 
             <!-- ═══ ACCOUNT CREATOR ASSISTANT ═══ -->
@@ -4637,10 +4606,10 @@
                     </div>
                     <div class="card" style="text-align:center;padding:30px;border-left:3px solid #026CDF">
                         <div style="font-size:48px;margin-bottom:12px">📤</div>
-                        <h3 style="margin-bottom:8px">📤 Subir Excel con Cuentas</h3>
-                        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.6">Sube el Excel rellenado. El bot creará automáticamente las cuentas y tarjetas TM, cada una identificada por su Nº de Usuario.</p>
+                        <h3 style="margin-bottom:8px" data-i18n="ac.upload_title">📤 Subir Excel con Cuentas</h3>
+                        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.6" data-i18n="ac.upload_desc">Sube el Excel rellenado. El bot creará automáticamente las cuentas y tarjetas TM, cada una identificada por su Nº de Usuario.</p>
                         <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none" onchange="uploadExcel()">
-                        <button class="btn btn-accent" style="padding:12px 24px;font-size:14px" onclick="document.getElementById('excel-file').click()">Subir Excel</button>
+                        <button class="btn btn-accent" style="padding:12px 24px;font-size:14px" onclick="document.getElementById('excel-file').click()" data-i18n="ac.upload_btn">Subir Excel</button>
                         <div id="excel-result" style="margin-top:14px;font-size:12px"></div>
                     </div>
                 </div>
@@ -4648,15 +4617,15 @@
                 <div class="card" style="margin-top:14px;border-left:3px solid #d0006f">
                     <div style="display:flex;justify-content:space-between;align-items:center">
                         <div>
-                            <h3 style="margin-bottom:4px">💾 Exportar Cuentas Actuales</h3>
-                            <p style="font-size:12px;color:var(--text-muted)">Descarga un Excel con todas las cuentas y tarjetas actualmente registradas en el sistema.</p>
+                            <h3 style="margin-bottom:4px" data-i18n="ac.export_title">💾 Exportar Cuentas Actuales</h3>
+                            <p style="font-size:12px;color:var(--text-muted)" data-i18n="ac.export_desc">Descarga un Excel con todas las cuentas y tarjetas actualmente registradas en el sistema.</p>
                         </div>
                         <a href="/api/excel/export" class="btn" style="text-decoration:none">Exportar a Excel</a>
                     </div>
                 </div>
 
                 <div class="card" style="margin-top:14px">
-                    <h3>💡 Cómo funciona</h3>
+                    <h3 data-i18n="ac.howto">💡 Cómo funciona</h3>
                     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:10px;text-align:center">
                         <div style="padding:16px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
                             <div style="font-size:28px;margin-bottom:8px">1️⃣</div>
@@ -4688,8 +4657,8 @@
                 <div class="card" style="border:1px solid var(--accent);border-left:5px solid #22c55e;background:rgba(34,197,94,.04);margin-bottom:14px">
                     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
                         <div>
-                            <h3 style="margin:0;font-size:16px;font-weight:700">🎯 Cuentas TM por evento</h3>
-                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">Verde = disponible · Rojo = ya compró el máximo (no reusable). Filtra por evento o ve global.</p>
+                            <h3 style="margin:0;font-size:16px;font-weight:700" data-i18n="ac.byevent_title">🎯 Cuentas TM por evento</h3>
+                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="ac.byevent_desc">Verde = disponible · Rojo = ya compró el máximo (no reusable). Filtra por evento o ve global.</p>
                         </div>
                         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                             <select id="ct-event-filter" class="input" style="font-size:12px;min-width:240px" onchange="loadAccountsWithPurchases()">
@@ -5340,29 +5309,29 @@
                 <div style="display:flex;align-items:center;gap:14px">
                     <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#a16207,#713f12);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(161,98,7,.4)">🍪</div>
                     <div>
-                        <h3 style="margin:0;font-size:18px;font-weight:700">Gestión de Cookies</h3>
-                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Mantén sesiones TM activas · pre-calentamiento · bypass Queue-it (AcpAT) · compartir entre PCs</p>
+                        <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="title.cookies">Gestión de Cookies</h3>
+                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="ck.subtitle">Mantén sesiones TM activas · pre-calentamiento · bypass Queue-it (AcpAT) · compartir entre PCs</p>
                     </div>
                 </div>
             </div>
 
             <!-- SUB-TABS (Archivos, Total, Esenciales, Activas, Pre-calentadas, Expiradas, Problemáticas) -->
             <div class="sub-tabs" style="flex-wrap:wrap">
-                <div class="sub-tab active" data-sub="cookies-archivos" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(2,108,223,.4);color:#fff">📁</span>Archivos</div>
-                <div class="sub-tab" data-sub="cookies-total"><span class="sub-icon" style="background:linear-gradient(135deg,#a16207,#713f12);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(161,98,7,.4);color:#fff">🍪</span>Cookies Total</div>
-                <div class="sub-tab" data-sub="cookies-esenciales"><span class="sub-icon" style="background:linear-gradient(135deg,#d0006f,#86004a);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(208,0,111,.4);color:#fff">⭐</span>Esenciales</div>
-                <div class="sub-tab" data-sub="cookies-activas"><span class="sub-icon" style="background:linear-gradient(135deg,#10b981,#047857);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(16,185,129,.4);color:#fff">✓</span>Activas</div>
-                <div class="sub-tab" data-sub="cookies-warm"><span class="sub-icon" style="background:linear-gradient(135deg,#ef4444,#b91c1c);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(239,68,68,.4);color:#fff">🔥</span>Pre-calentadas</div>
-                <div class="sub-tab" data-sub="cookies-expired"><span class="sub-icon" style="background:linear-gradient(135deg,#f59e0b,#b45309);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(245,158,11,.4);color:#fff">⌛</span>Expiradas</div>
-                <div class="sub-tab" data-sub="cookies-bad"><span class="sub-icon" style="background:linear-gradient(135deg,#7f1d1d,#450a0a);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(127,29,29,.4);color:#fff">⚠</span>Problemáticas</div>
+                <div class="sub-tab active" data-sub="cookies-archivos" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#026CDF,#0052b4);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(2,108,223,.4);color:#fff">📁</span><span data-i18n="ck.tab.files">Archivos</span></div>
+                <div class="sub-tab" data-sub="cookies-total"><span class="sub-icon" style="background:linear-gradient(135deg,#a16207,#713f12);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(161,98,7,.4);color:#fff">🍪</span><span data-i18n="ck.tab.cookies_total">Cookies Total</span></div>
+                <div class="sub-tab" data-sub="cookies-esenciales"><span class="sub-icon" style="background:linear-gradient(135deg,#d0006f,#86004a);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(208,0,111,.4);color:#fff">⭐</span><span data-i18n="ck.tab.essentials">Esenciales</span></div>
+                <div class="sub-tab" data-sub="cookies-activas"><span class="sub-icon" style="background:linear-gradient(135deg,#10b981,#047857);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(16,185,129,.4);color:#fff">✓</span><span data-i18n="ck.tab.active">Activas</span></div>
+                <div class="sub-tab" data-sub="cookies-warm"><span class="sub-icon" style="background:linear-gradient(135deg,#ef4444,#b91c1c);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(239,68,68,.4);color:#fff">🔥</span><span data-i18n="ck.tab.preheated">Pre-calentadas</span></div>
+                <div class="sub-tab" data-sub="cookies-expired"><span class="sub-icon" style="background:linear-gradient(135deg,#f59e0b,#b45309);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(245,158,11,.4);color:#fff">⌛</span><span data-i18n="ck.tab.expired">Expiradas</span></div>
+                <div class="sub-tab" data-sub="cookies-bad"><span class="sub-icon" style="background:linear-gradient(135deg,#7f1d1d,#450a0a);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(127,29,29,.4);color:#fff">⚠</span><span data-i18n="ck.tab.problematic">Problemáticas</span></div>
             </div>
 
             <!-- Acciones globales (todos los sub-tabs) -->
             <div class="card" style="border-color:var(--accent);margin-bottom:12px">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <div>
-                        <h3 style="margin:0;font-size:15px">🍪 Pool de Cookies</h3>
-                        <p style="font-size:10px;color:var(--text-muted);margin-top:2px">Las cookies mantienen sesiones TM activas para saltar Queue-it. Limpia las malas para mejor rendimiento.</p>
+                        <h3 style="margin:0;font-size:15px" data-i18n="ck.pool_title">🍪 Pool de Cookies</h3>
+                        <p style="font-size:10px;color:var(--text-muted);margin-top:2px" data-i18n="ck.pool_desc">Las cookies mantienen sesiones TM activas para saltar Queue-it. Limpia las malas para mejor rendimiento.</p>
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <button class="btn btn-accent btn-sm" onclick="warmCookies()">🔥 Pre-calentar</button>
@@ -5393,7 +5362,7 @@
             <div class="sub-section active" id="sub-cookies-archivos">
                 <div class="card">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                        <h3 style="margin:0;font-size:14px">📁 Archivos de Cookies (en disco)</h3>
+                        <h3 style="margin:0;font-size:14px" data-i18n="ck.files_title">📁 Archivos de Cookies (en disco)</h3>
                         <span style="font-size:10px;color:var(--text-muted)" id="cookies-files-count">0 archivos</span>
                     </div>
                     <div id="cookies-files-list" style="font-family:Consolas,monospace;font-size:11px;color:var(--text-muted);max-height:400px;overflow-y:auto"></div>
@@ -5406,8 +5375,8 @@
                         <div style="display:flex;align-items:center;gap:14px">
                             <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#29b6f6,#1976d2);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(41,182,246,.4)">🔗</div>
                             <div>
-                                <h3 style="margin:0;font-size:16px">Compartir Cookies entre PCs</h3>
-                                <p style="font-size:11px;color:var(--text-muted);margin:3px 0 0">Short-code · password · sanitización PII · filtro por dominio · bundle multi-archivo · import URL · audit log</p>
+                                <h3 style="margin:0;font-size:16px" data-i18n="ck.share_title">Compartir Cookies entre PCs</h3>
+                                <p style="font-size:11px;color:var(--text-muted);margin:3px 0 0" data-i18n="ck.share_subtitle">Short-code · password · sanitización PII · filtro por dominio · bundle multi-archivo · import URL · audit log</p>
                             </div>
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -5454,7 +5423,7 @@
                 <!-- Import + Audit log -->
                 <div class="grid-2" style="gap:12px">
                     <div class="card">
-                        <h3 style="margin:0 0 10px;font-size:14px">📥 Importar Cookies</h3>
+                        <h3 style="margin:0 0 10px;font-size:14px" data-i18n="ck.import_title">📥 Importar Cookies</h3>
                         <div style="margin-bottom:10px">
                             <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Opción 1: Pegar código Base64</div>
                             <textarea class="input" id="import-cookie-data" placeholder="Pega código Base64..." data-i18n-ph="backup.paste_b64" style="width:100%;min-height:60px;font-size:10px;font-family:monospace"></textarea>
@@ -5479,8 +5448,8 @@
 
                 <!-- Cookie Warming -->
                 <div class="card" style="margin-top:12px;border-left:3px solid #ef4444">
-                    <h3 style="font-size:14px;margin-bottom:8px">🔥 Cookie Warming (Pre-calentamiento)</h3>
-                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:10px">Genera cookies visitando TM antes de la compra. Las cookies pre-calentadas hacen que el bot parezca usuario real y pasa Queue-it + PerimeterX más fácil.</p>
+                    <h3 style="font-size:14px;margin-bottom:8px" data-i18n="ck.warming_title">🔥 Cookie Warming (Pre-calentamiento)</h3>
+                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:10px" data-i18n="ck.warming_desc">Genera cookies visitando TM antes de la compra. Las cookies pre-calentadas hacen que el bot parezca usuario real y pasa Queue-it + PerimeterX más fácil.</p>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                         <span style="font-size:11px;color:var(--text-muted)">Generar:</span>
                         <button class="btn btn-sm" onclick="warmCookiesN(3)">3 cookies</button>
@@ -5493,7 +5462,7 @@
 
                 <!-- Lista completa -->
                 <div class="card" style="margin-top:12px">
-                    <h3 style="margin:0 0 10px;font-size:14px">🍪 Cookies Guardadas</h3>
+                    <h3 style="margin:0 0 10px;font-size:14px" data-i18n="ck.saved_title">🍪 Cookies Guardadas</h3>
                     <div id="cookies-list"></div>
                     <div id="cookies-stats" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px"></div>
                 </div>
@@ -5502,8 +5471,8 @@
             <!-- COOKIES TOTAL -->
             <div class="sub-section" id="sub-cookies-total">
                 <div class="card">
-                    <h3>🍪 Cookies Total (todos los dominios TM)</h3>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Todas las cookies capturadas a través de los 25 dominios Ticketmaster.</p>
+                    <h3 data-i18n="ck.total_title">🍪 Cookies Total (todos los dominios TM)</h3>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="ck.total_desc">Todas las cookies capturadas a través de los 25 dominios Ticketmaster.</p>
                     <div id="cookies-total-list"></div>
                 </div>
             </div>
@@ -5511,7 +5480,7 @@
             <!-- ESENCIALES -->
             <div class="sub-section" id="sub-cookies-esenciales">
                 <div class="card" style="border-left:3px solid #d0006f">
-                    <h3>⭐ Cookies Esenciales TM</h3>
+                    <h3 data-i18n="ck.essentials_title">⭐ Cookies Esenciales TM</h3>
                     <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Cookies críticas para mantener sesión Ticketmaster: <code>BID</code>, <code>ma.did</code>, <code>ma.ss</code>, <code>SID</code>, <code>CMID</code>, <code>CMPS</code>, <code>_abck</code> (PerimeterX), <code>bm_sz</code> (Imperva), <code>QueueitToken</code>.</p>
                     <div id="cookies-esenciales-list"></div>
                 </div>
@@ -5520,8 +5489,8 @@
             <!-- ACTIVAS -->
             <div class="sub-section" id="sub-cookies-activas">
                 <div class="card" style="border-left:3px solid #10b981">
-                    <h3>✓ Cookies Activas (no expiradas)</h3>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Cookies válidas y utilizables actualmente.</p>
+                    <h3 data-i18n="ck.active_title">✓ Cookies Activas (no expiradas)</h3>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="ck.active_desc">Cookies válidas y utilizables actualmente.</p>
                     <div id="cookies-activas-list"></div>
                 </div>
             </div>
@@ -5529,8 +5498,8 @@
             <!-- PRE-CALENTADAS -->
             <div class="sub-section" id="sub-cookies-warm">
                 <div class="card" style="border-left:3px solid #ef4444">
-                    <h3>🔥 Cookies Pre-calentadas</h3>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Cookies generadas por warming: navegación sintética que simula un usuario real antes del drop. Mejora bypass anti-bot.</p>
+                    <h3 data-i18n="ck.preheated_title">🔥 Cookies Pre-calentadas</h3>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="ck.preheated_desc">Cookies generadas por warming: navegación sintética que simula un usuario real antes del drop. Mejora bypass anti-bot.</p>
                     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
                         <button class="btn btn-accent btn-sm" onclick="warmCookiesN(5)">🔥 Warm 5</button>
                         <button class="btn btn-accent btn-sm" onclick="warmCookiesN(10)">🔥 Warm 10</button>
@@ -5543,8 +5512,8 @@
             <!-- EXPIRADAS -->
             <div class="sub-section" id="sub-cookies-expired">
                 <div class="card" style="border-left:3px solid #f59e0b">
-                    <h3>⌛ Cookies Expiradas</h3>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Cookies que han superado su fecha de expiración. Se pueden forzar con "Force (expiradas)" en import.</p>
+                    <h3 data-i18n="ck.expired_title">⌛ Cookies Expiradas</h3>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="ck.expired_desc">Cookies que han superado su fecha de expiración. Se pueden forzar con "Force (expiradas)" en import.</p>
                     <div style="display:flex;gap:6px;margin-bottom:10px">
                         <button class="btn btn-danger btn-sm" onclick="if(confirm('¿Eliminar todas las cookies expiradas?'))deleteExpiredCookies()">🗑&nbsp;<span data-i18n="cookies.del_all">Eliminar todas</span></button>
                     </div>
@@ -5555,8 +5524,8 @@
             <!-- PROBLEMÁTICAS -->
             <div class="sub-section" id="sub-cookies-bad">
                 <div class="card" style="border-left:3px solid #7f1d1d">
-                    <h3>⚠ Cookies Problemáticas</h3>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Cookies detectadas como corruptas, de tracking agresivo o con dominio inválido. Recomendado eliminar.</p>
+                    <h3 data-i18n="ck.problematic_title">⚠ Cookies Problemáticas</h3>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="ck.problematic_desc">Cookies detectadas como corruptas, de tracking agresivo o con dominio inválido. Recomendado eliminar.</p>
                     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
                         <button class="btn btn-sm" onclick="autoManageCookies()">🧹 Limpiar malas</button>
                         <button class="btn btn-danger btn-sm" onclick="deleteAllBadCookies()">🗑&nbsp;<span data-i18n="cookies.del_all">Eliminar todas</span></button>
@@ -5575,8 +5544,8 @@
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#10b981,#047857);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(16,185,129,.4)">📈</div>
                         <div>
-                            <h3 style="margin:0;font-size:18px;font-weight:700">Analytics Pro</h3>
-                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">KPIs · conversion funnel · time series · heatmap horario · top eventos · desglose por dominio TM · export CSV</p>
+                            <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="an.title">Analytics Pro</h3>
+                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="an.subtitle">KPIs · conversion funnel · time series · heatmap horario · top eventos · desglose por dominio TM · export CSV</p>
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -5594,12 +5563,12 @@
             <div class="grid-2" style="gap:12px;margin-bottom:12px">
                 <div class="card">
                     <h3 style="margin:0 0 10px;font-size:14px">🔄 Conversion Funnel</h3>
-                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:12px">Tasa conversión por fase del flujo: Visitor → Queue-it → Login → Evento → Checkout → Compra</p>
+                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:12px" data-i18n="an.funnel_desc">Tasa conversión por fase del flujo: Visitor → Queue-it → Login → Evento → Checkout → Compra</p>
                     <div id="analytics-funnel"></div>
                 </div>
                 <div class="card">
-                    <h3 style="margin:0 0 10px;font-size:14px">🔥 Heatmap día × hora</h3>
-                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:12px">Actividad del bot por día de la semana × hora del día</p>
+                    <h3 style="margin:0 0 10px;font-size:14px" data-i18n="an.heatmap_title">🔥 Heatmap día × hora</h3>
+                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:12px" data-i18n="an.heatmap_desc">Actividad del bot por día de la semana × hora del día</p>
                     <div id="analytics-heatmap" style="overflow-x:auto"></div>
                 </div>
             </div>
@@ -5619,7 +5588,7 @@
                 </div>
                 <div class="card">
                     <h3 style="margin:0 0 10px;font-size:14px">🏆 Top Eventos TM</h3>
-                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:10px">Con más compras registradas</p>
+                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:10px" data-i18n="an.top_events">Con más compras registradas</p>
                     <div id="analytics-top-matches"></div>
                 </div>
             </div>
@@ -5627,11 +5596,11 @@
             <!-- Domains breakdown + History -->
             <div class="grid-2" style="gap:12px">
                 <div class="card">
-                    <h3 style="margin:0 0 10px;font-size:14px">🌍 Desglose por dominio TM</h3>
+                    <h3 style="margin:0 0 10px;font-size:14px" data-i18n="an.domain_title">🌍 Desglose por dominio TM</h3>
                     <div id="analytics-event-types"></div>
                 </div>
                 <div class="card">
-                    <h3 style="margin:0 0 10px;font-size:14px">📜 Historial reciente</h3>
+                    <h3 style="margin:0 0 10px;font-size:14px" data-i18n="nf.history_recent">📜 Historial reciente</h3>
                     <div id="analytics-events" style="max-height:360px;overflow-y:auto"></div>
                 </div>
             </div>
@@ -5646,8 +5615,8 @@
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(124,58,237,.4)">🔔</div>
                         <div>
-                            <h3 style="margin:0;font-size:18px;font-weight:700">Notificaciones</h3>
-                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Discord + Telegram · filtros evento/prioridad · quiet hours · rate limit · URL pública · historial</p>
+                            <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="title.notificaciones">Notificaciones</h3>
+                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="nf.subtitle">Discord + Telegram · filtros evento/prioridad · quiet hours · rate limit · URL pública · historial</p>
                         </div>
                     </div>
                     <div id="notif-status-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
@@ -5663,7 +5632,7 @@
                         <div style="width:42px;height:42px;border-radius:10px;background:#5865f222;border:1px solid #5865f255;display:flex;align-items:center;justify-content:center;font-size:22px">💬</div>
                         <div style="flex:1">
                             <h3 style="margin:0;font-size:14px;color:#5865f2">💬 Discord</h3>
-                            <p style="font-size:10px;color:var(--text-muted);margin:2px 0 0">Webhook → canal del servidor</p>
+                            <p style="font-size:10px;color:var(--text-muted);margin:2px 0 0" data-i18n="nf.discord_label">Webhook → canal del servidor</p>
                         </div>
                         <label class="toggle"><input type="checkbox" id="notif-discord-on" onchange="saveNotifConfig()"><span class="slider"></span></label>
                     </div>
@@ -5733,7 +5702,7 @@
                 </div>
                 <div class="card">
                     <h3 style="margin:0 0 10px;font-size:14px">⚡ Rate limit + prioridad</h3>
-                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:8px">Evita flood. Deshabilita eventos de baja prioridad.</p>
+                    <p style="font-size:10px;color:var(--text-muted);margin-bottom:8px" data-i18n="nf.rate_desc">Evita flood. Deshabilita eventos de baja prioridad.</p>
                     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
                         <label style="font-size:11px">Max/min:</label>
                         <input class="input" id="notif-rate-limit" type="number" value="20" min="1" max="200" style="width:70px;font-size:11px">
@@ -5753,7 +5722,7 @@
 
             <!-- URL pública -->
             <div class="card" style="margin-bottom:12px;border-left:4px solid #00c896">
-                <h3 style="margin:0 0 6px;font-size:14px">🌐 URL pública del dashboard (cloudflared)</h3>
+                <h3 style="margin:0 0 6px;font-size:14px" data-i18n="sec.public_url">🌐 URL pública del dashboard (cloudflared)</h3>
                 <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px">
                     Si lanzas filas y quieres abrir bypass desde móvil/otro PC, necesitas exponer el dashboard a internet. Usa <b>Cloudflare Tunnel</b>: <code style="background:var(--bg);padding:1px 6px;border-radius:3px;font-size:10px">cloudflared tunnel --url http://localhost:5055</code>
                 </p>
@@ -5951,8 +5920,8 @@
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#1e293b,#0f172a);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(0,0,0,.5);color:#22c55e">⌨️</div>
                         <div>
-                            <h3 style="margin:0;font-size:18px;font-weight:700">Consola (Logs en Vivo)</h3>
-                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Logs del sistema en tiempo real · filtro solo errores · auto-scroll · export</p>
+                            <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="title.consola">Consola (Logs en Vivo)</h3>
+                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="cn.subtitle">Logs del sistema en tiempo real · filtro solo errores · auto-scroll · export</p>
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
@@ -5987,8 +5956,8 @@
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#64748b,#334155);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(100,116,139,.4)">💾</div>
                         <div>
-                            <h3 style="margin:0;font-size:18px;font-weight:700">Sistema de Backups</h3>
-                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Backups manuales y automáticos · incluye cuentas · tarjetas · cookies · settings · restore con un click</p>
+                            <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="title.backup">Sistema de Backups</h3>
+                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="bk.subtitle">Backups manuales y automáticos · incluye cuentas · tarjetas · cookies · settings · restore con un click</p>
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -6005,7 +5974,7 @@
 
             <!-- Auto backup -->
             <div class="card" style="margin-bottom:12px;border-left:3px solid #10b981">
-                <h3 style="margin:0 0 8px;font-size:14px">🕐 Backup Automático</h3>
+                <h3 style="margin:0 0 8px;font-size:14px" data-i18n="bk.auto_title">🕐 Backup Automático</h3>
                 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                     <label class="toggle"><input type="checkbox" id="backup-auto-on" onchange="saveBackupSchedule()"><span class="slider"></span></label>
                     <span style="font-size:11px">Activar auto-backup</span>
@@ -6034,8 +6003,8 @@
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#3730a3);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(79,70,229,.4)">👤</div>
                         <div>
-                            <h3 style="margin:0;font-size:18px;font-weight:700">Usuarios del Dashboard</h3>
-                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Gestión de usuarios · roles (admin/operador/viewer) · 2FA · historial de accesos · PBKDF2 hash</p>
+                            <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="title.usuarios">Usuarios del Dashboard</h3>
+                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="us.subtitle">Gestión de usuarios · roles (admin/operador/viewer) · 2FA · historial de accesos · PBKDF2 hash</p>
                         </div>
                     </div>
                     <button class="btn btn-accent" onclick="openUserModal()">+ Usuario</button>
@@ -6305,7 +6274,7 @@
                     <div class="grid-2" style="gap:12px">
                         <!-- Config IMAP -->
                         <div class="card" style="border-left:3px solid #d0006f">
-                            <h3 style="margin:0 0 8px;font-size:14px">🔑 Config IMAP</h3>
+                            <h3 style="margin:0 0 8px;font-size:14px" data-i18n="otp.config_imap">🔑 Config IMAP</h3>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                                 <div><label style="font-size:11px;color:var(--text-muted)">Host</label><input class="input" id="otp3dsHost" placeholder="imap.gmail.com" style="width:100%"></div>
                                 <div><label style="font-size:11px;color:var(--text-muted)">Port</label><input class="input" id="otp3dsPort" type="number" value="993" style="width:100%"></div>
@@ -6333,7 +6302,7 @@
                         </div>
                         <!-- Test pattern + SMS push -->
                         <div class="card" style="border-left:3px solid #d0006f">
-                            <h3 style="margin:0 0 8px;font-size:14px">🧪 Probar pattern / SMS push</h3>
+                            <h3 style="margin:0 0 8px;font-size:14px" data-i18n="otp.test_pattern">🧪 Probar pattern / SMS push</h3>
                             <textarea id="otp3dsTestText" class="input" rows="4" placeholder="Pega texto SMS o cuerpo email (ej: 'Su código de seguridad es 482913')" style="width:100%;font-size:11px"></textarea>
                             <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
                                 <button class="btn btn-sm" onclick="otp3dsTestPattern()">🔍 Extraer (test)</button>
@@ -6534,8 +6503,8 @@ popheads</textarea>
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#ef4444,#b91c1c);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(239,68,68,.4)">🆘</div>
                         <div>
-                            <h3 style="margin:0;font-size:18px;font-weight:700">Sistema de Soporte</h3>
-                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Tickets de soporte · categorías · prioridad · asignación · historial conversación · SLA · FAQ TM</p>
+                            <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="title.soporte">Sistema de Soporte</h3>
+                            <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="sp.subtitle">Tickets de soporte · categorías · prioridad · asignación · historial conversación · SLA · FAQ TM</p>
                         </div>
                     </div>
                     <button class="btn btn-accent" onclick="openTicketModal()">+ Nuevo Ticket</button>
@@ -7270,19 +7239,19 @@ popheads</textarea>
                 <div style="display:flex;align-items:center;gap:14px">
                     <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#eab308,#a16207);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(234,179,8,.4)">📝</div>
                     <div>
-                        <h3 style="margin:0;font-size:18px;font-weight:700">Notas y Estudio de Mejoras</h3>
-                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Capturar ideas · recordatorios · dictado por micrófono · deberes · estudio de competidores TM · prioridades</p>
+                        <h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="nt.title">Notas y Estudio de Mejoras</h3>
+                        <p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="nt.subtitle">Capturar ideas · recordatorios · dictado por micrófono · deberes · estudio de competidores TM · prioridades</p>
                     </div>
                 </div>
             </div>
 
             <!-- SUB-TABS -->
             <div class="sub-tabs" style="flex-wrap:wrap">
-                <div class="sub-tab active" data-sub="notas-list" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#eab308,#a16207);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(234,179,8,.4);color:#fff">📝</span>Mis Notas</div>
-                <div class="sub-tab" data-sub="notas-recordatorios"><span class="sub-icon" style="background:linear-gradient(135deg,#29b6f6,#0277bd);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(41,182,246,.4);color:#fff">📌</span>Recordatorios</div>
-                <div class="sub-tab" data-sub="notas-juanjo"><span class="sub-icon" style="background:linear-gradient(135deg,#d97706,#78350f);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(217,119,6,.4);color:#fff">📚</span>Juanjo Deberes</div>
-                <div class="sub-tab" data-sub="notas-esteban"><span class="sub-icon" style="background:linear-gradient(135deg,#10b981,#047857);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(16,185,129,.4);color:#fff">📚</span>Esteban Deberes</div>
-                <div class="sub-tab" data-sub="notas-estudio"><span class="sub-icon" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(124,58,237,.4);color:#fff">🔬</span>Estudio Mejoras</div>
+                <div class="sub-tab active" data-sub="notas-list" style="font-weight:600"><span class="sub-icon" style="background:linear-gradient(135deg,#eab308,#a16207);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(234,179,8,.4);color:#fff">📝</span><span data-i18n="nt.tab.mine">Mis Notas</span></div>
+                <div class="sub-tab" data-sub="notas-recordatorios"><span class="sub-icon" style="background:linear-gradient(135deg,#29b6f6,#0277bd);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(41,182,246,.4);color:#fff">📌</span><span data-i18n="nt.tab.reminders">Recordatorios</span></div>
+                <div class="sub-tab" data-sub="notas-juanjo"><span class="sub-icon" style="background:linear-gradient(135deg,#d97706,#78350f);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(217,119,6,.4);color:#fff">📚</span><span data-i18n="nt.tab.juanjo">Juanjo Deberes</span></div>
+                <div class="sub-tab" data-sub="notas-esteban"><span class="sub-icon" style="background:linear-gradient(135deg,#10b981,#047857);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(16,185,129,.4);color:#fff">📚</span><span data-i18n="nt.tab.esteban">Esteban Deberes</span></div>
+                <div class="sub-tab" data-sub="notas-estudio"><span class="sub-icon" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(124,58,237,.4);color:#fff">🔬</span><span data-i18n="nt.tab.mejoras">Estudio Mejoras</span></div>
             </div>
 
             <!-- MIS NOTAS -->
@@ -7291,7 +7260,7 @@ popheads</textarea>
                     <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#eab308,#a16207,#7c3aed)"></div>
                     <div style="display:flex;align-items:center;gap:14px">
                         <div style="width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#eab308,#a16207);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 14px rgba(234,179,8,.4)">📝</div>
-                        <div><h3 style="margin:0;font-size:18px;font-weight:700">Mis Notas</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4">Capturar ideas · dictado por micrófono · filtros por prioridad · ejecución con Claude</p></div>
+                        <div><h3 style="margin:0;font-size:18px;font-weight:700" data-i18n="nt.tab.mine">Mis Notas</h3><p style="font-size:12px;color:var(--text-muted);margin:3px 0 0;max-width:560px;line-height:1.4" data-i18n="nt.subtitle_alt">Capturar ideas · dictado por micrófono · filtros por prioridad · ejecución con Claude</p></div>
                     </div>
                 </div>
 
@@ -7619,8 +7588,63 @@ popheads</textarea>
                         <label style="display:flex;align-items:center;gap:6px;font-size:11px"><input type="checkbox"><span>Evitar vista restringida</span></label>
                     </div>
                 </div>
-                <div style="margin-top:12px"><button class="btn btn-accent btn-sm" onclick="saveExtensionsConfig()">💾 Guardar extensiones</button></div>
+                <div style="margin-top:12px"><button class="btn btn-accent btn-sm" onclick="saveExtensionsConfig()">💾&nbsp;<span data-i18n="xr.save_extensions">Guardar extensiones</span></button></div>
                 <div id="extensions-list" style="margin-top:10px"></div>
+
+                <!-- ═══ RECOMENDADOR DE EXTENSIONES (catálogo + buscar mejoras) ═══ -->
+                <div style="margin-top:18px;border-top:1px dashed var(--border);padding-top:16px">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+                        <span style="font-size:22px">🔭</span>
+                        <div style="flex:1;min-width:220px">
+                            <h4 style="margin:0;font-size:14px;font-weight:800"><span data-i18n="xr.title">Mejoras recomendadas</span></h4>
+                            <p style="margin:2px 0 0;font-size:10.5px;color:var(--text-muted)" data-i18n="xr.subtitle">Catálogo curado · success_rate calibrado · busca mejoras nuevas que puedes implementar</p>
+                        </div>
+                        <button class="btn btn-sm btn-accent" onclick="loadExtensionRecs()" title="Recargar catálogo" data-i18n-title="xr.tip_reload">🔄&nbsp;<span data-i18n="xr.reload">Recargar</span></button>
+                    </div>
+
+                    <!-- Stats: avg success + counts -->
+                    <div id="xr-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px"></div>
+
+                    <!-- Search bar + filtros -->
+                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+                        <input id="xr-search" class="input" data-i18n-ph="xr.search_ph"
+                               placeholder="🔍 buscar mejoras (captcha, retry, ML, proxy, drop…)"
+                               style="flex:2;min-width:200px;font-size:12px"
+                               onkeydown="if(event.key==='Enter') searchExtensionRecs()">
+                        <button class="btn btn-sm btn-accent" onclick="searchExtensionRecs()" style="padding:6px 16px;font-weight:700">
+                            🔎&nbsp;<span data-i18n="xr.search_btn">Buscar</span></button>
+                        <button class="btn btn-sm" onclick="document.getElementById('xr-search').value='';loadExtensionRecs();">
+                            ☓&nbsp;<span data-i18n="xr.clear">Limpiar</span></button>
+                    </div>
+
+                    <!-- Filtros tier + status -->
+                    <div style="display:flex;gap:4px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+                        <span style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase" data-i18n="xr.filter_status">Status:</span>
+                        <button class="btn btn-sm xr-filter-status" data-status="" onclick="filterExtensionRecs(this,'status')" style="font-size:10px">
+                            <span data-i18n="xr.all">Todas</span></button>
+                        <button class="btn btn-sm xr-filter-status" data-status="installed" onclick="filterExtensionRecs(this,'status')" style="font-size:10px">
+                            ✅&nbsp;<span data-i18n="xr.installed">Instaladas</span></button>
+                        <button class="btn btn-sm xr-filter-status" data-status="available" onclick="filterExtensionRecs(this,'status')" style="font-size:10px">
+                            ⚙️&nbsp;<span data-i18n="xr.available">Disponibles</span></button>
+                        <button class="btn btn-sm xr-filter-status" data-status="recommended" onclick="filterExtensionRecs(this,'status')" style="font-size:10px">
+                            💡&nbsp;<span data-i18n="xr.recommended">Recomendadas</span></button>
+                        <button class="btn btn-sm xr-filter-status" data-status="experimental" onclick="filterExtensionRecs(this,'status')" style="font-size:10px">
+                            🧪&nbsp;<span data-i18n="xr.experimental">Experimentales</span></button>
+                        <button class="btn btn-sm xr-filter-status" data-status="external" onclick="filterExtensionRecs(this,'status')" style="font-size:10px">
+                            💰&nbsp;<span data-i18n="xr.external">Con coste</span></button>
+                        <span style="margin-left:10px;font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Tier:</span>
+                        <button class="btn btn-sm xr-filter-tier" data-tier="" onclick="filterExtensionRecs(this,'tier')" style="font-size:10px"><span data-i18n="xr.all_tiers">Todos</span></button>
+                        <button class="btn btn-sm xr-filter-tier" data-tier="S" onclick="filterExtensionRecs(this,'tier')" style="font-size:10px;color:#22c55e">S</button>
+                        <button class="btn btn-sm xr-filter-tier" data-tier="A" onclick="filterExtensionRecs(this,'tier')" style="font-size:10px;color:#06b6d4">A</button>
+                        <button class="btn btn-sm xr-filter-tier" data-tier="B" onclick="filterExtensionRecs(this,'tier')" style="font-size:10px;color:#f59e0b">B</button>
+                        <button class="btn btn-sm xr-filter-tier" data-tier="C" onclick="filterExtensionRecs(this,'tier')" style="font-size:10px;color:#ef4444">C</button>
+                    </div>
+
+                    <!-- Grid resultados -->
+                    <div id="xr-results" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px">
+                        <div style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:11px;padding:20px" data-i18n="action.loading">Cargando…</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -8276,7 +8300,7 @@ function loadSection(s){
         presale:      loadPresale,
         soporte:      loadSupport,
         notas:        ()=>{loadNotes();loadVoicePanel('recordatorios');loadVoicePanel('juanjo_deberes');loadVoicePanel('esteban_deberes');renderCompetitorsEstudio();renderMejorasEstudio();},
-        config:       ()=>{loadConfig();loadDfaStats();loadDfaTimeline();loadDfaTolerance();dfaLoadSchedulerStatus();},
+        config:       ()=>{loadConfig();loadDfaStats();loadDfaTimeline();loadDfaTolerance();dfaLoadSchedulerStatus();loadExtensionRecs();},
         setup:        loadSetupWizard,
     };
     if(loaders[s]) loaders[s]();
@@ -9324,7 +9348,6 @@ function initBypassPro(){
     loadPxStats();
     loadPxLog();
     loadAcpatInjStats();
-    loadAdyen();
     // 4 nuevas mejoras 2026
     loadOtp3ds();
     loadProxyPin();
@@ -9499,55 +9522,6 @@ async function subscribeAcpat(){
         toast(`🔔 Suscrito · sid: ${r.sid}`,'info');
         loadAcpatInjStats();
     }
-}
-
-// ══════════ ADYEN ══════════
-async function loadAdyen(){
-    const cfg = await api('/api/adyen/config');
-    if(!cfg || !cfg.ok) return;
-    const c = cfg.config || {};
-    document.getElementById('ay-merchant').value = c.merchant_account || '';
-    document.getElementById('ay-mode').value = c.mode || 'simulate';
-    document.getElementById('ay-status').innerHTML = c.api_key_preview
-        ? `🔑 Key: <code>${esc(c.api_key_preview)}</code> · mode: <b>${esc(c.mode)}</b>`
-        : `<span style="color:var(--text-muted)">${CURRENT_LANG==='en'?'No credentials configured':'Sin credenciales'}</span>`;
-    const tk = await api('/api/adyen/tokens');
-    const tel = document.getElementById('ay-tokens');
-    if(tel){
-        const items = (tk?.tokens || []);
-        const stats = tk?.stats || {};
-        tel.innerHTML = items.length
-            ? `<div style="color:var(--text-muted);margin-bottom:6px">${stats.active||0} active · ${stats.expired||0} expired · brands: ${Object.entries(stats.by_brand||{}).map(([b,n])=>`${b}:${n}`).join(', ')||'—'}</div>` +
-              items.map(t=>`<div style="padding:5px 8px;border-bottom:1px solid var(--border)">
-                💳 <code>${esc(t.token_id.slice(0,16))}…</code> · ${esc(t.brand||'?')} •••• ${esc(t.last4||'—')} · ${esc(t.shopper_reference||'')}
-                <div style="color:var(--text-dim);font-size:9px">exp ${esc((t.expires_at||'').slice(0,10))} · ${esc(t.mode||'?')}</div>
-              </div>`).join('')
-            : `<div style="color:var(--text-dim);padding:6px">${CURRENT_LANG==='en'?'No tokens':'Sin tokens'}</div>`;
-    }
-}
-
-async function saveAdyenConfig(){
-    const body = {
-        api_key: document.getElementById('ay-key').value.trim() || undefined,
-        merchant_account: document.getElementById('ay-merchant').value.trim(),
-        mode: document.getElementById('ay-mode').value,
-    };
-    await api('/api/adyen/config',{method:'POST',body:JSON.stringify(body)});
-    document.getElementById('ay-key').value = '';
-    toast('💾 Adyen config saved','success');
-    loadAdyen();
-}
-
-async function adyenSelfTest(){
-    const el = document.getElementById('ay-status');
-    el.innerHTML = `<span style="color:var(--text-muted)">⏳ ${CURRENT_LANG==='en'?'Testing…':'Probando…'}</span>`;
-    const r = await api('/api/adyen/self-test',{method:'POST',body:'{}'});
-    if(r && r.ok){
-        el.innerHTML = `<span style="color:#4ade80">✅ ${esc(r.mode)} mode · token: <code>${esc((r.token_id||'').slice(0,20))}…</code> · ${r.elapsed_ms}ms</span>`;
-    } else {
-        el.innerHTML = `<span style="color:#f87171">❌ ${esc(r?.error||'error')}</span>`;
-    }
-    setTimeout(loadAdyen, 500);
 }
 
 // ══════════ 3DS OTP AUTOFILL ══════════
@@ -11701,6 +11675,14 @@ function _renderPlantillaTm(){
         tbody.innerHTML = `<tr><td colspan="${window._ptHeader.length}" style="padding:18px;text-align:center;color:var(--text-muted)">Sin filas</td></tr>`;
         return;
     }
+    // Helper: detecta si la fila está marcada como Seleccionado (incluye dirty)
+    const _ptRowIsSelected = (row, ri) => {
+        const selIdx = window._ptHeader.indexOf('Seleccionado');
+        if (selIdx < 0) return false;
+        const dirtyVal = window._ptDirty.get(`${ri}:${selIdx}`);
+        const v = (dirtyVal !== undefined ? dirtyVal : (row[selIdx] || '')).toString().trim();
+        return v === '1' || v === 'x' || v === 'X' || v === 'true';
+    };
     tbody.innerHTML = window._ptRows.map((row, ri) => {
         const cells = window._ptHeader.map((h, ci) => {
             const orig = row[ci] || '';
@@ -11714,7 +11696,7 @@ function _renderPlantillaTm(){
             if (h === 'Seleccionado') {
                 const isChecked = (val === '1' || val === 'x' || val === 'X' || val === 'true');
                 return `<td style="padding:3px 4px;border-bottom:1px solid var(--border);text-align:center;${isDirty?'background:rgba(245,158,11,.18)':''}">
-                    <input data-r="${ri}" data-c="${ci}" data-orig="${esc(orig)}" type="checkbox" ${isChecked?'checked':''} onchange="onPtCheckboxChange(this)" style="width:18px;height:18px;cursor:pointer;accent-color:#0891b2;margin:0">
+                    <input data-r="${ri}" data-c="${ci}" data-orig="${esc(orig)}" type="checkbox" ${isChecked?'checked':''} onchange="onPtCheckboxChange(this)" style="width:18px;height:18px;cursor:pointer;accent-color:#22c55e;margin:0">
                 </td>`;
             }
             // Columna N_Usuario (primer campo del CSV, identificador numérico) →
@@ -11731,7 +11713,13 @@ function _renderPlantillaTm(){
                 <input data-r="${ri}" data-c="${ci}" data-orig="${esc(orig)}" type="${inputType}" value="${esc(val)}" oninput="onPtCellChange(this)" style="width:100%;color:inherit;font-size:11px;padding:3px 5px;border-radius:3px;font-family:${/password|cvv|tarjeta|pasaporte|telefono|zip/i.test(h)?'monospace':'inherit'};${styleDirty}">
             </td>`;
         }).join('');
-        return `<tr style="background:${ri%2?'rgba(255,255,255,.02)':'transparent'}">${cells}</tr>`;
+        // Fondo verde para filas Seleccionado=1 (visualmente diferenciables del resto).
+        // Verde TM #22c55e con 15% opacidad + borde-izq sólido como acento.
+        const sel = _ptRowIsSelected(row, ri);
+        const bg = sel
+            ? 'background:rgba(34,197,94,.18);box-shadow:inset 4px 0 0 #22c55e'
+            : `background:${ri%2?'rgba(255,255,255,.02)':'transparent'}`;
+        return `<tr data-row-idx="${ri}" style="${bg};transition:background .15s">${cells}</tr>`;
     }).join('');
     _ptUpdateSelectedCount();
 }
@@ -11766,6 +11754,19 @@ function onPtCheckboxChange(inp){
     } else {
         window._ptDirty.delete(key);
         inp.parentElement.style.background = 'transparent';
+    }
+    // Pintar fila VERDE si seleccionada, restaurar zebra si no.
+    // Update en vivo sin re-render completo (mejor UX al hacer check rápido).
+    const tr = inp.closest('tr');
+    if(tr){
+        if(inp.checked){
+            tr.style.background = 'rgba(34,197,94,.18)';
+            tr.style.boxShadow = 'inset 4px 0 0 #22c55e';
+        } else {
+            const ri = parseInt(tr.dataset.rowIdx || r);
+            tr.style.background = ri%2 ? 'rgba(255,255,255,.02)' : 'transparent';
+            tr.style.boxShadow = '';
+        }
     }
     _ptUpdateDirty();
     _ptUpdateSelectedCount();
@@ -14472,10 +14473,10 @@ function rSites(){
         // Stats grid
         const stats=document.getElementById('sites-stats-grid');
         if(stats)stats.innerHTML=`
-            <div class="stat-card" style="border-left:3px solid var(--info)"><div class="label">Total sitios</div><div class="value blue">${all.length}</div></div>
-            <div class="stat-card" style="border-left:3px solid var(--success)"><div class="label">Activos</div><div class="value green">${all.filter(s=>s.enabled).length}</div></div>
-            <div class="stat-card" style="border-left:3px solid #d0006f"><div class="label">Favoritos</div><div class="value" style="color:#d0006f">${all.filter(s=>s.favorite).length}</div></div>
-            <div class="stat-card" style="border-left:3px solid var(--warning)"><div class="label">Reventa</div><div class="value yellow">${all.filter(s=>s.category==='Reventa').length}</div></div>`;
+            <div class="stat-card" style="border-left:3px solid var(--info)"><div class="label">${t('stat.total_sites')}</div><div class="value blue">${all.length}</div></div>
+            <div class="stat-card" style="border-left:3px solid var(--success)"><div class="label">${t('stat.active')}</div><div class="value green">${all.filter(s=>s.enabled).length}</div></div>
+            <div class="stat-card" style="border-left:3px solid #d0006f"><div class="label">${t('stat.favorites')}</div><div class="value" style="color:#d0006f">${all.filter(s=>s.favorite).length}</div></div>
+            <div class="stat-card" style="border-left:3px solid var(--warning)"><div class="label">${t('stat.resale')}</div><div class="value yellow">${all.filter(s=>s.category==='Reventa').length}</div></div>`;
         // Grid
         const g=document.getElementById('site-grid');
         if(g)g.innerHTML=sites.map(s=>`<div class="card" style="padding:14px;border-left:3px solid ${s.enabled?'var(--success)':'var(--border)'}">
@@ -16854,6 +16855,126 @@ setInterval(()=>{
     }
 }, 5000);
 function saveExtensionsConfig(){api('/api/bot/extensions/config',{method:'POST',body:JSON.stringify({queueMonitor:document.getElementById('ext-queue-monitor')?.checked,priceAlert:document.getElementById('ext-price-alert')?.checked,cookieInject:document.getElementById('ext-cookie-inject')?.checked,seatmap:document.getElementById('ext-seatmap')?.checked})}).then(()=>toast('Extensiones guardadas','success'));}
+
+// ══════════ RECOMENDADOR DE EXTENSIONES (catálogo curado bot) ══════════
+window._xrFilter = {status: '', tier: ''};
+
+async function loadExtensionRecs(){
+    const f = window._xrFilter;
+    const qs = new URLSearchParams();
+    if(f.status) qs.set('status', f.status);
+    if(f.tier)   qs.set('tier', f.tier);
+    const r = await api('/api/extensions/recommendations?'+qs.toString());
+    if(!r || !r.ok){
+        document.getElementById('xr-results').innerHTML = `<div style="grid-column:1/-1;color:var(--danger);text-align:center;padding:20px">${CURRENT_LANG==='en'?'Error loading catalog':'Error cargando catálogo'}</div>`;
+        return;
+    }
+    renderXrStats(r.stats);
+    renderXrResults(r.recommendations || []);
+}
+
+async function searchExtensionRecs(){
+    const q = (document.getElementById('xr-search')?.value || '').trim();
+    if(!q){ return loadExtensionRecs(); }
+    const r = await api('/api/extensions/search?q='+encodeURIComponent(q)+'&limit=40');
+    if(!r || !r.ok) return;
+    renderXrResults(r.matches || []);
+    const stats = document.getElementById('xr-stats');
+    if(stats) stats.innerHTML = `<div class="stat-card" style="grid-column:1/-1"><div class="label">${CURRENT_LANG==='en'?'Search':'Búsqueda'}: "${esc(q)}"</div><div class="value blue">${r.matches?.length || 0} ${CURRENT_LANG==='en'?'matches':'coincidencias'}</div></div>`;
+}
+
+function filterExtensionRecs(btn, kind){
+    const value = btn.dataset[kind] || '';
+    window._xrFilter[kind] = value;
+    document.querySelectorAll('.xr-filter-'+kind).forEach(b => {
+        b.classList.toggle('btn-accent', (b.dataset[kind] || '') === value);
+    });
+    loadExtensionRecs();
+}
+
+function renderXrStats(stats){
+    if(!stats) return;
+    const el = document.getElementById('xr-stats');
+    if(!el) return;
+    const lang = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en');
+    const lblTotal     = lang ? 'In catalog'      : 'En catálogo';
+    const lblInstalled = lang ? 'Installed'       : 'Instaladas';
+    const lblAvailable = lang ? 'Available'       : 'Disponibles';
+    const lblRecommended = lang ? 'Recommended'   : 'Recomendadas';
+    const lblAvgSuccess = lang ? 'Avg success'    : 'Éxito promedio';
+    const bs = stats.by_status || {};
+    el.innerHTML = `
+        <div class="stat-card"><div class="label">${lblTotal}</div><div class="value blue">${stats.total_in_catalog||0}</div></div>
+        <div class="stat-card"><div class="label">${lblInstalled}</div><div class="value green">${bs.installed||0}</div></div>
+        <div class="stat-card"><div class="label">${lblAvailable}</div><div class="value cyan">${bs.available||0}</div></div>
+        <div class="stat-card"><div class="label">${lblRecommended}</div><div class="value yellow">${bs.recommended||0}</div></div>
+        <div class="stat-card"><div class="label">${lblAvgSuccess}</div><div class="value green">${stats.avg_success_rate||0}%</div></div>
+    `;
+}
+
+function renderXrResults(items){
+    const el = document.getElementById('xr-results');
+    if(!el) return;
+    const lang = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en');
+    if(!items.length){
+        el.innerHTML = `<div style="grid-column:1/-1;color:var(--text-muted);text-align:center;padding:20px">${lang?'No matches':'Sin resultados'}</div>`;
+        return;
+    }
+    const tierColor = {S:'#22c55e', A:'#06b6d4', B:'#f59e0b', C:'#ef4444'};
+    const statusBadge = {
+        installed:    {bg:'rgba(34,197,94,.15)',  fg:'#22c55e', label: lang?'INSTALLED':'INSTALADA'},
+        available:    {bg:'rgba(6,182,212,.15)',  fg:'#06b6d4', label: lang?'AVAILABLE':'DISPONIBLE'},
+        recommended:  {bg:'rgba(245,158,11,.15)', fg:'#f59e0b', label: lang?'RECOMMENDED':'RECOMENDADA'},
+        experimental: {bg:'rgba(239,68,68,.15)',  fg:'#ef4444', label: lang?'EXPERIMENTAL':'EXPERIMENTAL'},
+        external:     {bg:'rgba(208,0,111,.15)',  fg:'#d0006f', label: lang?'WITH COST':'CON COSTE'},
+    };
+    el.innerHTML = items.map(ext => {
+        const tc = tierColor[ext.tier] || '#888';
+        const sb = statusBadge[ext.status] || statusBadge.recommended;
+        const cost = ext.cost ? `<div style="font-size:9px;color:#d0006f;font-weight:700">≈ $${ext.cost}/mo</div>` : '';
+        const successBar = `<div style="height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin:6px 0">
+            <div style="height:100%;width:${ext.success_rate}%;background:linear-gradient(90deg,#ef4444 0%,#f59e0b 50%,#22c55e 80%,#22c55e 100%)"></div>
+        </div>`;
+        const installed = ext.status === 'installed';
+        const interested = ext.user_interested;
+        const actionBtn = installed
+            ? `<button class="btn btn-sm" disabled style="font-size:10px;opacity:.6">✓ ${lang?'In use':'En uso'}</button>`
+            : `<button class="btn btn-sm" onclick="markExtensionInterest('${esc(ext.id)}',${!interested})" style="font-size:10px">${interested?'★':'☆'} ${interested?(lang?'Interested':'Interesa'):(lang?'Mark':'Marcar')}</button>`;
+        const hint = ext.implementation_hint
+            ? `<div style="font-size:9px;color:var(--text-muted);font-style:italic;margin-top:4px;border-top:1px dashed var(--border);padding-top:4px">💡 ${esc(ext.implementation_hint)}</div>`
+            : '';
+        return `<div class="card" style="border-left:3px solid ${tc};padding:10px;display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:22px">${ext.icon||'🧩'}</span>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+                        ${esc(ext.name)}
+                        <span style="background:${tc};color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:800">${ext.tier}</span>
+                    </div>
+                    <div style="font-size:9px;color:var(--text-muted)">${esc(ext.category||'')} · ${ext.success_rate}% ${lang?'success':'éxito'}</div>
+                </div>
+                <span style="background:${sb.bg};color:${sb.fg};font-size:8px;padding:2px 6px;border-radius:6px;font-weight:800;white-space:nowrap">${sb.label}</span>
+            </div>
+            ${successBar}
+            <div style="font-size:10.5px;color:var(--text)">${esc(ext.description||'')}</div>
+            <div style="font-size:10px;color:var(--text-muted);font-style:italic">→ ${esc(ext.value||'')}</div>
+            ${cost}
+            ${hint}
+            <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${actionBtn}</div>
+        </div>`;
+    }).join('');
+}
+
+async function markExtensionInterest(extId, interested){
+    const r = await api(`/api/extensions/${extId}/interest`, {
+        method: 'POST',
+        body: JSON.stringify({interested}),
+    });
+    if(r?.ok){
+        toast(interested ? (CURRENT_LANG==='en'?'★ Marked':'★ Marcada') : (CURRENT_LANG==='en'?'☆ Cleared':'☆ Quitada'), 'success');
+        loadExtensionRecs();
+    }
+}
 function generateQueueitBypass(){const url=document.getElementById('bypass-event-url')?.value;const cid=document.getElementById('bypass-queueit-id')?.value||'ticketmaster';if(!url){toast('Introduce URL del evento','error');return;}const bypassUrl=url+(url.includes('?')?'&':'?')+'queueittoken=e_'+cid+'~q_'+Math.random().toString(36).substr(2,16)+'~ts_'+Date.now()+'~ce_true~rt_queue';document.getElementById('bypass-queueit-result').textContent=bypassUrl;}
 function generateCookieBypassURL(){const acc=document.getElementById('bypass-account')?.value||'';const dom=document.getElementById('bypass-domain')?.value||'ticketmaster.com';api('/api/bot/bypass/cookie_url',{method:'POST',body:JSON.stringify({account:acc,domain:dom})}).then(r=>{document.getElementById('bypass-cookie-result').textContent=r?.url||'Error al generar URL';});}
 function resolvePXChallenge(){toast('Resolviendo desafío PerimeterX...','info');api('/api/bot/antibot/px_solve',{method:'POST'}).then(r=>document.getElementById('px-bypass-status').textContent=r?.ok?'✓ Desafío resuelto':'✗ Error al resolver');}
@@ -17931,11 +18052,11 @@ async function loadAnalytics(){
     const r = await api('/api/analytics'); if(!r||!r.ok) return;
     const k = r.kpis;
     document.getElementById('analytics-kpis').innerHTML = `
-        <div class="stat-card"><div class="label">Total events</div><div class="value blue">${k.total_events}</div></div>
-        <div class="stat-card"><div class="label">Ultimas 24h</div><div class="value green">${k.events_24h}</div></div>
-        <div class="stat-card"><div class="label">Ultimos 7 dias</div><div class="value cyan">${k.events_7d}</div></div>
-        <div class="stat-card"><div class="label">Compras</div><div class="value yellow">${k.purchases}</div></div>
-        <div class="stat-card"><div class="label">Conversion</div><div class="value green">${k.conversion_rate}%</div></div>`;
+        <div class="stat-card"><div class="label">${t('stat.total_events')}</div><div class="value blue">${k.total_events}</div></div>
+        <div class="stat-card"><div class="label">${t('stat.last_24h')}</div><div class="value green">${k.events_24h}</div></div>
+        <div class="stat-card"><div class="label">${t('stat.last_7days')}</div><div class="value cyan">${k.events_7d}</div></div>
+        <div class="stat-card"><div class="label">${t('stat.purchases')}</div><div class="value yellow">${k.purchases}</div></div>
+        <div class="stat-card"><div class="label">${t('stat.conversion_p')}</div><div class="value green">${k.conversion_rate}%</div></div>`;
     document.getElementById('analytics-events').innerHTML = r.events.length
         ? r.events.slice(0,100).map(e=>`<div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;display:flex;justify-content:space-between;gap:10px">
             <span><b>${esc(e.type)}</b> ${esc(JSON.stringify(e.data||{}))}</span>
@@ -18099,11 +18220,11 @@ async function loadMonitor(){
     const r = await api('/api/monitor'); if(!r||!r.ok) return;
     const s = r.status;
     document.getElementById('monitor-status').innerHTML = `
-        <div class="stat-card"><div class="label">CPU</div><div class="value ${s.cpu>80?'red':s.cpu>50?'yellow':'green'}">${s.cpu}%</div></div>
-        <div class="stat-card"><div class="label">RAM</div><div class="value ${s.memory>80?'red':'blue'}">${s.memory}%</div></div>
-        <div class="stat-card"><div class="label">Disco</div><div class="value cyan">${s.disk}%</div></div>
-        <div class="stat-card"><div class="label">Workers</div><div class="value yellow">${s.workers_active}</div></div>
-        <div class="stat-card"><div class="label">Health</div><div class="value ${s.health==='ok'?'green':'yellow'}">${s.health}</div></div>`;
+        <div class="stat-card"><div class="label">${t('stat.cpu')}</div><div class="value ${s.cpu>80?'red':s.cpu>50?'yellow':'green'}">${s.cpu}%</div></div>
+        <div class="stat-card"><div class="label">${t('stat.ram')}</div><div class="value ${s.memory>80?'red':'blue'}">${s.memory}%</div></div>
+        <div class="stat-card"><div class="label">${t('stat.disk')}</div><div class="value cyan">${s.disk}%</div></div>
+        <div class="stat-card"><div class="label">${t('stat.workers_short')}</div><div class="value yellow">${s.workers_active}</div></div>
+        <div class="stat-card"><div class="label">${t('stat.health')}</div><div class="value ${s.health==='ok'?'green':'yellow'}">${s.health}</div></div>`;
     document.getElementById('monitor-sections').innerHTML = r.sections.map(sec=>`
         <div class="site-card" style="grid-template-columns:1fr auto">
             <b>${esc(sec.section)}</b>
