@@ -89,9 +89,74 @@
         .orb.o3{ top:30%; right:-10%; width:380px; height:380px;
                  background:radial-gradient(circle, rgba(2,82,180,.45), transparent 70%);
                  animation-delay:-14s; animation-duration:22s; }
+        .orb.o4{ top:50%; left:-15%; width:340px; height:340px;
+                 background:radial-gradient(circle, rgba(59,158,255,.35), transparent 70%);
+                 animation-delay:-6s; animation-duration:26s; }
+        .orb.o5{ top:5%; left:55%; width:280px; height:280px;
+                 background:radial-gradient(circle, rgba(2,108,223,.30), transparent 70%);
+                 animation-delay:-18s; animation-duration:30s; }
         @keyframes orbDrift{
             0%,100% { transform:translate(0,0) scale(1); }
             50%     { transform:translate(40px,-30px) scale(1.08); }
+        }
+
+        /* ═══ PARTICLE NETWORK (canvas con dots conectados por líneas) ═══ */
+        #networkCanvas{
+            position:fixed;inset:0;z-index:1;pointer-events:none;
+            opacity:.42;
+            mix-blend-mode:screen;
+        }
+
+        /* ═══ CONCENTRIC RING PULSES (radar-style desde abajo centro) ═══ */
+        .ring-pulses{
+            position:fixed;left:50%;bottom:-40%;z-index:1;
+            transform:translateX(-50%);
+            pointer-events:none;
+        }
+        .ring{
+            position:absolute;
+            left:50%;top:50%;
+            border:1.5px solid rgba(59,158,255,.5);
+            border-radius:50%;
+            transform:translate(-50%,-50%);
+            animation: ringPulse 6s ease-out infinite;
+            opacity:0;
+        }
+        .ring.r1{ animation-delay:0s; }
+        .ring.r2{ animation-delay:-1.5s; }
+        .ring.r3{ animation-delay:-3s; }
+        .ring.r4{ animation-delay:-4.5s; }
+        @keyframes ringPulse{
+            0%   { width:80px; height:80px; opacity:0; border-color:rgba(59,158,255,.7); }
+            10%  { opacity:.85; }
+            100% { width:1400px; height:1400px; opacity:0; border-color:rgba(2,108,223,.1); }
+        }
+
+        /* ═══ SCAN LINES DIAGONALES ═══ */
+        .scan-lines{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;mix-blend-mode:screen}
+        .scan-line{
+            position:absolute;left:-20%;top:50%;
+            width:140%;height:1px;
+            background:linear-gradient(90deg,
+                transparent 0%,
+                rgba(59,158,255,0) 20%,
+                rgba(59,158,255,.55) 45%,
+                rgba(255,255,255,.85) 50%,
+                rgba(59,158,255,.55) 55%,
+                transparent 80%,
+                transparent 100%);
+            transform-origin:50% 50%;
+            box-shadow:0 0 12px rgba(59,158,255,.5);
+            opacity:0;
+        }
+        .scan-line.sl1{ animation: scanSweep 11s linear infinite; animation-delay:0s; }
+        .scan-line.sl2{ animation: scanSweep 14s linear infinite; animation-delay:-5s; }
+        .scan-line.sl3{ animation: scanSweep 17s linear infinite; animation-delay:-9s; }
+        @keyframes scanSweep{
+            0%   { top:-10%;  opacity:0; transform:rotate(-12deg); }
+            8%   { opacity:.9; }
+            92%  { opacity:.9; }
+            100% { top:110%;  opacity:0; transform:rotate(12deg); }
         }
 
         /* ═══ LÍNEAS DE LUZ (rays sutiles atravesando el viewport) ═══ */
@@ -545,6 +610,26 @@
         <div class="orb o1"></div>
         <div class="orb o2"></div>
         <div class="orb o3"></div>
+        <div class="orb o4"></div>
+        <div class="orb o5"></div>
+    </div>
+
+    <!-- Particle network: dots conectados por líneas (canvas) -->
+    <canvas id="networkCanvas" aria-hidden="true"></canvas>
+
+    <!-- Concentric ring pulses: ondas tipo radar emanando del centro inferior -->
+    <div class="ring-pulses" aria-hidden="true">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+        <div class="ring r4"></div>
+    </div>
+
+    <!-- Scan lines diagonales: barridos horizontales rotando -->
+    <div class="scan-lines" aria-hidden="true">
+        <div class="scan-line sl1"></div>
+        <div class="scan-line sl2"></div>
+        <div class="scan-line sl3"></div>
     </div>
 
     <!-- Rays de luz verticales sutiles -->
@@ -752,7 +837,93 @@
             }
         })();
 
-        // ═══ Pause animations al ocultar pestaña (ahorra batería) ═══
+        // ═══ PARTICLE NETWORK CANVAS ═══
+        // Estilo fintech/SaaS premium: dots flotando + líneas que conectan
+        // los más cercanos. Movimiento lento, monocromo azul accent.
+        // Desktop: 70 nodos · Móvil: 30 · Reduced motion: skip
+        (function particleNetwork(){
+            if(REDUCED) return;
+            const canvas = document.getElementById('networkCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const N = IS_MOBILE ? 30 : 70;
+            const MAX_DIST = IS_MOBILE ? 120 : 160;
+            let nodes = [];
+
+            function resize(){
+                canvas.width  = window.innerWidth  * dpr;
+                canvas.height = window.innerHeight * dpr;
+                canvas.style.width  = window.innerWidth + 'px';
+                canvas.style.height = window.innerHeight + 'px';
+                ctx.scale(dpr, dpr);
+            }
+            function init(){
+                nodes = [];
+                for(let i=0;i<N;i++){
+                    nodes.push({
+                        x: Math.random() * window.innerWidth,
+                        y: Math.random() * window.innerHeight,
+                        vx: (Math.random() - 0.5) * 0.35,
+                        vy: (Math.random() - 0.5) * 0.35,
+                        r: 1.2 + Math.random() * 1.4,
+                    });
+                }
+            }
+            function step(){
+                ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+                // Mover + dibujar nodos
+                for(const n of nodes){
+                    n.x += n.vx; n.y += n.vy;
+                    if(n.x < 0 || n.x > window.innerWidth) n.vx *= -1;
+                    if(n.y < 0 || n.y > window.innerHeight) n.vy *= -1;
+                    ctx.beginPath();
+                    ctx.fillStyle = 'rgba(59,158,255,.85)';
+                    ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                // Conectar nodos cercanos con líneas de opacidad gradual
+                for(let i=0;i<nodes.length;i++){
+                    for(let j=i+1;j<nodes.length;j++){
+                        const dx = nodes[i].x - nodes[j].x;
+                        const dy = nodes[i].y - nodes[j].y;
+                        const dist = Math.hypot(dx, dy);
+                        if(dist < MAX_DIST){
+                            const alpha = (1 - dist/MAX_DIST) * 0.5;
+                            ctx.strokeStyle = `rgba(59,158,255,${alpha.toFixed(3)})`;
+                            ctx.lineWidth = 0.7;
+                            ctx.beginPath();
+                            ctx.moveTo(nodes[i].x, nodes[i].y);
+                            ctx.lineTo(nodes[j].x, nodes[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+                rafId = requestAnimationFrame(step);
+            }
+            let rafId = null;
+            resize(); init(); step();
+            window.addEventListener('resize', ()=>{ resize(); init(); }, {passive:true});
+            // Pause cuando pestaña oculta (ahorro batería)
+            document.addEventListener('visibilitychange', ()=>{
+                if(document.visibilityState === 'hidden'){
+                    if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+                } else if(!rafId){
+                    step();
+                }
+            });
+        })();
+
+        // ═══ Ajustar tamaño del ring-pulses container según viewport ═══
+        (function sizeRingContainer(){
+            const c = document.querySelector('.ring-pulses');
+            if(!c) return;
+            // El container debe ser tan grande como el ring max para no clip
+            c.style.width  = '1400px';
+            c.style.height = '1400px';
+        })();
+
+        // ═══ Pause animations CSS al ocultar pestaña (ahorra batería) ═══
         document.addEventListener('visibilitychange', ()=>{
             const isHidden = document.visibilityState === 'hidden';
             document.documentElement.style.setProperty('--anim-state', isHidden ? 'paused' : 'running');
