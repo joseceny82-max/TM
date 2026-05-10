@@ -428,13 +428,99 @@
             50%     { opacity:.6; transform:scale(1.2); }
         }
 
-        /* ═══ RESPONSIVE ═══ */
+        /* ═══ RESPONSIVE — móvil + tablet con escalado completo ═══ */
+        /* Soporte iOS dynamic viewport (100vh incluye toolbar de Safari) */
+        @supports (height: 100dvh){
+            html,body{ min-height:100dvh; }
+        }
+        body{
+            padding: env(safe-area-inset-top) env(safe-area-inset-right)
+                     env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        /* Tablet (768px y menos): ajuste medio */
+        @media (max-width:768px){
+            .login-box{ width:380px; padding:32px 28px; }
+            .float-icon{ font-size:32px !important; }
+            .float-icon.f1,.float-icon.f3{ font-size:38px !important; }
+            .float-icon.f2,.float-icon.f6{ font-size:34px !important; }
+            .spotlight{ width:200px; }
+            .equalizer{ height:90px; gap:4px; }
+            .eq-bar{ width:6px; }
+        }
+
+        /* Móvil (480px y menos): compacto + density reducido */
         @media (max-width:480px){
-            .login-box{padding:30px 24px;border-radius:16px}
-            .logo h1{font-size:24px}
-            .logo-icon-wrap{width:60px;height:60px}
-            .logo-icon-wrap svg{width:34px;height:34px}
-            .float-icon{font-size:24px !important}
+            .login-box{
+                width:100%;
+                padding:26px 22px 24px;
+                border-radius:18px;
+            }
+            .login-wrap{ gap:18px; padding:0 14px; width:100%; max-width:380px; }
+            .logo{ margin-bottom:24px; }
+            .logo h1{ font-size:24px; letter-spacing:.5px; }
+            .logo p{ font-size:10.5px; letter-spacing:2px; }
+            .logo-icon-wrap{ width:60px; height:60px; border-radius:16px; margin-bottom:14px; }
+            .logo-icon-wrap svg{ width:34px; height:34px; }
+
+            /* Form inputs cómodos para tap */
+            .form-group input{ padding:14px 14px 14px 42px; font-size:15px; }
+            .form-group label{ font-size:10.5px; }
+            .btn{ padding:16px; font-size:13px; }
+            .hint{ font-size:11px; padding:9px 10px; }
+
+            /* Banderas más grandes para tap (regla Apple ≥44px) */
+            .flag-btn{ width:50px; height:50px; }
+            .flag-btn img{ width:46px; height:46px; }
+
+            /* Iconos flotantes: solo unos pocos visibles + más pequeños */
+            .float-icon{ font-size:26px !important; opacity:.16 !important; }
+            .float-icon.f5,.float-icon.f6,.float-icon.f8,.float-icon.f10,.float-icon.f11,.float-icon.f12{ display:none; }
+
+            /* Spotlights más estrechos para no saturar */
+            .spotlight{ width:140px; filter:blur(6px); }
+            .spotlight.s1{ left:30%; }
+            .spotlight.s3{ left:70%; }
+
+            /* Ecualizador más bajo y espaciado */
+            .equalizer{ height:70px; gap:3px; padding:0 10px; opacity:.45; }
+            .eq-bar{ width:5px; }
+
+            /* Footer badge compacto */
+            .footer-badge{ font-size:9.5px; padding:5px 12px; }
+        }
+
+        /* Móvil pequeño (360px y menos): super compacto */
+        @media (max-width:360px){
+            .login-box{ padding:22px 18px 20px; border-radius:16px; }
+            .logo h1{ font-size:21px; }
+            .logo-icon-wrap{ width:54px; height:54px; }
+            .logo-icon-wrap svg{ width:30px; height:30px; }
+            .form-group{ margin-bottom:14px; }
+            .float-icon{ font-size:22px !important; }
+            .equalizer{ height:55px; }
+            .spotlight{ width:110px; }
+        }
+
+        /* Landscape mobile: ajustar altura */
+        @media (max-height:560px) and (orientation:landscape){
+            .login-wrap{ gap:12px; }
+            .login-box{ padding:22px 28px 20px; }
+            .logo{ margin-bottom:16px; }
+            .logo-icon-wrap{ width:48px; height:48px; margin-bottom:8px; }
+            .logo-icon-wrap svg{ width:26px; height:26px; }
+            .logo h1{ font-size:20px; }
+            .logo p{ font-size:9.5px; }
+            .form-group{ margin-bottom:12px; }
+            .form-group input{ padding:9px 12px 9px 38px; }
+            .equalizer{ height:50px; }
+        }
+
+        /* Touch hover-state cleanup: en pantallas táctiles desactivar :hover persistente */
+        @media (hover: none){
+            .btn:hover{ transform:none; box-shadow:0 8px 24px rgba(2,108,223,.4), 0 0 0 1px rgba(255,255,255,.08) inset; }
+            .flag-btn:hover{ transform:none; opacity:.55; filter:grayscale(40%); border-color:var(--border); }
+            .flag-btn.active{ opacity:1; filter:grayscale(0%); border-color:var(--accent); }
         }
 
         @media (prefers-reduced-motion: reduce){
@@ -583,18 +669,24 @@
         function setLoginLang(l){ LANG=l; localStorage.setItem('tm_lang', l); applyLoginI18n(); }
         applyLoginI18n();
 
-        // ═══ ESTRELLAS TWINKLING (40 dispersas aleatoriamente) ═══
+        // Detección de dispositivo móvil para reducir densidad de animaciones
+        // (ahorra batería + evita lag en pantallas táctiles)
+        const IS_MOBILE = window.matchMedia('(max-width: 768px)').matches
+                         || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // ═══ ESTRELLAS TWINKLING (40 desktop · 18 móvil) ═══
         (function genStars(){
             const layer = document.getElementById('starsLayer');
-            if(!layer) return;
-            for(let i=0;i<40;i++){
+            if(!layer || REDUCED) return;
+            const count = IS_MOBILE ? 18 : 40;
+            for(let i=0;i<count;i++){
                 const s = document.createElement('span');
                 s.className = 'star';
                 s.style.top = (Math.random()*100)+'%';
                 s.style.left = (Math.random()*100)+'%';
                 s.style.animationDelay = (Math.random()*3)+'s';
                 s.style.animationDuration = (2.5 + Math.random()*2.5)+'s';
-                // Tamaño aleatorio
                 const size = 1.5 + Math.random()*2.5;
                 s.style.width = size+'px';
                 s.style.height = size+'px';
@@ -602,14 +694,14 @@
             }
         })();
 
-        // ═══ ECUALIZADOR (28 barras, animación phase-shifted) ═══
+        // ═══ ECUALIZADOR (28 barras desktop · 16 móvil) ═══
         (function genEqualizer(){
             const eq = document.getElementById('equalizer');
             if(!eq) return;
-            for(let i=0;i<28;i++){
+            const count = IS_MOBILE ? 16 : 28;
+            for(let i=0;i<count;i++){
                 const b = document.createElement('span');
                 b.className = 'eq-bar';
-                // Cada barra con altura base aleatoria + delay distinto
                 b.style.height = (40 + Math.random()*70)+'px';
                 b.style.animationDelay = (-Math.random()*1.2)+'s';
                 b.style.animationDuration = (0.7 + Math.random()*0.8)+'s';
@@ -618,35 +710,42 @@
         })();
 
         // ═══ CONFETTI INFINITO (tickets, estrellas, notas cayendo) ═══
+        // Desktop: 18 inicial + 1/700ms · Móvil: 8 inicial + 1/1400ms
         (function genConfetti(){
             const layer = document.getElementById('confettiLayer');
-            if(!layer) return;
+            if(!layer || REDUCED) return;
             const symbols = ['🎟️','⭐','🎵','✨','🎉','🎊','🎶','💫'];
-            // Spawn inicial 18 piezas con offsets escalonados
-            for(let i=0;i<18;i++){
+            const initialCount = IS_MOBILE ? 8 : 18;
+            const intervalMs = IS_MOBILE ? 1400 : 700;
+            for(let i=0;i<initialCount;i++){
                 spawnConfetti(layer, symbols, true);
             }
-            // Spawn continuo: una pieza nueva cada ~700ms
-            setInterval(()=>spawnConfetti(layer, symbols, false), 700);
+            setInterval(()=>spawnConfetti(layer, symbols, false), intervalMs);
         })();
         function spawnConfetti(layer, symbols, initial){
             const c = document.createElement('span');
             c.className = 'confetti';
             c.textContent = symbols[Math.floor(Math.random()*symbols.length)];
             c.style.left = (Math.random()*100)+'%';
-            c.style.fontSize = (14 + Math.random()*16)+'px';
+            // Móvil: tamaños un poco menores (12-22px vs 14-30px)
+            const baseSize = IS_MOBILE ? 12 : 14;
+            const range = IS_MOBILE ? 10 : 16;
+            c.style.fontSize = (baseSize + Math.random()*range)+'px';
             const dur = 8 + Math.random()*10;
             c.style.animationDuration = dur+'s';
-            // Si es spawn inicial, escalonar el delay para que ya estén dispersos
             if(initial){
                 c.style.animationDelay = (-Math.random()*dur)+'s';
             }
-            // Color tint aleatorio (filtro hue rotate)
             c.style.filter = `drop-shadow(0 2px 6px rgba(0,0,0,.4)) hue-rotate(${Math.floor(Math.random()*360)}deg)`;
             layer.appendChild(c);
-            // Limpieza tras animación para no acumular nodos
             setTimeout(()=>{ try{ c.remove(); }catch(_){} }, (dur+1)*1000);
         }
+
+        // ═══ Pause animations al ocultar pestaña (ahorra batería) ═══
+        document.addEventListener('visibilitychange', ()=>{
+            const isHidden = document.visibilityState === 'hidden';
+            document.documentElement.style.setProperty('--anim-state', isHidden ? 'paused' : 'running');
+        });
 
         async function doLogin(e){
             e.preventDefault();
