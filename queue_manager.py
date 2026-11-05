@@ -433,6 +433,8 @@ def _spawn_purchase_flow(s: QueueSession) -> None:
             args += ["--sections", ",".join(str(x) for x in s.purchase_flow_args["sections"])]
         if s.purchase_flow_args.get("confirm_buy"):
             args.append("--confirm")
+        if s.purchase_flow_args.get("engine"):
+            args += ["--engine", str(s.purchase_flow_args["engine"])]
         subprocess.Popen(args, cwd=PROYECTO,
                          creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
         with _lock:

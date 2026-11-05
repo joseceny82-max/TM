@@ -107,6 +107,7 @@ def run_real_purchase(ctx: Dict[str, Any]) -> Dict[str, Any]:
       - sections       (list) sólo si seatmap
       - allow_separated(bool)
       - confirm_buy    (bool) si False, NO se pulsa Pagar (safety)
+      - engine         (str)  'silent' | 'camoufox' | ausente → morelogin
 
     Retorna:
       {ok, step, elapsed_ms, data?, error?, error_type?, retriable?}
@@ -126,6 +127,7 @@ def run_real_purchase(ctx: Dict[str, Any]) -> Dict[str, Any]:
     allow_sep = bool(ctx.get("allow_separated", False))
     confirm = bool(ctx.get("confirm_buy", False))
     timeout_s = int(ctx.get("real_purchase_timeout_s", DEFAULT_TIMEOUT_S))
+    engine = ctx.get("engine")  # 'silent' | 'camoufox' | None → default morelogin
 
     args = [
         sys.executable, SCRIPT,
@@ -141,6 +143,8 @@ def run_real_purchase(ctx: Dict[str, Any]) -> Dict[str, Any]:
         args.append("--allow-separated")
     if confirm:
         args.append("--confirm")
+    if engine:
+        args += ["--engine", str(engine)]
 
     log_path = _slot_log_path(slot)
     try:
