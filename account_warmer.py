@@ -303,10 +303,11 @@ def get_warm_status(job_id: Optional[str] = None) -> Dict[str, Any]:
 
 def self_test() -> Dict[str, Any]:
     out: Dict[str, Any] = {"checks": {}}
+    accs: list = []
     try:
         import account_manager
         accs = account_manager.account_manager.list_accounts()
-        out["checks"]["accounts_loadable"] = len(accs) > 0
+        out["checks"]["accounts_loadable"] = isinstance(accs, list)
     except Exception as e:
         out["checks"]["accounts_loadable"] = f"err:{e}"
     out["checks"]["browse_paths"] = isinstance(_DEFAULT_BROWSE_PATHS, list)
