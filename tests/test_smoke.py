@@ -14,11 +14,12 @@ def test_placeholder():
 
 
 def test_core_packages_importable():
-    """Los packages core/ están bien formados (no rompen el sys.path)."""
+    """Los packages core/ están bien formados (no rompen el sys.path).
+
+    core/ui y core/utils fueron eliminados como zombies tras audit SRE
+    (cero importadores, placeholder __init__ vacíos)."""
     import core  # noqa: F401
     import core.observability  # noqa: F401
-    import core.ui  # noqa: F401
-    import core.utils  # noqa: F401
     assert True
 
 

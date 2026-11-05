@@ -222,7 +222,7 @@ def _fire_hook(stage: str, attack: Dict[str, Any]) -> None:
             import sys as _sys
             for slot in range(1, attack.get("n_workers", 3) + 1):
                 args = [_sys.executable,
-                        os.path.join(PROYECTO, "_compra_parallel.py"),
+                        os.path.join(PROYECTO, "_compra_with_swap.py"),
                         "--slot", str(slot),
                         "--event-url", attack["tm_url"],
                         "--qty", str(attack.get("qty", 2)),

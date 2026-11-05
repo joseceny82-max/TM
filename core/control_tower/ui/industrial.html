@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>TM Control Tower — Industrial</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #0a0e1a; color: #e6edf3;
+       font-family: 'SF Mono', monospace; font-size: 12px; line-height: 1.4; }
+.top { padding: 14px 20px; background: linear-gradient(135deg,#026CDF,#0052b4);
+       display: flex; align-items: center; gap: 14px; position: sticky; top:0; z-index: 10; }
+.top h1 { margin: 0; font-size: 18px; }
+.top .sub { color: rgba(255,255,255,.75); font-size: 12px; }
+.top .nav { margin-left: auto; display: flex; gap: 12px; }
+.top .nav a { color: rgba(255,255,255,.85); text-decoration: none; padding: 4px 10px;
+              border-radius: 4px; background: rgba(0,0,0,.2); font-size: 11px; }
+.top .nav a.active { background: rgba(255,255,255,.2); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+.dot.off { background: #ef4444; }
+.top .status { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+
+.layout { padding: 14px; display: grid; gap: 14px;
+          grid-template-columns: 1fr; }
+.card { background: #131826; border: 1px solid #2a3346; border-radius: 6px; padding: 14px; }
+.card h3 { margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: #8b95a8; }
+
+/* Global hero */
+.hero { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.hero .kpi { background: #1a2235; padding: 12px; border-radius: 4px; text-align: center; }
+.hero .kpi .label { font-size: 10px; color: #8b95a8; text-transform: uppercase; letter-spacing: 1px; }
+.hero .kpi .num { font-size: 26px; font-weight: 800; margin: 4px 0; }
+.hero .kpi .num.healthy   { color: #22c55e; }
+.hero .kpi .num.degraded  { color: #f59e0b; }
+.hero .kpi .num.unhealthy { color: #f97316; }
+.hero .kpi .num.critical  { color: #ef4444; }
+
+/* Multi-run grid */
+.runs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.run-tile { background: #1a2235; border: 1px solid #2a3346; border-radius: 5px; padding: 10px;
+            cursor: pointer; transition: border-color .2s; }
+.run-tile:hover { border-color: #026CDF; }
+.run-tile .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.run-tile .slot { font-weight: 800; }
+.run-tile .badge { font-size: 10px; padding: 1px 8px; border-radius: 10px; font-weight: 700; }
+.run-tile .badge.healthy  { background: #22c55e; color: #fff; }
+.run-tile .badge.degraded { background: #f59e0b; color: #fff; }
+.run-tile .badge.unhealthy{ background: #f97316; color: #fff; }
+.run-tile .badge.critical { background: #ef4444; color: #fff; }
+.run-tile .state { font-size: 13px; font-weight: 700; margin: 4px 0; }
+.run-tile .state.setup    { color: #64748b; }
+.run-tile .state.browsing { color: #06b6d4; }
+.run-tile .state.login    { color: #f59e0b; }
+.run-tile .state.checkout { color: #7c3aed; }
+.run-tile .state.exit     { color: #ef4444; }
+.run-tile .meta { font-size: 10px; color: #8b95a8; display: flex; justify-content: space-between; }
+.run-tile .bar { height: 4px; background: #2a3346; border-radius: 2px; overflow: hidden; margin: 6px 0; }
+.run-tile .bar .fill { height: 100%; background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e); }
+
+/* Alert list */
+.alert-item { padding: 10px 12px; border-radius: 4px; margin-bottom: 6px;
+              display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.alert-item.info     { background: rgba(100,116,139,.15); border-left: 3px solid #64748b; }
+.alert-item.warn     { background: rgba(245,158,11,.12); border-left: 3px solid #f59e0b; }
+.alert-item.critical { background: rgba(239,68,68,.15); border-left: 3px solid #ef4444; }
+.alert-item .kind { font-weight: 700; }
+.alert-item .msg { font-size: 11px; color: #8b95a8; margin-top: 2px; }
+.alert-item .severity { font-size: 10px; text-transform: uppercase; }
+
+/* Historical table */
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #2a3346; }
+th { color: #8b95a8; font-weight: 600; font-size: 10px; text-transform: uppercase; }
+tr.outcome-BLOCKED td { color: #ef4444; }
+tr.outcome-FATAL td { color: #f97316; }
+tr.outcome-STOPPED td { color: #64748b; }
+tr.outcome-INCOMPLETE td { color: #f59e0b; }
+.tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 700; }
+.tag.BLOCKED { background: #ef4444; color: #fff; }
+.tag.FATAL { background: #f97316; color: #fff; }
+.tag.STOPPED { background: #64748b; color: #fff; }
+.tag.INCOMPLETE { background: #f59e0b; color: #fff; }
+.tag.UNKNOWN_EXIT { background: #8b95a8; color: #fff; }
+
+.empty { color: #8b95a8; padding: 12px 0; text-align: center; font-size: 11px; }
+.split2 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>TM Control Tower</h1>
+  <span class="sub">Industrial · multi-run · alerts · history</span>
+  <div class="nav">
+    <a href="/">MVP</a>
+    <a href="/realtime">Realtime</a>
+    <a href="/control">Control</a>
+    <a href="/tower" class="active">Industrial</a>
+  </div>
+  <div class="status"><span class="dot" id="dot"></span><span id="conn">live</span></div>
+</div>
+
+<div class="layout">
+
+  <!-- Global hero (5 KPIs) -->
+  <div class="card">
+    <h3>Global · cross-run</h3>
+    <div class="hero">
+      <div class="kpi">
+        <div class="label">Active runs</div>
+        <div class="num" id="kpi-runs">0</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Total events</div>
+        <div class="num" id="kpi-events">0</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Global drift</div>
+        <div class="num" id="kpi-drift">0</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Avg health</div>
+        <div class="num" id="kpi-health">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Alerts</div>
+        <div class="num" id="kpi-alerts">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multi-run grid + alerts side-by-side -->
+  <div class="split2">
+
+    <div class="card">
+      <h3>Multi-run live</h3>
+      <div class="runs-grid" id="runs-grid">
+        <div class="empty">Waiting for runs...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Alerts</h3>
+      <div id="alerts">
+        <div class="empty">No alerts</div>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:#8b95a8;">
+        thresholds: <span id="thresholds"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Historical -->
+  <div class="card">
+    <h3>Historical runs</h3>
+    <div id="history-stats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Slot</th><th>Start</th><th>End</th><th>Events</th><th>Drifts</th>
+          <th>Final state</th><th>Outcome</th><th>Score</th>
+        </tr>
+      </thead>
+      <tbody id="history-tbody">
+        <tr><td colspan="8" class="empty">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  function html(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function verdictFor(score) {
+    if (score >= 80) return "healthy";
+    if (score >= 60) return "degraded";
+    if (score >= 30) return "unhealthy";
+    return "critical";
+  }
+
+  async function pollAll() {
+    // runs
+    try {
+      const r = await fetch("/api/v4/runs/all"); const d = await r.json();
+      const runs = d.runs || [];
+      const g = d.global || {};
+      $("kpi-runs").textContent = g.runs_active ?? 0;
+      $("kpi-events").textContent = g.global_event_count ?? 0;
+      $("kpi-drift").textContent = g.global_drift_count ?? 0;
+      const avg = g.avg_health_score ?? 0;
+      $("kpi-health").textContent = avg;
+      $("kpi-health").className = "num " + verdictFor(avg);
+
+      const grid = $("runs-grid"); grid.innerHTML = "";
+      if (runs.length === 0) {
+        grid.innerHTML = '<div class="empty">Waiting for runs...</div>';
+      } else {
+        runs.forEach(r => {
+          const tile = document.createElement("div"); tile.className = "run-tile";
+          const v = verdictFor(r.health_score || 0);
+          const st = (r.current_state || "setup").toLowerCase();
+          tile.innerHTML = `
+            <div class="header">
+              <span class="slot">slot ${html(r.slot)}</span>
+              <span class="badge ${v}">${r.health_score || 0}/100</span>
+            </div>
+            <div class="state ${st}">${st.toUpperCase()}</div>
+            <div class="bar"><div class="fill" style="width:${Math.max(0,Math.min(100, r.health_score||0))}%"></div></div>
+            <div class="meta">
+              <span>events: ${r.event_count}</span>
+              <span>drifts: ${r.drift_count}</span>
+            </div>
+            <div class="meta" style="margin-top:3px;">
+              <span>elapsed: ${(r.elapsed_s||0).toFixed(0)}s</span>
+              <span>${html(r.exit_outcome || "running")}</span>
+            </div>
+          `;
+          grid.appendChild(tile);
+        });
+      }
+    } catch(e){}
+
+    // alerts
+    try {
+      const r = await fetch("/api/v4/alerts"); const d = await r.json();
+      const a = d.alerts || [];
+      $("kpi-alerts").textContent = a.length;
+      const c = $("alerts"); c.innerHTML = "";
+      if (a.length === 0) {
+        c.innerHTML = '<div class="empty">No alerts</div>';
+      } else {
+        a.forEach(x => {
+          const el = document.createElement("div");
+          el.className = "alert-item " + x.severity;
+          el.innerHTML = `
+            <div>
+              <div class="kind">${html(x.kind)}</div>
+              <div class="msg">${html(x.message)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="severity">${html(x.severity)}</div>
+              <div style="font-size:10px;color:#8b95a8;">${html(x.value)} / ${html(x.threshold)}</div>
+            </div>
+          `;
+          c.appendChild(el);
+        });
+      }
+      $("thresholds").textContent = Object.entries(d.thresholds || {}).map(([k,v])=>`${k}=${v}`).join(" · ");
+    } catch(e){}
+
+    // history
+    try {
+      const [stRes, runsRes] = await Promise.all([
+        fetch("/api/v4/history/stats"),
+        fetch("/api/v4/history?limit=30")
+      ]);
+      const st = (await stRes.json()).stats || {};
+      const hist = (await runsRes.json()).runs || [];
+
+      const sb = $("history-stats"); sb.innerHTML = "";
+      [
+        ["Total", st.total_runs ?? 0],
+        ["Events", st.total_events ?? 0],
+        ["Drifts", st.total_drifts ?? 0],
+        ["Avg score", st.avg_final_score ?? 0],
+        ["Blocked %", (st.blocked_rate_pct ?? 0) + "%"],
+      ].forEach(([k,v]) => {
+        const d = document.createElement("div"); d.className = "kpi";
+        d.innerHTML = `<div class="label">${k}</div><div class="num" style="font-size:20px;">${html(String(v))}</div>`;
+        d.style.cssText = "background:#1a2235;padding:10px;border-radius:4px;text-align:center;";
+        sb.appendChild(d);
+      });
+
+      const tb = $("history-tbody"); tb.innerHTML = "";
+      if (hist.length === 0) {
+        tb.innerHTML = '<tr><td colspan="8" class="empty">No historical runs</td></tr>';
+      } else {
+        hist.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.className = "outcome-" + (r.exit_outcome || "UNKNOWN");
+          tr.innerHTML = `
+            <td><strong>${html(r.slot)}</strong></td>
+            <td>${html((r.start_ts||"").substring(11,19))}</td>
+            <td>${html((r.end_ts||"").substring(11,19))}</td>
+            <td>${r.event_count}</td>
+            <td>${r.drift_count}</td>
+            <td>${html(r.final_state || "—")}</td>
+            <td><span class="tag ${r.exit_outcome||""}">${html(r.exit_outcome || "—")}</span></td>
+            <td>${r.last_score ?? "—"}</td>
+          `;
+          tb.appendChild(tr);
+        });
+      }
+    } catch(e){}
+  }
+
+  function connectSSE() {
+    const es = new EventSource("/api/v1/stream");
+    es.addEventListener("hello", () => { $("dot").classList.remove("off"); $("conn").textContent = "live"; });
+    es.onmessage = e => {/* opcional */};
+    es.onerror = () => { $("dot").classList.add("off"); $("conn").textContent = "reconnecting..."; es.close(); setTimeout(connectSSE,2000); };
+  }
+  pollAll();
+  setInterval(pollAll, 2000);
+  connectSSE();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+/* ============================================================
+   TM Diagnostics — Design Tokens
+   ============================================================
+   Single source of truth for colors, spacing, badges, gauges.
+   Importable desde mvp.html, realtime.html, control.html, tower.html
+   o desde Flask /diagnostics.
+
+   Pages existentes NO se modifican — solo los nuevos importan.
+   ============================================================ */
+
+:root {
+  /* ── Palette base ─────────────────────────────────────────── */
+  --tm-bg:          #0a0e1a;
+  --tm-bg-card:     #131826;
+  --tm-bg-card2:    #1a2235;
+  --tm-border:      #2a3346;
+  --tm-text:        #e6edf3;
+  --tm-text-muted:  #8b95a8;
+
+  /* ── Estados FSM (colors corresponden a State enum) ────────── */
+  --tm-state-setup:    #64748b;  /* gris */
+  --tm-state-browsing: #06b6d4;  /* cyan */
+  --tm-state-login:    #f59e0b;  /* naranja */
+  --tm-state-checkout: #7c3aed;  /* púrpura */
+  --tm-state-exit:     #ef4444;  /* rojo */
+
+  /* ── Kind del evento (4 capas + UNKNOWN) ──────────────────── */
+  --tm-kind-state:         #22c55e;  /* verde */
+  --tm-kind-action:        #06b6d4;  /* cyan */
+  --tm-kind-observability: #8b95a8;  /* gris claro */
+  --tm-kind-noise:         #64748b;  /* gris oscuro */
+  --tm-kind-unknown:       #f59e0b;  /* naranja */
+
+  /* ── Health verdicts ──────────────────────────────────────── */
+  --tm-health-healthy:   #22c55e;
+  --tm-health-degraded:  #f59e0b;
+  --tm-health-unhealthy: #f97316;
+  --tm-health-critical:  #ef4444;
+
+  /* ── Alert severities ─────────────────────────────────────── */
+  --tm-sev-info:     #64748b;
+  --tm-sev-warn:     #f59e0b;
+  --tm-sev-critical: #ef4444;
+  --tm-sev-success:  #22c55e;
+
+  /* ── Brand TM ─────────────────────────────────────────────── */
+  --tm-brand-blue:  #026CDF;
+  --tm-brand-blue2: #0052b4;
+
+  /* ── Spacing ──────────────────────────────────────────────── */
+  --tm-pad-1: 4px;
+  --tm-pad-2: 8px;
+  --tm-pad-3: 12px;
+  --tm-pad-4: 16px;
+  --tm-pad-5: 24px;
+
+  /* ── Typography ───────────────────────────────────────────── */
+  --tm-font-mono: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  --tm-fs-xs:    10px;
+  --tm-fs-sm:    11px;
+  --tm-fs-base:  13px;
+  --tm-fs-lg:    16px;
+  --tm-fs-xl:    20px;
+  --tm-fs-2xl:   28px;
+  --tm-fs-3xl:   44px;
+
+  /* ── Radius ───────────────────────────────────────────────── */
+  --tm-radius-sm: 2px;
+  --tm-radius:    4px;
+  --tm-radius-lg: 6px;
+}
+
+/* ============================================================
+   Reusable components
+   ============================================================ */
+
+/* State badge */
+.tm-state-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: var(--tm-fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+}
+.tm-state-badge.setup    { background: var(--tm-state-setup);    color: #fff; }
+.tm-state-badge.browsing { background: var(--tm-state-browsing); color: #fff; }
+.tm-state-badge.login    { background: var(--tm-state-login);    color: #fff; }
+.tm-state-badge.checkout { background: var(--tm-state-checkout); color: #fff; }
+.tm-state-badge.exit     { background: var(--tm-state-exit);     color: #fff; }
+
+/* Big state display */
+.tm-state-big {
+  font-size: var(--tm-fs-2xl);
+  font-weight: 800;
+  text-align: center;
+  padding: var(--tm-pad-4);
+  background: var(--tm-bg-card2);
+  border-radius: var(--tm-radius);
+  letter-spacing: 1px;
+}
+.tm-state-big.setup    { color: var(--tm-state-setup);    border: 2px solid var(--tm-state-setup); }
+.tm-state-big.browsing { color: var(--tm-state-browsing); border: 2px solid var(--tm-state-browsing); }
+.tm-state-big.login    { color: var(--tm-state-login);    border: 2px solid var(--tm-state-login); }
+.tm-state-big.checkout { color: var(--tm-state-checkout); border: 2px solid var(--tm-state-checkout); }
+.tm-state-big.exit     { color: var(--tm-state-exit);     border: 2px solid var(--tm-state-exit); }
+
+/* Kind badge (event stream) */
+.tm-kind-badge {
+  font-weight: 700;
+  display: inline-block;
+  min-width: 70px;
+}
+.tm-kind-badge.STATE         { color: var(--tm-kind-state); }
+.tm-kind-badge.ACTION        { color: var(--tm-kind-action); }
+.tm-kind-badge.OBSERVABILITY { color: var(--tm-kind-observability); }
+.tm-kind-badge.NOISE         { color: var(--tm-kind-noise); }
+.tm-kind-badge.UNKNOWN       { color: var(--tm-kind-unknown); }
+
+.tm-event-line {
+  padding: 1px 4px;
+  display: flex;
+  gap: var(--tm-pad-2);
+  font-size: var(--tm-fs-sm);
+  font-family: var(--tm-font-mono);
+}
+.tm-event-line.STATE         { background: rgba(34,197,94,.05); }
+.tm-event-line.OBSERVABILITY { opacity: .75; }
+.tm-event-line.NOISE         { opacity: .40; }
+.tm-event-line.drift         { border-left: 3px solid var(--tm-sev-critical); padding-left: 6px; }
+.tm-event-line.soft-drift    { border-left: 3px solid var(--tm-sev-warn); padding-left: 6px; }
+
+/* Health gauge */
+.tm-health-gauge {
+  text-align: center;
+  padding: var(--tm-pad-3) 0;
+}
+.tm-health-gauge .num {
+  font-size: var(--tm-fs-3xl);
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.tm-health-gauge .num.healthy   { color: var(--tm-health-healthy); }
+.tm-health-gauge .num.degraded  { color: var(--tm-health-degraded); }
+.tm-health-gauge .num.unhealthy { color: var(--tm-health-unhealthy); }
+.tm-health-gauge .num.critical  { color: var(--tm-health-critical); }
+.tm-health-gauge .verdict {
+  font-size: var(--tm-fs-sm);
+  color: var(--tm-text-muted);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.tm-gauge-bar {
+  height: 8px;
+  background: var(--tm-bg-card2);
+  border-radius: var(--tm-radius);
+  margin-top: var(--tm-pad-2);
+  overflow: hidden;
+}
+.tm-gauge-bar .fill {
+  height: 100%;
+  background: linear-gradient(90deg,
+    var(--tm-health-critical) 0%,
+    var(--tm-health-degraded) 30%,
+    var(--tm-state-browsing)  60%,
+    var(--tm-health-healthy)  80%);
+  transition: width .3s ease;
+}
+
+/* Alert badge */
+.tm-alert {
+  padding: var(--tm-pad-3);
+  border-radius: var(--tm-radius);
+  margin-bottom: var(--tm-pad-2);
+  border-left: 3px solid var(--tm-sev-info);
+  background: rgba(100,116,139,.10);
+}
+.tm-alert.warn     { border-left-color: var(--tm-sev-warn);     background: rgba(245,158,11,.12); }
+.tm-alert.critical { border-left-color: var(--tm-sev-critical); background: rgba(239,68,68,.15); }
+
+/* Watchdog banner (M6) */
+.tm-watchdog-banner {
+  display: none;
+  padding: var(--tm-pad-2) var(--tm-pad-3);
+  background: var(--tm-sev-critical);
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  font-size: var(--tm-fs-sm);
+  letter-spacing: 1px;
+}
+.tm-watchdog-banner.visible {
+  display: block;
+}
+
+/* Topbar */
+.tm-topbar {
+  padding: var(--tm-pad-3) var(--tm-pad-4);
+  background: linear-gradient(135deg, var(--tm-brand-blue), var(--tm-brand-blue2));
+  display: flex;
+  align-items: center;
+  gap: var(--tm-pad-3);
+  color: #fff;
+}
+.tm-topbar h1 { margin: 0; font-size: var(--tm-fs-lg); }
+.tm-topbar .sub { color: rgba(255,255,255,.75); font-size: var(--tm-fs-sm); }
+.tm-topbar .nav { margin-left: auto; display: flex; gap: var(--tm-pad-3); }
+.tm-topbar .nav a {
+  color: rgba(255,255,255,.85);
+  text-decoration: none;
+  padding: var(--tm-pad-1) var(--tm-pad-3);
+  border-radius: var(--tm-radius);
+  background: rgba(0,0,0,.2);
+  font-size: var(--tm-fs-sm);
+}
+.tm-topbar .nav a.active { background: rgba(255,255,255,.2); }
+
+/* Connection dot */
+.tm-conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tm-health-healthy);
+  display: inline-block;
+}
+.tm-conn-dot.off { background: var(--tm-sev-critical); }
+
+/* Card */
+.tm-card {
+  background: var(--tm-bg-card);
+  border: 1px solid var(--tm-border);
+  border-radius: var(--tm-radius-lg);
+  padding: var(--tm-pad-3);
+}
+.tm-card h3 {
+  margin: 0 0 var(--tm-pad-2) 0;
+  font-size: var(--tm-fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--tm-text-muted);
+}
+
+/* Empty state */
+.tm-empty {
+  color: var(--tm-text-muted);
+  padding: var(--tm-pad-2) 0;
+  text-align: center;
+  font-size: var(--tm-fs-sm);
+}

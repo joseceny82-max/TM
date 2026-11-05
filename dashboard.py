@@ -69,6 +69,8 @@ import proxy_intelligence
 import queue_worker
 import bot_engine
 import account_manager
+import session_status
+import _session_refresh_worker as session_refresh
 import encryption
 import session_manager as sm_mod
 import instance_manager
@@ -172,6 +174,17 @@ event_manager.seed_defaults()
 #  FLASK APP
 # ==========================================
 app = Flask(__name__)
+
+# ── Self-diagnosing dashboard plug-in (FASE 5) ──────────────────────
+# Lee del stream JSONL de runtime_diagnostics y expone /diagnostics + APIs.
+# Fail-safe: si falla la importación, el dashboard original sigue intacto.
+try:
+    from core.dashboard import register_diagnostics
+    _diag_ok = register_diagnostics(app)
+    if _diag_ok:
+        print("[dashboard] self-diagnosing layer registered at /diagnostics")
+except Exception as _diag_e:
+    print(f"[dashboard] self-diagnosing layer not loaded: {_diag_e}")
 
 # ════ SECRET_KEY persistente (1 vez generada, guardada en disk seguro) ════
 # Prioridad: env var TM_SECRET_KEY → archivo secrets/.session_key (auto-gen) → fallback
@@ -1630,8 +1643,14 @@ def api_bot_groups_create():
     worker_count = int(d.get("worker_count", 1))
     for i in range(worker_count):
         g.add_worker(account_id=d.get("account_id"))  # workers heredan params del group
+    # Arrancar inmediatamente: cada Worker.start() spawn _compra_with_swap.py
+    # en thread daemon. La UI puede pollear status vía GET /api/bot/groups.
+    # Para crear el grupo SIN arrancar (modo cola), enviar autostart=false.
+    autostart = d.get("autostart", True)
+    if autostart and g.workers:
+        g.start_all()
     bot_engine.engine._persist()
-    return jsonify({"ok": True, "group": g.to_dict()})
+    return jsonify({"ok": True, "group": g.to_dict(), "started": bool(autostart and g.workers)})
 
 
 # ==========================================
@@ -2295,7 +2314,125 @@ def api_bot_strategies():
 @app.route("/api/accounts")
 @login_required
 def api_accounts():
-    return jsonify({"ok": True, "accounts": account_manager.account_manager.list_accounts()})
+    """Lista cuentas + enriquecido con campos session_* (status, days_left, path).
+
+    Query params:
+      - enrich_sessions=0  → desactiva enriquecimiento (default: on)
+      - filter=missing|warning|expired|active  → filtra por estado de sesión
+    """
+    accs = account_manager.account_manager.list_accounts()
+    if request.args.get("enrich_sessions", "1") != "0":
+        accs = session_status.enrich_accounts(accs)
+        flt = request.args.get("filter", "")
+        if flt in ("missing", "warning", "expired", "active"):
+            accs = [a for a in accs if a.get("session_status") == flt]
+    return jsonify({"ok": True, "accounts": accs})
+
+
+@app.route("/api/sessions/summary")
+@login_required
+def api_sessions_summary():
+    """Resumen de cuántas cuentas hay en cada estado de sesión.
+
+    Returns:
+      { ok: true, summary: {active, warning, expired, missing, total},
+        ttl_days: 14, warning_days: 7, orphan_count: N }
+    """
+    accs = account_manager.account_manager.list_accounts()
+    summ = session_status.summary(accs)
+    known = {a.get("storage_state_file") for a in accs if a.get("storage_state_file")}
+    for a in accs:
+        if a.get("id"):
+            known.add(str(session_status.canonical_session_path(a["id"])))
+    orphans = session_status.list_orphan_sessions(known)
+    return jsonify({
+        "ok": True,
+        "summary": summ,
+        "ttl_days": session_status.TTL_DAYS,
+        "warning_days": session_status.WARNING_DAYS,
+        "orphan_count": len(orphans),
+    })
+
+
+@app.route("/api/sessions/candidates")
+@login_required
+def api_sessions_candidates():
+    """Lista cuentas candidatas a refresh de sesión.
+
+    Query params:
+      - filter=auto|missing|expired|warning|all   (default: auto)
+      - limit=N                                    (default: sin límite)
+      - purchase_ready_only=0|1                    (default: 1)
+    """
+    flt = request.args.get("filter", "auto")
+    try:
+        limit = int(request.args.get("limit") or 0) or None
+    except ValueError:
+        limit = None
+    pr_only = request.args.get("purchase_ready_only", "1") != "0"
+    ids = session_refresh.pick_candidates(
+        status_filter=flt, limit=limit, only_purchase_ready=pr_only)
+    return jsonify({
+        "ok": True,
+        "candidates": ids,
+        "count": len(ids),
+        "filter": flt,
+    })
+
+
+@app.route("/api/sessions/refresh-batch", methods=["POST"])
+@login_required
+def api_sessions_refresh_batch():
+    """Lanza un job para refrescar storage_state de N cuentas.
+
+    Body JSON:
+      {
+        "account_ids": ["aa81f71c", ...],  // explícito, o usa "auto_pick"
+        "auto_pick": "auto",               // si no se pasa account_ids:
+                                            // selector automatic candidates
+        "limit": 10,                        // si auto_pick, máximo a procesar
+        "max_parallel": 3,                  // default 3
+        "engine": "auto"                    // 'auto' | 'morelogin' | 'camoufox'
+      }
+    """
+    data = request.get_json(silent=True) or {}
+    ids = data.get("account_ids") or []
+    if not ids and data.get("auto_pick"):
+        flt = data.get("auto_pick") or "auto"
+        limit = data.get("limit") or 10
+        ids = session_refresh.pick_candidates(
+            status_filter=flt, limit=int(limit))
+    if not ids:
+        return jsonify({
+            "ok": False,
+            "error": "no_accounts_specified",
+            "hint": "pasa account_ids[] o auto_pick='auto'"
+        }), 400
+    max_p = int(data.get("max_parallel", 3))
+    engine = data.get("engine", "auto")
+    headless = bool(data.get("headless", True))
+    result = session_refresh.start_refresh_batch(
+        ids, max_parallel=max_p, engine=engine, headless=headless)
+    code = 200 if result.get("ok") else 400
+    return jsonify(result), code
+
+
+@app.route("/api/sessions/jobs")
+@login_required
+def api_sessions_jobs():
+    """Lista jobs de refresh activos/recientes."""
+    jobs = session_refresh.list_jobs()
+    return jsonify({"ok": True, "jobs": jobs})
+
+
+@app.route("/api/sessions/jobs/<job_id>")
+@login_required
+def api_sessions_job(job_id):
+    """Estado de UN job."""
+    job = session_refresh.get_job(job_id)
+    if isinstance(job, dict) and job.get("error"):
+        return jsonify({"ok": False, "error": job["error"]}), 404
+    return jsonify({"ok": True, "job": job})
 
 
 @app.route("/api/accounts", methods=["POST"])
@@ -2477,6 +2614,8 @@ def api_accounts_with_purchases():
             slot["max_qty"] = mx
             slot["blocked"] = slot["qty_total"] >= mx
             events_list.append(slot)
+        # Enriquecer con info de sesión (storage_state TTL)
+        sinfo = session_status.session_info_for(a)
         out.append({
             "id": aid, "label": a.get("label"),
             "tm_email": a.get("tm_email"), "first_name": a.get("first_name"),
@@ -2492,6 +2631,12 @@ def api_accounts_with_purchases():
             "review_reason": a.get("review_reason"),
             "events_used": events_list,
             "any_blocked": any(e["blocked"] for e in events_list),
+            # Session status (storage_state)
+            "session_status": sinfo["session_status"],
+            "session_days_left": sinfo["session_days_left"],
+            "session_age_days": sinfo["session_age_days"],
+            "session_saved_at": sinfo["session_saved_at"],
+            "session_canonical": sinfo["session_canonical"],
         })
     return jsonify({"ok": True, "accounts": out, "event_filter": only_event,
                     "default_max_qty": _DEFAULT_MAX_QTY_PER_EVENT,

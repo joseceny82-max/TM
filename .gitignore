@@ -82,3 +82,13 @@ dist/
 *.lock
 *.pid
 .locks/
+
+# ─── Secrets de test con credenciales REALES (NO versionar) ───
+_test_imap_madre.py
+
+# ─── Diagnostics / runs (NO versionar — traces y logs del bot) ─
+runs/
+*.jsonl
+*.backup_*
+*.err
+_bot_engine_slot_counter.txt

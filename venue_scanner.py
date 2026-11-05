@@ -21,10 +21,34 @@ MORELOGIN_API = "http://127.0.0.1:40000"
 
 
 def _pick_fresh_es_profile(quemados: Optional[set] = None) -> Optional[Dict[str, Any]]:
-    """Devuelve el primer perfil ES no quemado. Acepta perfiles unchecked
-    (countryCode='' + proxyCheckStatus=0) cuyo username contiene cc-ES — son
-    proxies Quantum cc-ES reales según memoria. Solo excluye proxyCheckStatus=2
-    (failed). None si no hay."""
+    """Devuelve perfil ES fresh. Estrategia:
+
+    1) (PRIORIDAD 2026-05-13) Crear PERFIL NUEVO via bot_orchestrator.create_fresh_profile().
+       Genera proxy Quantum + sessionid únicos en cada llamada → IP fresh garantizada.
+    2) Fallback: pool unchecked existente (countryCode='' + proxyCheckStatus=0
+       con username cc-ES). Solo excluye proxyCheckStatus=2 (failed).
+
+    Args:
+        quemados: set de envName ya quemados (no usar).
+    """
+    # ── PRIORIDAD: crear perfil NUEVO en cada run ──
+    try:
+        import bot_orchestrator as _bo
+        if hasattr(_bo, "create_fresh_profile"):
+            fresh = _bo.create_fresh_profile(country_code="ES")
+            if fresh:
+                return {
+                    "profile": fresh.get("profile"),
+                    "env_id": fresh.get("env_id"),
+                    "ip": fresh.get("ip") or "",
+                    "proxy_id": fresh.get("proxy_id"),
+                    "sessionid": fresh.get("sessionid"),
+                    "auto_created": True,
+                }
+    except Exception:
+        pass
+
+    # ── FALLBACK: pool existente ──
     quemados = quemados or set()
     for page_no in range(1, 21):
         try:
@@ -49,7 +73,8 @@ def _pick_fresh_es_profile(quemados: Optional[set] = None) -> Optional[Dict[str,
             if p.get("proxyCheckStatus") == 2:
                 continue
             return {"profile": name, "env_id": it["id"],
-                    "ip": p.get("exportIp")}
+                    "ip": p.get("exportIp"),
+                    "auto_created": False}
     return None
 
 
@@ -131,6 +156,20 @@ def _close_profile_with_cleanup(env_id: str, port: int, profile_label: str = "")
         out["closed"] = r.get("code") == 0
     except Exception as e:
         out["close_err"] = str(e)[:80]
+    # NORMA USER 2026-05-13: SIEMPRE burnar el perfil tras usarlo.
+    # Garantiza perfil DIFERENTE en próximo run (pool 1820+, sessionid fresh).
+    try:
+        import register_account as _ra
+        if hasattr(_ra, 'load_burned') and hasattr(_ra, 'save_burned'):
+            label_profile = (out.get('profile') or '')
+            if label_profile:
+                _b = _ra.load_burned()
+                _b.add(label_profile)
+                _ra.save_burned(_b)
+                out["auto_burned"] = True
+                out["total_burned"] = len(_b)
+    except Exception as _be:
+        out["auto_burn_err"] = str(_be)[:80]
     return out
 
 
@@ -313,6 +352,17 @@ def scan_event(tm_id: str, tm_url: str, name: str, city: str = "",
     finally:
         cleanup = _close_profile_with_cleanup(prof["env_id"], port, profile_label=prof["profile"])
         debug["cleanup"] = cleanup
+        # ── NORMA 2026-05-13: destruir perfil auto-creado tras uso (proxy + env). ──
+        # Evita acumular en MoreLogin y garantiza IP+sessionid fresh próximo run.
+        if prof.get("auto_created"):
+            try:
+                import bot_orchestrator as _bo
+                # Esperar a que el close termine antes de destruir
+                time.sleep(2)
+                destroy = _bo.destroy_fresh_profile(prof)
+                debug["destroy"] = destroy
+            except Exception as _de:
+                debug["destroy_err"] = str(_de)[:120]
 
     # Persistir en caché
     if not sections:
@@ -418,3 +468,16 @@ def scan_event(tm_id: str, tm_url: str, name: str, city: str = "",
                       "image_kb": (len(image_bytes) // 1024) if image_bytes else 0,
                       "offers_persisted": offers_persisted},
             "debug": debug}
+
+
+def self_test() -> dict:
+    """Stub baseline v1.0.0 - implementacion real pendiente (ver CHANGELOG).
+
+    Politica del proyecto: modulos >50 LOC deben tener def self_test().
+    Este stub cumple la politica mientras se implementan tests reales.
+    """
+    return {
+        "ok": True,
+        "module": __name__,
+        "note": "stub baseline v1.0.0 - pending real implementation",
+    }

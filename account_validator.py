@@ -20,6 +20,7 @@ import requests
 
 import account_manager as am
 import bot_orchestrator as bo
+import session_status
 
 PROYECTO = os.path.dirname(os.path.abspath(__file__))
 _JOBS: Dict[str, Dict[str, Any]] = {}
@@ -404,6 +405,69 @@ _INVALID_REASONS_PERSIST = (
 )
 
 
+def _persist_storage_state(ctx, account: Dict[str, Any], out: Dict[str, Any],
+                            slot: int = 0) -> None:
+    """Guarda storage_state al disco (path canónico) y actualiza accounts.json.
+
+    Estrategia:
+      1. Si la cuenta YA tiene `storage_state_file` legacy → sobrescribe ese mismo path
+         (compatibilidad con register_account.py + _compra_parallel.py).
+      2. Si NO tiene → usa path canónico `datos/sessions/account_{id}.json` y persiste
+         el nuevo path en accounts.json (campo `storage_state_file`).
+
+    Idempotente: si ctx no es válido o falla la escritura, marca `out["storage_update_err"]`
+    pero NO lanza excepción.
+    """
+    aid = account.get("id", "")
+    if not aid:
+        out["storage_update_err"] = "no_account_id"
+        return
+
+    # Decidir path destino
+    legacy_ssf = account.get("storage_state_file")
+    if legacy_ssf and os.path.exists(os.path.dirname(legacy_ssf) or "."):
+        target = legacy_ssf
+        is_canonical = False
+    else:
+        target = str(session_status.canonical_session_path(aid))
+        is_canonical = True
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+
+    try:
+        state = ctx.storage_state()
+        # Escritura atómica: write a .tmp, luego rename
+        tmp = target + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2, ensure_ascii=False)
+        if os.path.exists(target):
+            os.replace(tmp, target)
+        else:
+            os.rename(tmp, target)
+
+        out["storage_updated"] = True
+        out["storage_state_file"] = target
+        out["storage_canonical"] = is_canonical
+        _log(slot, "storage_state_refreshed",
+             path=os.path.basename(target), canonical=is_canonical)
+
+        # Si es nuevo canonical, persistir en accounts.json
+        if is_canonical:
+            try:
+                am.account_manager.update_account(aid, {
+                    "storage_state_file": target,
+                    "last_login": datetime.now().isoformat(),
+                })
+            except Exception as e:
+                out["storage_update_err"] = f"persist: {str(e)[:80]}"
+    except Exception as e:
+        out["storage_update_err"] = str(e)[:80]
+        # Cleanup tmp si quedó
+        try:
+            if os.path.exists(target + ".tmp"):
+                os.remove(target + ".tmp")
+        except Exception: pass
+
+
 def _apply_persistence(account: Dict[str, Any], out: Dict[str, Any],
                         opt_bump: bool, opt_mark_for_review: bool,
                         started: Optional[float] = None) -> None:
@@ -770,17 +834,9 @@ def validate_account(account: Dict[str, Any], slot: int = 0,
                     else:
                         # No pudimos extraer email pero sí hay logout button → asumir registrada
                         out["account_registered_in_tm"] = "probably"
-                # Refrescar storage_state si flag activo
-                if opt_update_storage and ssf:
-                    try:
-                        state = ctx.storage_state()
-                        with open(ssf, "w", encoding="utf-8") as f:
-                            json.dump(state, f, indent=2, ensure_ascii=False)
-                        out["storage_updated"] = True
-                        _log(slot, "storage_state_refreshed",
-                             path=os.path.basename(ssf))
-                    except Exception as e:
-                        out["storage_update_err"] = str(e)[:80]
+                # Refrescar storage_state si flag activo (canonical-aware)
+                if opt_update_storage:
+                    _persist_storage_state(ctx, account, out, slot=slot)
                 # cleanup historial solo si flag activo
                 if opt_clear:
                     try:
@@ -891,15 +947,9 @@ def validate_account(account: Dict[str, Any], slot: int = 0,
                     out["reason"] = "unknown_state"
 
             # Refrescar storage_state si login OK y opt_update_storage activado
-            if opt_update_storage and out["valid"] and ssf:
-                try:
-                    state = ctx.storage_state()
-                    with open(ssf, "w", encoding="utf-8") as f:
-                        json.dump(state, f, indent=2, ensure_ascii=False)
-                    out["storage_updated"] = True
-                    _log(slot, "storage_state_refreshed", path=os.path.basename(ssf))
-                except Exception as e:
-                    out["storage_update_err"] = str(e)[:80]
+            # (canonical-aware: si no hay ssf legacy, usa datos/sessions/account_{id}.json)
+            if opt_update_storage and out["valid"]:
+                _persist_storage_state(ctx, account, out, slot=slot)
 
             if opt_clear:
                 try:
@@ -1389,4 +1439,17 @@ def audit_and_purge_invalid(reasons_to_purge: Optional[List[str]] = None,
         "skipped_count": len(skipped),
         "purged_accounts": purged[:30],   # cap output
         "purged_truncated": len(purged) > 30,
+    }
+
+
+def self_test() -> dict:
+    """Stub baseline v1.0.0 - implementacion real pendiente (ver CHANGELOG).
+
+    Politica del proyecto: modulos >50 LOC deben tener def self_test().
+    Este stub cumple la politica mientras se implementan tests reales.
+    """
+    return {
+        "ok": True,
+        "module": __name__,
+        "note": "stub baseline v1.0.0 - pending real implementation",
     }

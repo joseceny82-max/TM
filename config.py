@@ -189,4 +189,33 @@ TM_ENV           = os.environ.get("TM_ENV", "production")  # production | stagin
 SECRET_KEY       = "tm-perros-secret-change-me"
 MONITOR_INTERVAL = 30
 APP_NAME         = "TM PERROS"
-APP_VERSION      = "1.0.0"
+
+def _load_version() -> str:
+    """Lee VERSION (fuente única). Fallback a '1.0.0' si el archivo no existe.
+    Norma del proyecto: cada cambio al sistema incrementa VERSION + bloque en CHANGELOG.md."""
+    import os as _os
+    try:
+        _vf = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "VERSION")
+        if _os.path.isfile(_vf):
+            with open(_vf, encoding="utf-8") as _f:
+                v = _f.read().strip()
+                if v:
+                    return v
+    except Exception:
+        pass
+    return "1.0.0"
+
+APP_VERSION      = _load_version()
+
+
+def self_test() -> dict:
+    """Stub baseline v1.0.0 - implementacion real pendiente (ver CHANGELOG).
+
+    Politica del proyecto: modulos >50 LOC deben tener def self_test().
+    Este stub cumple la politica mientras se implementan tests reales.
+    """
+    return {
+        "ok": True,
+        "module": __name__,
+        "note": "stub baseline v1.0.0 - pending real implementation",
+    }

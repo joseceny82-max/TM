@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 PROYECTO = os.path.dirname(os.path.abspath(__file__))
-SCRIPT = os.path.join(PROYECTO, "_compra_parallel.py")
+SCRIPT = os.path.join(PROYECTO, "_compra_with_swap.py")
 DEFAULT_TIMEOUT_S = 600  # 10 min máximo por intento
 
 

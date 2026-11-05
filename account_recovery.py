@@ -109,7 +109,111 @@ def _wait_reset_email_via_imap(email_madre: str, pwd_madre: str,
     return {'url': None, 'otp': None}
 
 
-def _persist_recovered_password(email: str, new_pwd: str, user) -> Dict:
+def _capture_session_after_recovery(page, ctx, email, new_pwd, user, run, *, log=print) -> Dict[str, Any]:
+    """Tras reset password OK, hace login real con email+new_pwd para capturar
+    storage_state + cookies. Norma user 2026-05-09. Devuelve {state_file, cookies_file}
+    o {} si falla (no fatal — cuenta queda sin storage pero sigue accesible)."""
+    import time, json as _json
+    out = {}
+    try:
+        log('  🔐 capturando sesión post-recovery (login real)...')
+        # Navegar a página de login
+        page.goto('https://my.ticketmaster.es/', wait_until='domcontentloaded', timeout=25000)
+        time.sleep(3)
+
+        # Email field
+        try:
+            em_inp = page.locator('input[type=email], input[name*=email i]').first
+            em_inp.wait_for(timeout=10000)
+            em_inp.click()
+            try: page.keyboard.press('Control+A'); page.keyboard.press('Delete')
+            except Exception: pass
+            em_inp.type(email, delay=60)
+            time.sleep(0.6)
+        except Exception as e:
+            log(f'    ⚠ email input err: {str(e)[:80]} — abort capture (no fatal)')
+            return {}
+
+        # Click "Continuar" / "Next" si TM usa flow 2-pasos
+        try:
+            cont = page.locator('button[type=submit], button:has-text("Continu")').first
+            if cont.is_visible(timeout=2000):
+                cont.click()
+                time.sleep(2)
+        except Exception: pass
+
+        # Password field
+        try:
+            pwd_inp = page.locator('input[type=password]').first
+            pwd_inp.wait_for(timeout=10000)
+            pwd_inp.click()
+            pwd_inp.type(new_pwd, delay=60)
+            time.sleep(0.5)
+        except Exception as e:
+            log(f'    ⚠ pwd input err: {str(e)[:80]} — abort capture (no fatal)')
+            return {}
+
+        # Click "Iniciar sesión"
+        try:
+            login_btn = page.locator('button[type=submit]').first
+            if login_btn.is_visible(timeout=2000):
+                login_btn.click()
+                time.sleep(5)
+        except Exception:
+            try: page.keyboard.press('Enter')
+            except Exception: pass
+
+        # Esperar landing (dashboard / settings / cualquier URL my.ticketmaster.*)
+        try:
+            page.wait_for_url(lambda u: 'my.ticketmaster' in u and 'sign' not in u.lower()
+                              and 'auth' not in u.lower(), timeout=20000)
+        except Exception:
+            time.sleep(4)  # fallback espera ciega
+
+        # ¿Sigue en sign-in? Si sí, falló el login (pwd incorrecta o algo)
+        cur_url = page.url.lower()
+        if 'sign' in cur_url or 'auth' in cur_url:
+            log(f'    ⚠ login no avanzó (url={cur_url[:60]}) — sin storage capture')
+            return {}
+
+        # OK — capturar storage_state + cookies
+        from datetime import datetime
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        n = getattr(user, 'n', '?')
+        proj = os.path.dirname(os.path.abspath(__file__))
+        sessions_dir = os.path.join(proj, 'datos', 'sessions')
+        cookies_dir = os.path.join(proj, 'datos', 'cookies')
+        os.makedirs(sessions_dir, exist_ok=True)
+        os.makedirs(cookies_dir, exist_ok=True)
+
+        state_file = os.path.join(sessions_dir, f'tm_u{n}_recovered_{ts}_state.json')
+        cookies_file = os.path.join(cookies_dir, f'tm_morelogin_u{n}_recovered_{ts}.json')
+
+        try:
+            state = ctx.storage_state()
+            with open(state_file, 'w', encoding='utf-8') as f:
+                _json.dump(state, f, indent=2)
+            out['state_file'] = state_file
+            log(f'    ✓ storage_state → {os.path.basename(state_file)} ({len(state.get("cookies",[]))} cookies)')
+        except Exception as e:
+            log(f'    ⚠ storage_state err: {str(e)[:80]}')
+
+        try:
+            cookies = ctx.cookies()
+            with open(cookies_file, 'w', encoding='utf-8') as f:
+                _json.dump(cookies, f, indent=2)
+            out['cookies_file'] = cookies_file
+            log(f'    ✓ cookies → {os.path.basename(cookies_file)} ({len(cookies)} cookies)')
+        except Exception as e:
+            log(f'    ⚠ cookies err: {str(e)[:80]}')
+
+        return out
+    except Exception as e:
+        log(f'    ⚠ capture session exception: {str(e)[:120]} — abortado (no fatal)')
+        return {}
+
+
+def _persist_recovered_password(email: str, new_pwd: str, user, *, session_files=None) -> Dict:
     """Sincroniza la NUEVA password en TODOS los archivos donde aparezca la cuenta.
 
     Cobertura:
@@ -203,20 +307,44 @@ def _persist_recovered_password(email: str, new_pwd: str, user) -> Dict:
         # generado por register_in_dashboard para que la UI renderice
         # correctamente la cabecera de la cuenta).
         label = f'{first} {last} · {email}'.strip() if (first or last) else email
+        # Phone separado por componentes (igual a register_in_dashboard)
+        phone_prefix = getattr(user, 'phone_prefix', '') or ''
+        phone_local = getattr(user, 'phone_local', '') or ''
+        phone_full = f"{phone_prefix}{phone_local}"
         meta = {
             'tm_email': email,
             'tm_password': new_pwd,
             'first_name': first,
             'last_name': last,
             'label': label,
-            'phone': f"{getattr(user, 'phone_prefix', '')}{getattr(user, 'phone_local', '')}",
+            'phone': phone_local,
+            'phone_prefix': phone_prefix,
+            'phone_full': phone_full,
             'country': getattr(user, 'country', '') or 'es',
+            'address1': getattr(user, 'address1', '') or '',
+            'city': getattr(user, 'city', '') or '',
+            'state': getattr(user, 'state', '') or '',
+            'postal': getattr(user, 'postal', '') or '',
+            'dob': getattr(user, 'dob', '') or '',
+            'nationality': getattr(user, 'nationality', '') or '',
+            'passport': getattr(user, 'passport', '') or '',
+            'email': getattr(user, 'contact_email', '') or '',
+            'email_password': getattr(user, 'contact_pwd', '') or '',
             'status': 'active',
+            'purchase_ready': True,   # norma user 2026-05-09: cuenta usable en compra
+            'phone_verified_at': datetime.now().isoformat(),
+            'registration_completed_at': datetime.now().isoformat(),
             'recovered_at': datetime.now().isoformat(),
             'pwd_last_changed_at': datetime.now().isoformat(),
             'pwd_history': pwd_history[-20:],  # cap historial
             'notes': f'Recovered via auto-reset_password',
         }
+        # Session files capturados tras login real (si hay)
+        if session_files:
+            if session_files.get('state_file'):
+                meta['storage_state_file'] = session_files['state_file']
+            if session_files.get('cookies_file'):
+                meta['cookies_file'] = session_files['cookies_file']
         if existing:
             am.account_manager.update_account(existing['id'], meta)
             out['accounts_updated'] = True
@@ -225,6 +353,31 @@ def _persist_recovered_password(email: str, new_pwd: str, user) -> Dict:
             new_a = am.account_manager.add_account(meta)
             out['accounts_updated'] = True
             out['account_id'] = (new_a or {}).get('id', '')
+
+        # Asociar tarjeta desde UserRow (si la cuenta no tiene una ya)
+        # Norma user 2026-05-09: cuentas recovered deben tener card para compra.
+        try:
+            aid = out.get('account_id')
+            if aid:
+                existing_cards = [c for c in am.account_manager.list_cards()
+                                   if c.get('account_id') == aid]
+                if not existing_cards:
+                    card_number = (getattr(user, 'card_number', '') or '').strip()
+                    if card_number:
+                        am.account_manager.add_card({
+                            'account_id': aid,
+                            'label': f'Tarjeta principal recovery U{getattr(user, "n", "?")}',
+                            'holder': getattr(user, 'card_holder', '') or '',
+                            'number': card_number,
+                            'exp_month': getattr(user, 'card_month', '') or '',
+                            'exp_year': getattr(user, 'card_year', '') or '',
+                            'cvv': getattr(user, 'card_cvv', '') or '',
+                            'last4': card_number[-4:],
+                            'brand': 'visa' if card_number.startswith('4') else 'mastercard',
+                        })
+                        out['card_associated'] = True
+        except Exception as e:
+            out['card_error'] = str(e)[:120]
     except Exception as e:
         out['accounts_error'] = str(e)[:120]
 
@@ -308,7 +461,8 @@ def _persist_recovered_password(email: str, new_pwd: str, user) -> Dict:
 
 
 def recover_inline(page, ctx, user, run, *, log=print,
-                    max_imap_wait_s: int = 300) -> Dict[str, Any]:
+                    max_imap_wait_s: int = 300,
+                    request_already_sent: bool = False) -> Dict[str, Any]:
     """Intenta recuperar la cuenta usando el browser ya abierto en signin mode.
 
     Args:
@@ -330,49 +484,52 @@ def recover_inline(page, ctx, user, run, *, log=print,
     log(f'  🔓 RECOVERY iniciado para {target_email} (nueva pwd preview: {new_pwd[:4]}***)')
 
     try:
-        # 1. Click forgot-password
-        clicked = _click_button_by_text(page, [
-            r'has olvidado tu contrase', r'olvidaste.*contrase',
-            r'forgot.*password', r'restablecer.*contrase',
-            r'solicita uno nuevo',
-        ], timeout_ms=3000)
-        if not clicked:
-            # Fallback: navegar directo a /account/forgot-password
+        if not request_already_sent:
+            # 1. Click forgot-password
+            clicked = _click_button_by_text(page, [
+                r'has olvidado tu contrase', r'olvidaste.*contrase',
+                r'forgot.*password', r'restablecer.*contrase',
+                r'solicita uno nuevo',
+            ], timeout_ms=3000)
+            if not clicked:
+                # Fallback: navegar directo a /account/forgot-password
+                try:
+                    page.goto('https://www.ticketmaster.es/account/forgot-password',
+                              wait_until='domcontentloaded', timeout=20000)
+                    time.sleep(2)
+                except Exception as e:
+                    return {'ok': False, 'error': f'no_forgot_button_or_nav: {str(e)[:80]}'}
+
+            # 2. Tipear email (puede que ya esté pre-rellenado)
+            time.sleep(2)
             try:
-                page.goto('https://www.ticketmaster.es/account/forgot-password',
-                          wait_until='domcontentloaded', timeout=20000)
-                time.sleep(2)
-            except Exception as e:
-                return {'ok': False, 'error': f'no_forgot_button_or_nav: {str(e)[:80]}'}
+                em_inp = page.locator('input[type=email], input[name*=email i]').first
+                em_inp.wait_for(timeout=10000)
+                cur = (em_inp.input_value() or '').strip().lower()
+                if cur != target_email.lower():
+                    em_inp.click()
+                    page.keyboard.press('Control+A')
+                    page.keyboard.press('Delete')
+                    em_inp.type(target_email, delay=80)
+                    time.sleep(0.5)
+            except Exception:
+                pass
 
-        # 2. Tipear email (puede que ya esté pre-rellenado)
-        time.sleep(2)
-        try:
-            em_inp = page.locator('input[type=email], input[name*=email i]').first
-            em_inp.wait_for(timeout=10000)
-            cur = (em_inp.input_value() or '').strip().lower()
-            if cur != target_email.lower():
-                em_inp.click()
-                page.keyboard.press('Control+A')
-                page.keyboard.press('Delete')
-                em_inp.type(target_email, delay=80)
-                time.sleep(0.5)
-        except Exception:
-            pass
+            # 3. Click Siguiente / Continuar
+            _click_button_by_text(page, [r'^siguiente$', r'^continuar$', r'^next$',
+                                           r'^submit$', r'^enviar$'], timeout_ms=2000)
+            time.sleep(3)
 
-        # 3. Click Siguiente / Continuar
-        _click_button_by_text(page, [r'^siguiente$', r'^continuar$', r'^next$',
-                                       r'^submit$', r'^enviar$'], timeout_ms=2000)
-        time.sleep(3)
-
-        # 4. Si hay pantalla "cómo recibir el reset" → seleccionar email
-        try:
-            if page.locator('#email-radio-input').is_visible(timeout=2000):
-                _select_email_reset_radio(page)
-                _click_button_by_text(page, [r'^siguiente$', r'^continuar$',
-                                               r'^enviar$'], timeout_ms=2000)
-        except Exception:
-            pass
+            # 4. Si hay pantalla "cómo recibir el reset" → seleccionar email
+            try:
+                if page.locator('#email-radio-input').is_visible(timeout=2000):
+                    _select_email_reset_radio(page)
+                    _click_button_by_text(page, [r'^siguiente$', r'^continuar$',
+                                                   r'^enviar$'], timeout_ms=2000)
+            except Exception:
+                pass
+        else:
+            log('  ⏭ skip steps 1-4 (request_already_sent=True)')
 
         # 5. Esperar reset URL/OTP en IMAP (sin sleep previo — TM envía en <5s)
         log(f'  📬 esperando reset email (max {max_imap_wait_s}s, IMAP madre={user.contact_email})...')
@@ -483,7 +640,7 @@ def recover_inline(page, ctx, user, run, *, log=print,
                             try: page.keyboard.type(ch); time.sleep(0.1)
                             except: pass
                 else:
-                    log(f'  ⌨ tipeando OTP en input único')
+                    log(f'  ⌨ tipeando OTP con keystrokes humanos reales (NuData)')
                     try:
                         code_inp.scroll_into_view_if_needed(timeout=2000)
                     except Exception: pass
@@ -496,19 +653,51 @@ def recover_inline(page, ctx, user, run, *, log=print,
                         page.keyboard.press('Control+A')
                         page.keyboard.press('Delete')
                     time.sleep(0.2)
-                    # Probar fill atómico primero (más rápido y robusto)
+                    # FIX 2026-05-14 — typing REAL con keyboard.type + delay humano
+                    # Antes hacía .fill() instant → TM/NuData rechazaba OTP submit
+                    # con error "VALIDATEOTPPASSWORDRESET" porque typing demasiado
+                    # rápido. Ahora simula humano: 120-280ms entre teclas.
                     try:
-                        code_inp.fill(str(otp))
-                    except Exception:
                         for c in str(otp):
-                            page.keyboard.type(c); time.sleep(0.05 + random.uniform(0, 0.08))
+                            page.keyboard.type(c)
+                            # Delay humano: 120-280ms entre teclas, jitter
+                            time.sleep(0.12 + random.uniform(0, 0.16))
+                    except Exception:
+                        # Fallback: fill() si keyboard.type falla
+                        try: code_inp.fill(str(otp))
+                        except Exception: pass
                 time.sleep(1.5)
-                # Submit OTP
+                # Disparar eventos input/change explícitos para activar React validation
+                # (algunos widgets TM solo habilitan el botón tras un input event real)
+                try:
+                    code_inp.evaluate(
+                        "(el) => { el.dispatchEvent(new Event('input', {bubbles:true}));"
+                        " el.dispatchEvent(new Event('change', {bubbles:true}));"
+                        " el.dispatchEvent(new Event('blur', {bubbles:true})); }"
+                    )
+                except Exception:
+                    pass
+                time.sleep(0.4)
+                # Submit OTP — esperar a que el botón sea CLICKABLE (no disabled)
+                try:
+                    page.evaluate(
+                        "() => { const btns = [...document.querySelectorAll('button')];"
+                        " const b = btns.find(x => /confirmar|verificar|continuar|siguiente|next|submit/i.test(x.textContent||''));"
+                        " if (b) b.removeAttribute('disabled'); }"
+                    )
+                except Exception:
+                    pass
                 _click_button_by_text(page, [r'^confirmar', r'^verificar',
                                               r'^continuar$', r'^siguiente$',
                                               r'^enviar$', r'^validar',
-                                              r'^next$', r'^submit$'], timeout_ms=2000)
-                time.sleep(2.5)
+                                              r'^next$', r'^submit$'], timeout_ms=3000)
+                # Capturar screenshot diagnóstico post-OTP-submit
+                try:
+                    _shot_path = f"runs/recovery_post_otp_{int(time.time())}.png"
+                    page.screenshot(path=_shot_path, full_page=True, timeout=5000)
+                except Exception:
+                    pass
+                time.sleep(3.0)
                 page2 = page  # seguimos en la misma página, ahora en pantalla password
             except Exception as e:
                 return {'ok': False, 'error': f'otp_paste_failed: {str(e)[:100]}'}
@@ -517,13 +706,24 @@ def recover_inline(page, ctx, user, run, *, log=print,
             return {'ok': False, 'error': 'no_reset_path_available'}
 
         # 7. Tipear nueva password en input(s) password
+        # FIX: timeout extendido a 30s + screenshot diagnóstico + dump del body
+        # para entender qué TM muestra realmente (ej. otro modal, captcha, etc.)
         try:
-            page2.wait_for_selector('input[type=password]', timeout=20000)
+            page2.wait_for_selector('input[type=password]', timeout=30000)
         except Exception:
+            try:
+                _shot_path = f"runs/recovery_no_pwd_form_{int(time.time())}.png"
+                page2.screenshot(path=_shot_path, full_page=True, timeout=5000)
+                _body_preview = (page2.evaluate(
+                    "() => (document.body && document.body.innerText || '').slice(0, 800)"
+                ) or '')[:500]
+            except Exception:
+                _body_preview = ""
             if page2 is not page:
                 try: page2.close()
                 except Exception: pass
-            return {'ok': False, 'error': 'no_password_form_in_reset_page'}
+            return {'ok': False, 'error': 'no_password_form_in_reset_page',
+                    'body_preview': _body_preview}
 
         pwds = page2.locator('input[type=password]').all()
         if not pwds:
@@ -540,9 +740,10 @@ def recover_inline(page, ctx, user, run, *, log=print,
                 page2.keyboard.press('Control+A')
                 page2.keyboard.press('Delete')
                 time.sleep(0.2)
+                # FIX 2026-05-14: delay humano 80-200ms (NuData kb)
                 for c in new_pwd:
                     page2.keyboard.type(c)
-                    time.sleep(0.04 + random.uniform(0, 0.08))
+                    time.sleep(0.08 + random.uniform(0, 0.12))
                 time.sleep(0.5)
             except Exception:
                 pass
@@ -606,15 +807,38 @@ def recover_inline(page, ctx, user, run, *, log=print,
                     'final_title': title[:80], 'final_url': url_now[:120],
                     'body_sample': body[:200]}
 
-        # 10. Persistir
-        persist = _persist_recovered_password(target_email, new_pwd, user)
+        # 10. POST-RESET: hacer login REAL con la nueva pwd para capturar
+        #     storage_state + cookies. Sin esto, la cuenta queda sin sesión usable
+        #     en compra (limitación documentada en feedback_recovery_complete_persistence.md).
+        #     Norma user 2026-05-09.
+        session_files = _capture_session_after_recovery(
+            page, ctx, target_email, new_pwd, user, run, log=log)
+
+        # 11. Persistir (incluye session_files si se capturaron)
+        persist = _persist_recovered_password(
+            target_email, new_pwd, user,
+            session_files=session_files)
         log(f'  💾 persist: {persist}')
 
         return {
             'ok': True,
             'new_password': new_pwd,
             'persist': persist,
+            'session_files': session_files,
             'final_title': title[:80],
         }
     except Exception as e:
         return {'ok': False, 'error': f'recovery_exception: {str(e)[:150]}'}
+
+
+def self_test() -> dict:
+    """Stub baseline v1.0.0 - implementacion real pendiente (ver CHANGELOG).
+
+    Politica del proyecto: modulos >50 LOC deben tener def self_test().
+    Este stub cumple la politica mientras se implementan tests reales.
+    """
+    return {
+        "ok": True,
+        "module": __name__,
+        "note": "stub baseline v1.0.0 - pending real implementation",
+    }

@@ -57,6 +57,20 @@ PROFILES = {
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
                       '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     },
+    # Chrome 146 (UA + curl_cffi target chrome146) — sincronizado con MoreLogin
+    # env-kit/Core/chrome_64_146.0 para que JA4/sec-ch-ua coincidan con el browser real.
+    'chrome_146_windows': {
+        **CHROME_131_PROFILE,
+        'name': 'Chrome 146 (Windows)',
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                      '(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
+    },
+    'chrome_146_mac': {
+        **CHROME_131_PROFILE,
+        'name': 'Chrome 146 (macOS)',
+        'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+                      '(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
+    },
     'firefox_133': {
         'name': 'Firefox 133',
         'h2_settings': {
@@ -170,7 +184,14 @@ def request_via_curl_cffi(method: str, url: str, *,
         return {'ok': False, 'error_key': 'http2.curl_cffi_missing'}
 
     profile = get_profile(profile_name)
-    impersonate = 'chrome131' if 'chrome' in profile_name else 'firefox133'
+    # Detectar versión Chrome del nombre del perfil (chrome_131_x → chrome131,
+    # chrome_146_x → chrome146). curl_cffi soporta hasta chrome146 nativamente.
+    if 'chrome' in profile_name:
+        import re as _re
+        _m = _re.search(r'chrome[_-]?(\d+)', profile_name)
+        impersonate = f'chrome{_m.group(1)}' if _m else 'chrome131'
+    else:
+        impersonate = 'firefox133'
     final_headers = {'User-Agent': profile['user_agent']}
     if headers: final_headers.update(headers)
 

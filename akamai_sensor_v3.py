@@ -48,7 +48,9 @@ def get_config() -> Dict[str, Any]:
         "version": "3.1",
         "events_per_payload": 60,         # más que v2 (era 50)
         "rotation_interval_s": 60,        # v3 rota cada 60s (v2 era 30s)
-        "default_ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        # UA Chrome 146 — sincronizado con MoreLogin env-kit/Core/chrome_64_146.0
+        # para que el sensor_data POST coincida con el browser real cuando se active live mode.
+        "default_ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
         "default_viewport": [1920, 1080],
         "include_bp_signals": True,       # browser proxy detection (v3.1)
         "include_h2_fingerprint": True,

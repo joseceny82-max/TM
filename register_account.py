@@ -95,6 +95,11 @@ class RunState:
     started_at: str
     profile: Optional[str] = None; env_id: Optional[str] = None
     port: Optional[int] = None; ip: Optional[str] = None
+    # Norma 2026-05-13: cuando create_fresh_profile arma proxy+env on-the-fly,
+    # propagamos proxy_id+auto_created para que close_profile pueda destruirlos
+    # via bot_orchestrator.destroy_fresh_profile (no acumular en MoreLogin).
+    proxy_id: Optional[str] = None; auto_created: bool = False
+    sessionid: Optional[str] = None
     burned_profiles: list = field(default_factory=list)
     blocked_phones: list = field(default_factory=list)
     phone_attempts: list = field(default_factory=list)
@@ -391,9 +396,23 @@ def _with_profile_pick_lock(fn, *args, **kwargs):
     return fn(*args, **kwargs)
 
 def _pick_and_claim_profile(country: str, burned_local: set) -> Optional[dict]:
-    """Pickea un perfil ES y lo añade a burned_profiles.json ATÓMICAMENTE bajo lock.
-    El claim previene que otros procesos paralelos cojan el mismo perfil."""
-    # Re-leer burned desde disco con TODOS los claims activos de otros procesos
+    """NORMA USER 2026-05-13: por defecto CREA perfil FRESH con proxy custom
+    Quantum + sessionid random. Si falla, fallback a pool existente.
+    Garantiza IP nueva + perfil único cada registro."""
+    # ─── PRIMERO: crear perfil FRESH ───
+    try:
+        fresh = bo.create_fresh_profile(country_code=country)
+        if fresh:
+            log(f'  + perfil FRESH creado: {fresh.get("profile")} (sessid={fresh.get("sessionid")})')
+            # Claim en burned para excluir en próximos procesos
+            all_burned = load_burned()
+            all_burned.add(fresh['profile'])
+            save_burned(all_burned)
+            return fresh
+    except Exception as _fe:
+        log(f'  fresh_create_err: {str(_fe)[:120]}')
+
+    # ─── FALLBACK: pool existente (legacy) ───
     fresh_burned = set(burned_local) | load_burned()
     prof = _pick_es_profile_smart(fresh_burned) if country == 'ES' else None
     if not prof:
@@ -402,7 +421,6 @@ def _pick_and_claim_profile(country: str, burned_local: set) -> Optional[dict]:
         prof = bo._pick_fresh_profile(country_code=country, quemados=fresh_burned,
                                       allow_unverified=True)
     if prof:
-        # CLAIM INMEDIATO en burned_profiles.json bajo lock — bloquea otros procesos
         all_burned = load_burned(); all_burned.add(prof['profile']); save_burned(all_burned)
     return prof
 
@@ -471,7 +489,13 @@ def open_profile(country: str, burned: set, run: RunState) -> tuple[BrowserConte
     time.sleep(5)
     run.profile = prof['profile']; run.env_id = prof['env_id']
     run.port = port; run.ip = prof.get('ip')
-    run.stage_done('profile_started', {'profile': prof['profile'], 'ip': prof.get('ip'), 'port': port})
+    # 2026-05-13: propagar marca auto_created + proxy_id para destroy en cleanup.
+    run.auto_created = bool(prof.get('auto_created'))
+    run.proxy_id = prof.get('proxy_id')
+    run.sessionid = prof.get('sessionid')
+    run.stage_done('profile_started', {'profile': prof['profile'], 'ip': prof.get('ip'),
+                                       'port': port, 'auto_created': run.auto_created,
+                                       'sessionid': run.sessionid})
 
     # PRE-CHECK HTTP: hacer un GET con curl_cffi (TLS Chrome real) a www.ticketmaster.es
     # USANDO el proxy MoreLogin del perfil — si TM ya devuelve bot_block via ese proxy,
@@ -1903,6 +1927,26 @@ def close_profile(run: RunState):
     # pueda usar este env_id si se reabre (2026-05-10 bug fix).
     try: _release_active_start(run.env_id)
     except Exception: pass
+
+    # NORMA 2026-05-13: destruir perfil + proxy si fue auto-creado, para no
+    # acumular en MoreLogin (limite 20000) y garantizar IP fresh próximo run.
+    if getattr(run, 'auto_created', False):
+        try:
+            import time as _time
+            _time.sleep(2)  # esperar a que close termine antes de destruir
+            destroy_prof = {
+                'profile': run.profile,
+                'env_id': run.env_id,
+                'proxy_id': run.proxy_id,
+                'sessionid': run.sessionid,
+                'auto_created': True,
+            }
+            destroy_res = bo.destroy_fresh_profile(destroy_prof)
+            log(f'  destroy: {destroy_res}')
+            res['destroy'] = destroy_res
+        except Exception as _de:
+            log(f'  destroy_err: {str(_de)[:120]}')
+            res['destroy_err'] = str(_de)[:120]
     run.stage_done('profile_closed', res)
 
 def record_in_tm_registrations(user: UserRow, account_id: str, run: RunState) -> dict:
@@ -2081,11 +2125,38 @@ def remove_from_plantilla(email: str, run: RunState) -> dict:
     # Append a archive con timestamp
     archived_row['_registered_at'] = datetime.now(timezone.utc).isoformat()
     archived_row['_run_id'] = run.run_id
+    # Bug fix 2026-05-11: los headers del archive y de la plantilla pueden
+    # divergir en ORDEN (plantilla tiene Seleccionado en [1], archive en [24]).
+    # csv.DictWriter en modo append escribe por orden de `fieldnames`, así que
+    # si pasamos las keys de archived_row, las columnas se desplazan respecto
+    # a los headers existentes → Email_TM acaba con valor "1" (de Seleccionado)
+    # y verify_account falla con archive_ADDED=False.
+    # Fix: leer los headers EXISTENTES del archive y usarlos.
     write_header = not os.path.isfile(archive_path)
+    archive_fields = None
+    if not write_header:
+        try:
+            with open(archive_path, 'r', encoding='utf-8-sig', newline='') as f:
+                rdr = csv.reader(f)
+                archive_fields = next(rdr, None)
+        except Exception:
+            archive_fields = None
+    if not archive_fields:
+        # Archive nuevo o ilegible: usar plantilla fields + columnas extras
+        archive_fields = list(archived_row.keys())
+    else:
+        # Garantizar que las nuevas claves (_registered_at, _run_id) están
+        for k in ('_registered_at', '_run_id'):
+            if k not in archive_fields:
+                archive_fields.append(k)
+    # Filtrar archived_row para que solo contenga las claves del archive
+    # (extrañas extra van fuera, faltantes quedan vacías).
+    safe_row = {k: archived_row.get(k, '') for k in archive_fields}
     with open(archive_path, 'a', encoding='utf-8-sig', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=list(archived_row.keys()))
+        w = csv.DictWriter(f, fieldnames=archive_fields,
+                           extrasaction='ignore')
         if write_header: w.writeheader()
-        w.writerow(archived_row)
+        w.writerow(safe_row)
 
     log(f'  ✓ removed from plantilla, archived → {archive_path} (filas restantes: {len(kept)})')
     run.stage_done('plantilla_moved', {'archive_path': archive_path,

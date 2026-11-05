@@ -1998,6 +1998,7 @@
                 <div class="sub-tab" data-sub="browsers"><span class="sub-icon" style="background:linear-gradient(135deg,#0e9f6e,#014737);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(14,159,110,.35);color:#fff">🧪</span><span data-i18n="bot.tab.browsers">Navegadores</span></div>
                 <div class="sub-tab" data-sub="bypass" title="Bypass clásico + Bypass Pro 2026" data-i18n-title="tip.bypass_classic_pro"><span class="sub-icon" style="background:linear-gradient(135deg,#d0006f,#7c3aed,#026CDF);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(208,0,111,.4);color:#fff">⚡🧬</span>Bypass</div>
                                 <div class="sub-tab" data-sub="purchase-flow"><span class="sub-icon" style="background:linear-gradient(135deg,#22c55e,#15803d);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(34,197,94,.45);color:#fff">🎯</span><span data-i18n="pf.tab">Flujo de compra</span></div>
+                <div class="sub-tab" data-sub="sessions" title="Bot dedicado a refrescar storage_state (cookies + localStorage) de cuentas sin compra"><span class="sub-icon" style="background:linear-gradient(135deg,#a16207,#713f12);border-radius:5px;padding:2px 5px;margin-right:4px;box-shadow:0 2px 5px rgba(161,98,7,.45);color:#fff">🍪</span><span data-i18n="ss.tab">Save Login Sessions</span></div>
             </div>
 
             <!-- WORKERS -->
@@ -3630,6 +3631,298 @@
 
             <!-- ESTRATEGIAS -->
 
+            <!-- ═════════ SUB-SECTION: SAVE LOGIN SESSIONS ═════════ -->
+            <div class="sub-section" id="sub-sessions">
+                <!-- Header -->
+                <div class="card dash-pane" style="margin-bottom:12px">
+                    <div class="dash-pane-head">
+                        <div class="dash-pane-icon" style="background:linear-gradient(135deg,#a16207,#713f12);box-shadow:0 6px 18px rgba(161,98,7,.45),0 0 0 1px rgba(255,255,255,.08) inset">🍪</div>
+                        <div class="dash-pane-title">
+                            <h3 style="margin:0;font-size:15px;font-weight:800;color:#fff" data-i18n="ss.title">Save Login Sessions</h3>
+                            <p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)" data-i18n="ss.subtitle">Bot dedicado a hacer login real y guardar storage_state (cookies + localStorage) por cuenta. SIN comprar. TTL: 14 días.</p>
+                        </div>
+                        <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+                            <button class="btn btn-sm" onclick="ssLoadAll()" title="Recargar stats y candidatos"><span data-i18n="ss.btn.refresh">🔄 Recargar</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HERO stats (4 tarjetas) -->
+                <div class="pc-hero" id="ss-hero" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:12px">
+                    <div class="pc-stat" style="background:#131826;border:1px solid #2a3346;border-left:4px solid #22c55e;border-radius:8px;padding:14px">
+                        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px" data-i18n="ss.stat.active">🟢 Activas (>7d)</div>
+                        <div style="font-size:28px;font-weight:800;color:#22c55e;margin-top:4px" id="ss-stat-active">—</div>
+                    </div>
+                    <div class="pc-stat" style="background:#131826;border:1px solid #2a3346;border-left:4px solid #f59e0b;border-radius:8px;padding:14px">
+                        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px" data-i18n="ss.stat.warning">🟡 Caducan pronto (≤7d)</div>
+                        <div style="font-size:28px;font-weight:800;color:#f59e0b;margin-top:4px" id="ss-stat-warning">—</div>
+                    </div>
+                    <div class="pc-stat" style="background:#131826;border:1px solid #2a3346;border-left:4px solid #ef4444;border-radius:8px;padding:14px">
+                        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px" data-i18n="ss.stat.expired">🔴 Expiradas (>14d)</div>
+                        <div style="font-size:28px;font-weight:800;color:#ef4444;margin-top:4px" id="ss-stat-expired">—</div>
+                    </div>
+                    <div class="pc-stat" style="background:#131826;border:1px solid #2a3346;border-left:4px solid #64748b;border-radius:8px;padding:14px">
+                        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px" data-i18n="ss.stat.missing">⚪ Sin sesión</div>
+                        <div style="font-size:28px;font-weight:800;color:#64748b;margin-top:4px" id="ss-stat-missing">—</div>
+                    </div>
+                </div>
+
+                <!-- Controles -->
+                <div class="card" style="padding:14px;margin-bottom:12px">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                        <label style="font-size:11px;color:var(--text-muted)" data-i18n="ss.filter">Filtro:</label>
+                        <select id="ss-filter" class="input" onchange="ssLoadCandidates()" style="width:auto;min-width:180px">
+                            <option value="auto" data-i18n="ss.filter.auto">Auto (missing+expired+warning)</option>
+                            <option value="missing" data-i18n="ss.filter.missing">⚪ Solo sin sesión</option>
+                            <option value="expired" data-i18n="ss.filter.expired">🔴 Solo expiradas</option>
+                            <option value="warning" data-i18n="ss.filter.warning">🟡 Solo caducan pronto</option>
+                            <option value="all" data-i18n="ss.filter.all">📋 Todas</option>
+                        </select>
+                        <label style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px">
+                            <input type="number" id="ss-limit" value="20" min="1" max="200" class="input" style="width:70px" onchange="ssLoadCandidates()">
+                            <span data-i18n="ss.lbl.limit">máx</span>
+                        </label>
+                        <label style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px">
+                            <input type="number" id="ss-parallel" value="3" min="1" max="10" class="input" style="width:60px">
+                            <span data-i18n="ss.lbl.parallel">workers paralelos</span>
+                        </label>
+                        <label style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px">
+                            <span data-i18n="ss.lbl.engine">motor:</span>
+                            <select id="ss-engine" class="input" style="width:120px">
+                                <option value="auto" data-i18n="ss.engine.auto">🦊 Auto (Camoufox)</option>
+                                <option value="camoufox" data-i18n="ss.engine.camoufox">🦊 Camoufox</option>
+                                <option value="morelogin" data-i18n="ss.engine.morelogin">🌐 MoreLogin</option>
+                            </select>
+                        </label>
+                        <label style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px" title="Marca para esconder ventana (headless). Sin marcar: ves cada login en vivo. Default: visible.">
+                            <input type="checkbox" id="ss-headless">
+                            <span data-i18n="ss.lbl.headless">headless (sin ventana)</span>
+                        </label>
+                        <label style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px">
+                            <input type="checkbox" id="ss-purchase-ready" checked>
+                            <span data-i18n="ss.lbl.pr_only">solo purchase_ready</span>
+                        </label>
+                        <div style="margin-left:auto;display:flex;gap:8px">
+                            <button class="btn btn-sm" onclick="ssToggleAll(true)" data-i18n="ss.btn.select_all">☑ Marcar todas</button>
+                            <button class="btn btn-sm" onclick="ssToggleAll(false)" data-i18n="ss.btn.deselect_all">☐ Desmarcar</button>
+                            <button class="btn btn-accent" onclick="ssLaunchBatch()" id="ss-launch-btn" style="font-weight:700"><span data-i18n="ss.btn.launch">🚀 Refrescar seleccionadas</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla candidatos -->
+                <div class="card" style="padding:0;margin-bottom:12px">
+                    <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+                        <h4 style="margin:0;font-size:14px" data-i18n="ss.candidates.title">📋 Cuentas candidatas a refresh</h4>
+                        <span id="ss-cand-count" style="font-size:11px;color:var(--text-muted)">0</span>
+                    </div>
+                    <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+                        <table style="width:100%;border-collapse:collapse;font-size:12px">
+                            <thead style="position:sticky;top:0;background:#131826;z-index:1">
+                                <tr style="text-align:left">
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);width:32px"><input type="checkbox" id="ss-check-all" onchange="ssToggleAll(this.checked)"></th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_email">Email TM</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ss.col.session_state">Sesión</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ss.col.last_verified">Última verificación</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ss.col.purchase_ready">PR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ss-cand-tbody">
+                                <tr><td colspan="5" style="padding:18px;text-align:center;color:var(--text-muted)" data-i18n="hr.loading">Cargando…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Jobs activos -->
+                <div class="card" style="padding:0">
+                    <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+                        <h4 style="margin:0;font-size:14px" data-i18n="ss.jobs.title">⏱ Jobs de refresh</h4>
+                        <span id="ss-jobs-count" style="font-size:11px;color:var(--text-muted)">0</span>
+                        <button class="btn btn-sm" style="margin-left:auto" onclick="ssLoadJobs()" data-i18n="ss.btn.refresh_jobs">🔄</button>
+                    </div>
+                    <div id="ss-jobs-list" style="padding:8px 12px">
+                        <div style="font-size:11px;color:var(--text-muted);padding:14px;text-align:center" data-i18n="ss.jobs.empty">Sin jobs activos</div>
+                    </div>
+                </div>
+
+                <script>
+                // ═══════════════ Save Login Sessions JS ═══════════════
+                window._ssCandidatesCache = [];
+                window._ssAccountsCache = [];
+                window._ssJobsPollerId = null;
+
+                async function ssLoadAll(){
+                    await Promise.all([ssLoadSummary(), ssLoadCandidates(), ssLoadJobs()]);
+                }
+
+                async function ssLoadSummary(){
+                    try {
+                        const r = await fetch('/api/sessions/summary', {credentials:'same-origin'});
+                        const d = await r.json();
+                        if(d.ok){
+                            const s = d.summary || {};
+                            document.getElementById('ss-stat-active').textContent = s.active || 0;
+                            document.getElementById('ss-stat-warning').textContent = s.warning || 0;
+                            document.getElementById('ss-stat-expired').textContent = s.expired || 0;
+                            document.getElementById('ss-stat-missing').textContent = s.missing || 0;
+                        }
+                    } catch(e){ console.warn('ssLoadSummary err', e); }
+                }
+
+                async function ssLoadCandidates(){
+                    const flt = document.getElementById('ss-filter').value || 'auto';
+                    const lim = document.getElementById('ss-limit').value || 20;
+                    const pr = document.getElementById('ss-purchase-ready').checked ? '1' : '0';
+                    const url = `/api/sessions/candidates?filter=${flt}&limit=${lim}&purchase_ready_only=${pr}`;
+                    const tbody = document.getElementById('ss-cand-tbody');
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text-muted)">Cargando…</td></tr>`;
+                    try {
+                        const r = await fetch(url, {credentials:'same-origin'});
+                        const d = await r.json();
+                        if(!d.ok){
+                            tbody.innerHTML = `<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--danger)">Error: ${esc(d.error||'?')}</td></tr>`;
+                            return;
+                        }
+                        const ids = d.candidates || [];
+                        window._ssCandidatesCache = ids;
+                        document.getElementById('ss-cand-count').textContent = `${ids.length} cuentas`;
+                        if(!ids.length){
+                            tbody.innerHTML = `<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text-muted)">${tx('No hay candidatas con este filtro','No candidates for this filter')}</td></tr>`;
+                            return;
+                        }
+                        // Pedir detalle de accounts para enriquecer
+                        const ra = await fetch('/api/accounts?enrich_sessions=1', {credentials:'same-origin'});
+                        const da = await ra.json();
+                        const accs = (da.accounts || []);
+                        const idx = {};
+                        accs.forEach(a => idx[a.id] = a);
+                        window._ssAccountsCache = idx;
+                        tbody.innerHTML = ids.map(aid => {
+                            const a = idx[aid] || {id: aid};
+                            const st = a.session_status || 'missing';
+                            const dl = a.session_days_left;
+                            let badge;
+                            if(st === 'active') badge = `<span style="background:#22c55e;color:#fff;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">🟢 ${dl}d</span>`;
+                            else if(st === 'warning') badge = `<span style="background:#f59e0b;color:#fff;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">🟡 ${dl}d</span>`;
+                            else if(st === 'expired') badge = `<span style="background:#ef4444;color:#fff;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">🔴 ${tx('expirada','expired')}</span>`;
+                            else badge = `<span style="background:#64748b;color:#fff;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">⚪ ${tx('sin sesión','no session')}</span>`;
+                            const verif = a.validated_at ? esc(a.validated_at.slice(0,16).replace('T',' ')) : '—';
+                            const pr = a.purchase_ready ? '✓' : '—';
+                            return `<tr style="border-bottom:1px solid var(--border)">
+                                <td style="padding:6px 10px"><input type="checkbox" class="ss-row-chk" value="${esc(aid)}" checked></td>
+                                <td style="padding:6px 10px;font-family:monospace;font-size:11px">${esc(a.tm_email || aid)}</td>
+                                <td style="padding:6px 10px">${badge}</td>
+                                <td style="padding:6px 10px;font-family:monospace;font-size:10.5px;color:var(--text-muted)">${verif}</td>
+                                <td style="padding:6px 10px;text-align:center;color:${a.purchase_ready?'#22c55e':'var(--text-muted)'};font-weight:700">${pr}</td>
+                            </tr>`;
+                        }).join('');
+                    } catch(e){
+                        tbody.innerHTML = `<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--danger)">Error: ${esc(e.message||e)}</td></tr>`;
+                    }
+                }
+
+                function ssToggleAll(checked){
+                    document.querySelectorAll('.ss-row-chk').forEach(c => c.checked = !!checked);
+                    const head = document.getElementById('ss-check-all');
+                    if(head) head.checked = !!checked;
+                }
+
+                async function ssLaunchBatch(){
+                    const checked = [...document.querySelectorAll('.ss-row-chk:checked')].map(c => c.value);
+                    if(!checked.length){
+                        alert(tx('Selecciona al menos 1 cuenta','Select at least 1 account'));
+                        return;
+                    }
+                    const parallel = parseInt(document.getElementById('ss-parallel').value || '3', 10);
+                    const engine = document.getElementById('ss-engine').value || 'auto';
+                    const headless = document.getElementById('ss-headless').checked;
+                    if(!confirm(tx(`¿Lanzar refresh para ${checked.length} cuentas (motor: ${engine}, ${parallel} workers paralelos)?`,
+                                    `Launch refresh for ${checked.length} accounts (engine: ${engine}, ${parallel} parallel workers)?`))){
+                        return;
+                    }
+                    const btn = document.getElementById('ss-launch-btn');
+                    btn.disabled = true;
+                    btn.innerHTML = '⏳ Lanzando…';
+                    try {
+                        const r = await fetch('/api/sessions/refresh-batch', {
+                            method:'POST', credentials:'same-origin',
+                            headers:{'Content-Type':'application/json'},
+                            body: JSON.stringify({account_ids: checked, max_parallel: parallel, engine: engine, headless: headless})
+                        });
+                        const d = await r.json();
+                        if(d.ok){
+                            alert(tx(`✓ Job ${d.job_id} lanzado (${d.total} cuentas, motor=${d.engine||'?'})`,
+                                      `✓ Job ${d.job_id} started (${d.total} accounts, engine=${d.engine||'?'})`));
+                            ssLoadJobs();
+                            ssStartJobsPoller();
+                        } else {
+                            alert(tx('Error: ','Error: ') + (d.error || '?'));
+                        }
+                    } catch(e){
+                        alert(tx('Error: ','Error: ') + (e.message||e));
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = '🚀 ' + tx('Refrescar seleccionadas','Refresh selected');
+                    }
+                }
+
+                async function ssLoadJobs(){
+                    try {
+                        const r = await fetch('/api/sessions/jobs', {credentials:'same-origin'});
+                        const d = await r.json();
+                        if(!d.ok) return;
+                        const jobs = (d.jobs || []).sort((a,b) => (b.started_at||'').localeCompare(a.started_at||''));
+                        document.getElementById('ss-jobs-count').textContent = `${jobs.length}`;
+                        const list = document.getElementById('ss-jobs-list');
+                        if(!jobs.length){
+                            list.innerHTML = `<div style="font-size:11px;color:var(--text-muted);padding:14px;text-align:center">${tx('Sin jobs activos','No active jobs')}</div>`;
+                            return;
+                        }
+                        list.innerHTML = jobs.map(j => {
+                            const pct = j.total ? Math.round((j.done||0)/j.total*100) : 0;
+                            const color = j.status === 'done' ? '#22c55e' : j.status === 'error' ? '#ef4444' : '#026CDF';
+                            const ok = j.valid_count || 0;
+                            const ko = j.invalid_count || 0;
+                            return `<div style="border:1px solid var(--border);border-left:3px solid ${color};border-radius:6px;padding:10px;margin:6px 0;background:rgba(2,108,223,.03)">
+                                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                                    <code style="font-size:11px;color:var(--text-muted)">${esc(j.id||'?')}</code>
+                                    <span style="font-size:11px;background:${color};color:#fff;padding:2px 8px;border-radius:10px;font-weight:700">${esc(j.status||'?')}</span>
+                                    <span style="font-size:11px">${j.done||0}/${j.total||0}</span>
+                                    <span style="font-size:11px;color:#22c55e">✓ ${ok}</span>
+                                    <span style="font-size:11px;color:#ef4444">✗ ${ko}</span>
+                                    <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${esc((j.started_at||'').slice(0,16).replace('T',' '))}</span>
+                                </div>
+                                <div style="margin-top:6px;height:6px;background:#1a2235;border-radius:3px;overflow:hidden">
+                                    <div style="height:100%;background:${color};width:${pct}%;transition:width .3s"></div>
+                                </div>
+                            </div>`;
+                        }).join('');
+                    } catch(e){ console.warn('ssLoadJobs err', e); }
+                }
+
+                function ssStartJobsPoller(){
+                    if(window._ssJobsPollerId) return;
+                    window._ssJobsPollerId = setInterval(() => {
+                        ssLoadJobs();
+                        ssLoadSummary();
+                    }, 3000);
+                }
+
+                function ssStopJobsPoller(){
+                    if(window._ssJobsPollerId){
+                        clearInterval(window._ssJobsPollerId);
+                        window._ssJobsPollerId = null;
+                    }
+                }
+
+                // Auto-load cuando se entra a la sub-tab
+                document.addEventListener('click', (e) => {
+                    const tab = e.target.closest('[data-sub="sessions"]');
+                    if(tab) setTimeout(ssLoadAll, 100);
+                });
+                </script>
+            </div>
         </div>
 
         <!-- ═══════════════ SECCION: FILAS (Queue-it) — top-level ═══════════════ -->
@@ -4423,6 +4716,7 @@
                 </style>
             </details>
 
+
         </div>
 
         <!-- ═══════════════ SECCION: CUENTAS Y TARJETAS ═══════════════ -->
@@ -4745,12 +5039,13 @@
                                     <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_registered_at">Fecha registro</th>
                                     <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_phone">Teléfono</th>
                                     <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_status">Estado</th>
+                                    <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_session" title="Estado de la sesión guardada (cookies + localStorage)">Sesión</th>
                                     <th style="padding:8px 10px;border-bottom:1px solid var(--border)" data-i18n="ct.col_events">Eventos comprados</th>
                                     <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right" data-i18n="ct.col_actions">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="ct-accounts-tbody">
-                                <tr><td colspan="9" style="padding:18px;text-align:center;color:var(--text-muted)" data-i18n="hr.loading">Cargando…</td></tr>
+                                <tr><td colspan="10" style="padding:18px;text-align:center;color:var(--text-muted)" data-i18n="hr.loading">Cargando…</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -6651,13 +6946,447 @@ popheads</textarea>
                 <div class="faq-pane" data-faqpane="bot-guide" style="display:none">
                     <h4 style="font-size:13px;color:#a855f7;margin:0 0 10px"><span data-lang-show="es">🤖 Instrucciones detalladas del Bot — arquitectura, flow y módulos</span><span data-lang-show="en" style="display:none">🤖 Detailed Bot instructions — architecture, flow and modules</span></h4>
 
-                    <!-- EN concise version of bot guide -->
-                    <div data-lang-show="en" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;font-size:12px;line-height:1.7">
-                        <p><b>🏗️ Architecture (39 modules):</b> The bot is split into layers — Orchestration (<code>tm_purchase_flow</code>, <code>tm_real_purchase</code>, <code>onsale_scheduler</code>); Real browser (<code>tm_browser_engine</code>, <code>_compra_parallel</code>, Patchright/Camoufox/MoreLogin); Anti-bot (<code>akamai_sbsd</code>, <code>akamai_sensor_v3</code>, <code>imperva_bypass</code>, <code>hyper_sdk_chain</code>, <code>kasada_solver</code>); Behavior (<code>human_motion</code> Bezier mouse, <code>behavior_chain</code> Markov, <code>session_persistence</code>); HTTP/TLS (<code>cookie_warmer</code> curl_cffi, <code>ja4_spoof</code>, 12 TLS profiles); Accounts (CRUD + validator + warmer + recovery); Events (Discovery API, venue scan, VIP filters); Payment (Adyen tokens, 3DS auto-fill IMAP, card rotation, DFA gate); CAPTCHA (4 solvers); Notifications (Discord/Telegram + WebSocket).</p>
-                        <p><b>📋 Purchase flow — 16 sequential steps:</b> find_event → dfa_compliance → pick_proxy → pin_proxy_session (sticky 30min) → warm_session (Akamai sensor + cookies Chrome 120) → get_session (JA4+ TLS + browser pool) → inject_acpat (Queue-it bypass) → check_onsale_window → simulate_cart (in <code>mode=live</code> delegates to <code>tm_real_purchase</code> → spawns <code>_compra_parallel.py</code> with real browser, OAuth login, real captcha, sectors, real cart) → solve_captcha (CapSolver first, CapMonster fallback, 2C last) → pick_card (smart rotation: 30min cooldown/card, anti-velocity-by-BIN) → tokenize_card (Adyen tokenize, requires real api_key for mode=live) → simulate_checkout → record_card_usage → register_purchase + notify (Discord/Telegram alert). Steps 9-13 have <code>_real_purchase_done</code> guard so they're not re-executed if <code>tm_real_purchase</code> already covered cart+captcha+checkout.</p>
-                        <p><b>⏰ Onsale Scheduler — automatic T-0 firing:</b> Daemon watches <code>events.json</code> and triggers purchases at the EXACT onsale time (sub-second). Has 7 automatic pre-onsale hooks — T-24h: account_warming · T-1h: akamai_sensor_refresh · T-30m: cookie_pool_warming · T-5m: captcha_pool_pre_solve · T-30s: workers_launch_standby · T-3s: workers_arm · T+0: <b>fire</b> (spawn N <code>_compra_parallel.py</code> workers in parallel + "🚀 FIRE" notif). Endpoints: <code>POST /api/onsale-scheduler/register</code>, <code>/cancel/&lt;tm_id&gt;</code>, <code>GET /api/onsale-scheduler/schedule</code>, <code>POST /api/onsale-scheduler/start|stop</code>.</p>
-                        <p><b>🛡️ Advanced anti-bot 2026:</b> TM combines 5+ detection providers — Akamai BMP v3 (<code>_abck</code>, <code>bm_sz</code>, sensor_data) → <code>hyper_sdk_chain</code> live or <code>akamai_sensor_v3</code> local · Akamai SBSD → <code>akamai_sbsd.build_sbsd_payload</code> · Imperva/Incapsula (<code>reese84</code>) → <code>imperva_bypass.bypass()</code> · NuData (mouse trajectory, typing) → <code>human_motion</code> Bezier + Fitts + Markov flight times · Datadome → <code>behavior_chain</code> Markov idle/scroll · Queue-it (<code>AcpAT</code>) → persistent pool + sticky proxy · Kasada → <code>kasada_solver</code> · TLS JA3/JA4 → 12 profiles + curl_cffi Chrome 120 · HTTP/2 fingerprint → curl_cffi impersonate · WebDriver leak → Patchright + Camoufox + CDP-Patches OS-level.</p>
-                    </div>
+                    <!-- EN full version (parity with ES) -->
+                    <div data-lang-show="en" style="display:none">
+
+                    <!-- ARCHITECTURE -->
+                    <details open class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">🏗️ Bot architecture — 39 integrated modules</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>The bot is split into cooperating layers that work together to reach a successful checkout:</p>
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+                                <tr style="background:var(--card);font-weight:700"><th style="padding:6px;text-align:left">Layer</th><th style="padding:6px;text-align:left">Key modules</th><th style="padding:6px;text-align:left">Function</th></tr>
+                                <tr><td style="padding:6px"><b>Orchestration</b></td><td style="padding:6px"><code>tm_purchase_flow</code> · <code>tm_real_purchase</code> · <code>onsale_scheduler</code></td><td style="padding:6px">11+ sequential steps, T-0 scheduler, subprocess wrapper</td></tr>
+                                <tr><td style="padding:6px"><b>Real browser</b></td><td style="padding:6px"><code>tm_browser_engine</code> · <code>_compra_parallel</code> · Patchright · Camoufox · MoreLogin</td><td style="padding:6px">Real TM navigation, human click, OAuth login</td></tr>
+                                <tr><td style="padding:6px"><b>Anti-bot</b></td><td style="padding:6px"><code>akamai_sbsd</code> · <code>akamai_sensor_v3</code> · <code>imperva_bypass</code> · <code>hyper_sdk_chain</code> · <code>kasada_solver</code></td><td style="padding:6px">Generates <code>_abck</code>, <code>bm_sz</code>, <code>reese84</code>, <code>x-kpsdk-ct</code></td></tr>
+                                <tr><td style="padding:6px"><b>Behavior</b></td><td style="padding:6px"><code>human_motion</code> · <code>behavior_chain</code> · <code>session_persistence</code></td><td style="padding:6px">Bezier mouse, flight times, Markov dwell</td></tr>
+                                <tr><td style="padding:6px"><b>HTTP/TLS</b></td><td style="padding:6px"><code>cookie_warmer</code> (curl_cffi) · <code>ja4_spoof</code> · <code>tls-client</code> 12 profiles</td><td style="padding:6px">JA4+, HTTP/2 PRIORITY, impersonate Chrome 120</td></tr>
+                                <tr><td style="padding:6px"><b>Accounts</b></td><td style="padding:6px"><code>account_manager</code> · <code>account_validator</code> · <code>account_warmer</code> · <code>account_recovery</code> · <code>register_account</code></td><td style="padding:6px">CRUD, validation, pre-onsale warming, auto recovery</td></tr>
+                                <tr><td style="padding:6px"><b>Events</b></td><td style="padding:6px"><code>event_manager</code> · <code>event_discovery</code> · <code>venue_scanner</code> · <code>ticket_selector</code></td><td style="padding:6px">Discovery API, venue scan, VIP filters, selectors</td></tr>
+                                <tr><td style="padding:6px"><b>Payment</b></td><td style="padding:6px">Adyen tokens · <code>otp_3ds</code> · <code>card_rotation</code> · <code>compliance_gate</code></td><td style="padding:6px">3DS auto-fill IMAP, card rotation, DFA gate</td></tr>
+                                <tr><td style="padding:6px"><b>Captcha</b></td><td style="padding:6px"><code>captcha_manager</code> (CapSolver · CapMonster · 2C · AC)</td><td style="padding:6px">4 solvers with priority, balance check</td></tr>
+                                <tr><td style="padding:6px"><b>Notif</b></td><td style="padding:6px"><code>notifications</code> · WebSocket</td><td style="padding:6px">Discord/Telegram + real-time UI push</td></tr>
+                            </table>
+                        </div>
+                    </details>
+
+                    <!-- FULL FLOW -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">📋 Purchase flow — 15 sequential steps</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>Every launch executes these steps in order:</p>
+                            <ol style="padding-left:20px;color:var(--text-muted)">
+                                <li><b>find_event</b> — looks up event by <code>tm_id</code> in local catalog</li>
+                                <li><b>dfa_compliance</b> — EU Digital Fairness Act gate (face-value abort if listing &gt; face)</li>
+                                <li><b>pick_proxy</b> — picks ISP residential proxy by country (score &gt;30 ms TM)</li>
+                                <li><b>pin_proxy_session</b> — 30min sticky: same IP warm→queue→checkout</li>
+                                <li><b>warm_session</b> — <span style="color:#22c55e">NEW</span>: <code>warm_with_akamai_sensor</code> (hyper_sdk_chain) + <code>warm_cookies(client="curl_cffi")</code> Chrome 120 impersonate</li>
+                                <li><b>get_session</b> — real Chrome JA4+ TLS (12 profiles) + browser_pool acquire</li>
+                                <li><b>inject_acpat</b> — Queue-it bypass token (persistent pool)</li>
+                                <li><b>check_onsale_window</b> — validates <code>sale_date</code>, no purchase before drop</li>
+                                <li><b>simulate_cart</b> — in <code>mode=live</code> delegates to <code>tm_real_purchase</code> → subprocess <code>_compra_parallel.py</code> with real browser, OAuth login, real captcha, sectors, real cart</li>
+                                <li><b>solve_captcha</b> — CapSolver first, CapMonster fallback, 2C last (no-op if step 9 already handled it)</li>
+                                <li><b>pick_card</b> — smart rotation: 30min cooldown/card, anti-velocity-by-BIN</li>
+                                <li><b>tokenize_card</b> — Adyen tokenize (real api_key required for mode=live)</li>
+                                <li><b>simulate_checkout</b> — real payment (no-op if step 9 already did the flow)</li>
+                                <li><b>record_card_usage</b> — increments uses + applies cooldown</li>
+                                <li><b>register_purchase</b> + <b>notify</b> — saves to "My Tickets" + Discord/Telegram</li>
+                            </ol>
+                            <p style="margin-top:8px;color:#22c55e">✅ Steps 9-13 with <code>_real_purchase_done</code> guard: if <code>tm_real_purchase</code> already covered cart+captcha+checkout, they're not re-executed.</p>
+                        </div>
+                    </details>
+
+                    <!-- ONSALE SCHEDULER -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#22c55e">⏰ Onsale Scheduler — automatic T-0 firing (NEW)</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>Daemon that watches <code>events.json</code> and triggers purchases at the EXACT onsale time (sub-second). Has 7 automatic pre-onsale hooks:</p>
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px">
+                                <tr style="background:var(--card);font-weight:700"><th style="padding:6px;text-align:left">Stage</th><th style="padding:6px;text-align:left">Hook</th><th style="padding:6px;text-align:left">Action</th></tr>
+                                <tr><td style="padding:6px"><b>T-24h</b></td><td style="padding:6px">account_warming</td><td style="padding:6px">Launches account_warmer batch (login + browse + wishlist) on account pool</td></tr>
+                                <tr><td style="padding:6px"><b>T-1h</b></td><td style="padding:6px">akamai_sensor_refresh</td><td style="padding:6px">hyper_sdk_chain.solve(akamai) → fresh <code>_abck</code> + <code>bm_sz</code> cookies</td></tr>
+                                <tr><td style="padding:6px"><b>T-30m</b></td><td style="padding:6px">cookie_pool_warming</td><td style="padding:6px">Aggressive curl_cffi warming (4 paths × 5 UAs)</td></tr>
+                                <tr><td style="padding:6px"><b>T-5m</b></td><td style="padding:6px">captcha_pool_pre_solve</td><td style="padding:6px">Pre-solves 10 reCAPTCHA tokens ready to inject</td></tr>
+                                <tr><td style="padding:6px"><b>T-30s</b></td><td style="padding:6px">workers_launch_standby</td><td style="padding:6px">Telegram notif + workers in position</td></tr>
+                                <tr><td style="padding:6px"><b>T-3s</b></td><td style="padding:6px">workers_arm</td><td style="padding:6px">"ARMED" notif + browsers already on TM home</td></tr>
+                                <tr><td style="padding:6px"><b>T+0</b></td><td style="padding:6px"><b>fire</b></td><td style="padding:6px">spawn N <code>_compra_parallel.py</code> workers in parallel + "🚀 FIRE" notif</td></tr>
+                            </table>
+                            <p style="margin-top:8px"><b>REST endpoints:</b></p>
+                            <ul style="padding-left:20px;color:var(--text-muted);font-family:monospace;font-size:11px">
+                                <li><code>POST /api/onsale-scheduler/register</code> — schedule attack</li>
+                                <li><code>POST /api/onsale-scheduler/cancel/&lt;tm_id&gt;</code> — cancel</li>
+                                <li><code>GET /api/onsale-scheduler/schedule</code> — view schedule</li>
+                                <li><code>POST /api/onsale-scheduler/start</code> · <code>/stop</code> — daemon</li>
+                            </ul>
+                        </div>
+                    </details>
+
+                    <!-- ADVANCED ANTI-BOT -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#ef4444">🛡️ Advanced anti-bot — TM 2026 defenses</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>TM combines 5+ detection providers. The bot has a specific countermeasure for each one:</p>
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px">
+                                <tr style="background:var(--card);font-weight:700"><th style="padding:6px;text-align:left">Provider</th><th style="padding:6px;text-align:left">Cookies/signals</th><th style="padding:6px;text-align:left">Our countermeasure</th></tr>
+                                <tr><td style="padding:6px"><b>Akamai BMP v3</b></td><td style="padding:6px"><code>_abck</code>, <code>bm_sz</code>, sensor_data</td><td style="padding:6px"><code>hyper_sdk_chain</code> (live) or <code>akamai_sensor_v3</code> local</td></tr>
+                                <tr><td style="padding:6px"><b>Akamai SBSD</b></td><td style="padding:6px"><code>sbsd_o</code>, <code>bm_so</code></td><td style="padding:6px"><code>akamai_sbsd.build_sbsd_payload</code> + submit</td></tr>
+                                <tr><td style="padding:6px"><b>Imperva/Incapsula</b></td><td style="padding:6px"><code>reese84</code>, <code>visid_incap_*</code></td><td style="padding:6px"><code>imperva_bypass.bypass()</code> auto-detect + solve</td></tr>
+                                <tr><td style="padding:6px"><b>NuData (Mastercard)</b></td><td style="padding:6px"><code>nds-pmd</code>, mouse trajectory, typing cadence</td><td style="padding:6px"><code>human_motion</code> Bezier + Fitts + Markov flight times</td></tr>
+                                <tr><td style="padding:6px"><b>Datadome</b></td><td style="padding:6px"><code>datadome</code>, intent-based</td><td style="padding:6px"><code>behavior_chain</code> Markov idle/scroll/click</td></tr>
+                                <tr><td style="padding:6px"><b>Queue-it</b></td><td style="padding:6px"><code>AcpAT</code> edge-validated token</td><td style="padding:6px">Persistent pool <code>cookie_warmer</code> + 30min sticky proxy</td></tr>
+                                <tr><td style="padding:6px"><b>Kasada</b></td><td style="padding:6px"><code>x-kpsdk-ct</code>, <code>x-kpsdk-cd</code></td><td style="padding:6px"><code>kasada_solver</code> with scheduler</td></tr>
+                                <tr><td style="padding:6px"><b>TLS JA3/JA4</b></td><td style="padding:6px">Cipher + extension order</td><td style="padding:6px"><code>tls-client</code> 12 profiles + <code>curl_cffi</code> Chrome 120</td></tr>
+                                <tr><td style="padding:6px"><b>HTTP/2 fingerprint</b></td><td style="padding:6px">SETTINGS, PRIORITY, header order</td><td style="padding:6px"><code>curl_cffi</code> impersonate real Chrome HTTP/2</td></tr>
+                                <tr><td style="padding:6px"><b>Webdriver leak</b></td><td style="padding:6px"><code>navigator.webdriver</code>, CDP Runtime.enable</td><td style="padding:6px">Patchright + Camoufox + OS-level CDP-Patches</td></tr>
+                            </table>
+                        </div>
+                    </details>
+
+                    <!-- ANTI-AKAMAI 2026-05-09 register_account refactor -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#22c55e">🆕 Anti-Akamai refactor 2026-05-09 — register_account.py hardened</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>After a 0/4 rate with visual <i>"Your session has been paused"</i> bot_block in batch <code>061406</code>, 4 P1 fixes were applied (cost-free, ~1h) covering the 5 positive signals TM/Akamai was using to flag:</p>
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px">
+                                <tr style="background:var(--card);font-weight:700"><th style="padding:6px;text-align:left">Fix</th><th style="padding:6px;text-align:left">Before</th><th style="padding:6px;text-align:left">Now</th><th style="padding:6px;text-align:left">Expected impact</th></tr>
+                                <tr><td style="padding:6px"><b>P1.1 STEALTH_JS</b></td><td style="padding:6px">Only Notification + serviceWorker block (no webdriver/canvas/WebGL/plugins spoof)</td><td style="padding:6px">Full <code>tm_browser_engine.STEALTH_JS</code> + audio noise + screen + Intl.timezone Madrid + cdc_* removal</td><td style="padding:6px;color:#22c55e">+30-40%</td></tr>
+                                <tr><td style="padding:6px"><b>P1.2 Clean URL</b></td><td style="padding:6px"><code>my.ticketmaster.es/?_=17783000833623</code> (typical scraper cache-buster)</td><td style="padding:6px"><code>my.ticketmaster.es/</code> direct, no query string</td><td style="padding:6px;color:#22c55e">+10-15%</td></tr>
+                                <tr><td style="padding:6px"><b>P1.3 Timings</b></td><td style="padding:6px">400-700ms after home, 600ms post-redirect, 800ms between retries</td><td style="padding:6px">1800-3200ms home, 1500-2500ms post-redirect, REAL wheel scroll (not <code>scrollTo</code>) + cookies-banner 900-1500ms</td><td style="padding:6px;color:#22c55e">+5-15%</td></tr>
+                                <tr><td style="padding:6px"><b>P1.4 Chrome sync</b></td><td style="padding:6px">curl_cffi pre-check Chrome 131, MoreLogin Chrome 144/146 → JA4 mismatch</td><td style="padding:6px">Profile <code>chrome_146_windows</code> in <code>http2_frame_match</code>, <code>USER_AGENTS</code> Chrome 144/146, <code>akamai_sensor_v3.default_ua</code> 146</td><td style="padding:6px;color:#22c55e">+5%</td></tr>
+                            </table>
+                            <p style="margin-top:8px"><b>Modified files:</b> <code>register_account.py</code> · <code>tm_browser_engine.py</code> · <code>http2_frame_match.py</code> · <code>akamai_sensor_v3.py</code></p>
+                            <p style="margin-top:6px;color:#f59e0b"><b>If bot_block persists</b> → activate Phase 2: <code>hyper_sdk_chain.mode = "live"</code> with Hyper Solutions / TakionAPI / Scrapfly API key (posts real sensor_data to <code>/_bm/...</code> endpoint so <code>_abck</code> moves from <code>~-1~</code> to <code>~0~</code>) + migrate from Quantum to real residentials (BrightData / Soax / Smartproxy).</p>
+                        </div>
+                    </details>
+
+                    <!-- BROWSER ENGINES -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">🌐 Browser engines — which to use and when</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px">
+                                <tr style="background:var(--card);font-weight:700"><th style="padding:6px;text-align:left">Engine</th><th style="padding:6px;text-align:left">Pros</th><th style="padding:6px;text-align:left">When to use</th></tr>
+                                <tr><td style="padding:6px"><b>MoreLogin</b></td><td style="padding:6px">1978 persistent ES profiles, embedded Quantum proxy</td><td style="padding:6px">✅ <b>Default</b>: registrations + real purchases (cc-ES profiles)</td></tr>
+                                <tr><td style="padding:6px"><b>Camoufox</b></td><td style="padding:6px">C++ patched Firefox, 0% headless detection, best vs Datadome/NuData</td><td style="padding:6px">Hard targets: post-queue + payment with heavy NuData</td></tr>
+                                <tr><td style="padding:6px"><b>Patchright</b></td><td style="padding:6px">Playwright without Runtime.enable leak, CDP-Patches mouse coords</td><td style="padding:6px">Warming + browse + sites with strict Akamai v3</td></tr>
+                                <tr><td style="padding:6px"><b>Nodriver</b></td><td style="padding:6px">undetected-chromedriver successor, direct CDP without WS bridge</td><td style="padding:6px">Backup if Patchright fails</td></tr>
+                                <tr><td style="padding:6px"><b>Vanilla Chromium</b></td><td style="padding:6px">Custom-injected Stealth JS</td><td style="padding:6px">dry_run / debugging only</td></tr>
+                            </table>
+                            <p style="margin-top:8px;color:#22c55e">💡 <b>CDP-Patches</b> applies automatically in Patchright when <code>headless=False</code> — fixes Chrome OS-level mouse coords bug that NuData detects.</p>
+                        </div>
+                    </details>
+
+                    <!-- HUMAN MOTION -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#06b6d4">🎯 Human Motion — Bezier + Fitts + Markov</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p><code>human_motion.py</code> replaces deterministic <code>page.click()</code> and <code>page.type()</code> with human movements:</p>
+                            <ul style="padding-left:20px;color:var(--text-muted)">
+                                <li><b>Cubic Bezier</b> — cursor follows a curve with Gaussian jitter (no teleport straight lines)</li>
+                                <li><b>Fitts's Law</b> — number of steps proportional to distance (more natural movement)</li>
+                                <li><b>Markov dwell time</b> — pre-pause before click/type derived from <code>behavior_chain</code> (180-280ms Gaussian)</li>
+                                <li><b>NuData flight time</b> — keydown→keyup gap ~85ms ± 30ms (vs fixed <code>delay=80</code> bot-detectable)</li>
+                                <li><b>Random offset</b> — clicks within 15% of element center (not pixel-perfect)</li>
+                            </ul>
+                            <p style="margin-top:8px">Automatically integrated in <code>_compra_parallel.login_full</code> with graceful fallback on failure.</p>
+                            <p><b>Endpoint:</b> <code>GET /api/human-motion/self-test</code> — verifies geometry (5 checks)</p>
+                        </div>
+                    </details>
+
+                    <!-- ACCOUNT WARMER -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#22c55e">🔥 Account Warmer — warms accounts 24-48h pre-onsale</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p><b>Why</b>: TM blocks "green" accounts (just created, 0 activity) at checkout even if login is OK. Warmed accounts pass heuristic filters at onsale.</p>
+                            <p><b>Automated plan per account</b>:</p>
+                            <ol style="padding-left:20px;color:var(--text-muted)">
+                                <li>Normal login with MoreLogin (NO checkout)</li>
+                                <li>Browse 2-3 country events (consumes cookies, genuine _abck)</li>
+                                <li>Add 1 event to wishlist/favorites (best-effort)</li>
+                                <li>Clean logout</li>
+                                <li>Mark <code>warmed_at</code> + <code>warmed_for_event</code> in accounts.json</li>
+                            </ol>
+                            <p><b>Endpoints:</b></p>
+                            <ul style="padding-left:20px;color:var(--text-muted);font-family:monospace;font-size:11px">
+                                <li><code>POST /api/account-warmer/run</code> — 1 account</li>
+                                <li><code>POST /api/account-warmer/batch</code> — several in parallel (max_parallel=2)</li>
+                                <li><code>GET /api/account-warmer/status?job_id=X</code> — progress</li>
+                            </ul>
+                            <p style="margin-top:8px;color:#22c55e">💡 Auto-triggered by <code>onsale_scheduler</code> at T-24h.</p>
+                        </div>
+                    </details>
+
+                    <!-- ACCOUNT HEALTH -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#06b6d4">📊 Account Health — Trust Score 0-100 + Quarantine + Fast Check</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>Advanced account health system with score weighted across 11+ factors. Replaces the classic validator's binary model.</p>
+                            <p><b>Trust score factors (0-100):</b></p>
+                            <ul style="padding-left:20px;color:var(--text-muted);font-size:11px">
+                                <li>storage_state_fresh &lt;24h: +25</li>
+                                <li>last_login &lt;24h: +20</li>
+                                <li>account_age_days &gt;30: +10</li>
+                                <li>active warming: +10</li>
+                                <li>existing storage_state: +10</li>
+                                <li>registration_completed_at: +8</li>
+                                <li>validator passed &lt;7d: +5</li>
+                                <li>phone_verified_at: +5</li>
+                                <li>has_card: +5</li>
+                                <li>country=ES: +5</li>
+                                <li>recent login_failures: down to -10</li>
+                                <li>quarantined: -15</li>
+                                <li>bumped_to_pending: -50</li>
+                            </ul>
+                            <p><b>24h quarantine:</b> instead of invalidating after 1 login failure, move to quarantine for 24h. Reduces false positives from TM blips. Auto-release via cron <code>/api/account-health/auto-release-expired</code>.</p>
+                            <p><b>Fast session check (httpx, no browser):</b> ~1-2s/account vs 5-15s of classic validator. <code>/api/account-health/fast-check-batch</code> with max_workers=5 processes 100 accounts in ~30s.</p>
+                            <p><b>Daily health digest:</b> daily summary with bucket distribution → Discord/Telegram notif. <code>/api/account-health/digest</code>.</p>
+                            <p><b>Account groups + tags:</b> <code>/api/account-health/set-group/&lt;aid&gt;</code> and <code>/api/account-health/add-tag/&lt;aid&gt;</code>. Filtering by event, warmed/cold, premium, cardable.</p>
+                            <p><b>Endpoints (12 total)</b>:</p>
+                            <ul style="padding-left:20px;color:var(--text-muted);font-family:monospace;font-size:11px">
+                                <li><code>GET /api/account-health/score/&lt;aid&gt;</code> — individual score</li>
+                                <li><code>POST /api/account-health/recompute-all</code> — recomputes 411 accounts (~5s)</li>
+                                <li><code>POST /api/account-health/quarantine/&lt;aid&gt;</code> · <code>/release/&lt;aid&gt;</code></li>
+                                <li><code>POST /api/account-health/auto-release-expired</code> — 24h cron</li>
+                                <li><code>POST /api/account-health/fast-check</code> · <code>/fast-check-batch</code></li>
+                                <li><code>POST /api/account-health/digest</code> — daily digest</li>
+                                <li><code>GET /api/account-health/groups</code> · <code>/set-group</code> · <code>/add-tag</code></li>
+                                <li><code>GET /api/account-health/self-test</code></li>
+                            </ul>
+                        </div>
+                    </details>
+
+                    <!-- ACCOUNT HEALTH PRO -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#22c55e">⚡ Account Health PRO — 5 state-of-the-art 2026 improvements</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>5 advanced account-management techniques used by top 2026 bots (Hayha, LuxonAIO, Multilogin X, Octobrowser):</p>
+                            <ol style="padding-left:20px;color:var(--text-muted)">
+                                <li><b>Passive warming cron (APScheduler 18h)</b> — GET home + settings without login. Keeps cookies alive WITHOUT triggering TM's fresh-login flag. Auto-processes up to 50 accounts/run with 2s stagger. <code>POST /api/account-health-pro/warming-cron/start</code></li>
+                                <li><b>Multi-IMAP madre rotation</b> — scales >100 accounts/madre. Round-robin with automatic load balancing. By default only joaquina_polo0, but more madres can be added with <code>POST /api/account-health-pro/madres/add</code></li>
+                                <li><b>Sticky residential proxy 30-60min</b> — wrapper for <code>proxy_session_pin</code>. Same exit IP during account validation. Anti velocity-by-IP TM. <code>POST /api/account-health-pro/sticky-proxy/&lt;aid&gt;</code></li>
+                                <li><b>Adaptive concurrency 2→5</b> — starts at 2 parallel, scales +1 after 5 consecutive successes, drops to 2 after 1 failure. Anti mass detection. <code>GET/POST /api/account-health-pro/adaptive/get</code> · <code>/record</code></li>
+                                <li><b>MFA fatigue avoidance</b> — max 1 fresh-login/account/24h. <code>GET /api/account-health-pro/mfa-fatigue/check/&lt;aid&gt;</code> before password validation.</li>
+                            </ol>
+                            <p style="margin-top:8px;color:#22c55e">💡 Auto-startup: passive warming cron starts automatically on dashboard boot if <code>TM_AUTO_WARMING=1</code> (default). To disable: <code>TM_AUTO_WARMING=0</code>.</p>
+                        </div>
+                    </details>
+
+                    <!-- REBROWSER + CLOAK BROWSER -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">🦊 Rebrowser-Playwright + CloakBrowser bridge</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p><b>rebrowser-playwright</b> — patched Playwright fork that removes the <code>Runtime.enable</code> leak Datadome detects since Q1-2025. <code>tm_browser_engine.py</code> now tries <code>rebrowser_playwright</code> first with stock Playwright fallback. Enable with env <code>TM_USE_REBROWSER=1</code> (default).</p>
+                            <p><b>CloakBrowser</b> (Node-only) — Chromium stealth fork passing 30/30 fingerprint tests. Python bridge via subprocess + JSON IPC. Requires Node.js install + <code>npm install -g cloakbrowser</code>. <code>GET /api/cloak-browser/info</code> indicates availability.</p>
+                            <p><b>Always-available alternative</b>: Camoufox (Python-native Firefox stealth, already integrated in <code>tm_browser_engine.py</code>).</p>
+                        </div>
+                    </details>
+
+                    <!-- KASADA VM SOLVER -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#f59e0b">🛡 Kasada VM Solver — ips.js devirtualizer (scaffold)</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>Detects and analyzes the Kasada <code>ips.js</code> script to emit <code>x-kpsdk-ct</code> + <code>x-kpsdk-cd</code> headers offline (without browser).</p>
+                            <p><b>Current status</b>: scaffold with detection + static analysis. Full polymorphic devirtualization requires iterative reverse engineering. Fallbacks:</p>
+                            <ul style="padding-left:20px;color:var(--text-muted)">
+                                <li>Existing <code>kasada_solver.py</code> (browser-based)</li>
+                                <li>TakionAPI Kasada module (commercial)</li>
+                                <li>Hyper Solutions Kasada API (commercial)</li>
+                            </ul>
+                            <p><b>Endpoints:</b></p>
+                            <ul style="padding-left:20px;color:var(--text-muted);font-family:monospace;font-size:11px">
+                                <li><code>GET /api/kasada-vm/info</code></li>
+                                <li><code>POST /api/kasada-vm/fetch-ips</code> — downloads ips.js</li>
+                                <li><code>POST /api/kasada-vm/analyze</code> — static analysis (string array, VM opcodes, PoW)</li>
+                                <li><code>POST /api/kasada-vm/solve</code> — offline solver (scaffold)</li>
+                                <li><code>GET /api/kasada-vm/self-test</code></li>
+                            </ul>
+                            <p style="color:#fbbf24">⚠ Next steps: implement string array decoder with reverse RC4, map top-50 opcodes, compile PoW SHA-256 to Python.</p>
+                        </div>
+                    </details>
+
+                    <!-- COOKIE WARMER + AKAMAI SENSOR -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#06b6d4">🍪 Cookie Warmer + Akamai Sensor</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p><b>Two warming layers in series</b>:</p>
+                            <ol style="padding-left:20px;color:var(--text-muted)">
+                                <li><b>warm_with_akamai_sensor</b> — invokes <code>hyper_sdk_chain.solve(target='akamai')</code>. Returns valid <code>_abck</code> and <code>bm_sz</code> cookies. In <code>mode='simulate'</code> these are mocks; in <code>mode='live'</code> with Hyper Solutions/TakionAPI api_key they are <b>real</b>.</li>
+                                <li><b>warm_cookies(client="curl_cffi")</b> — impersonate Chrome 120 (real Chrome JA3/JA4 + HTTP/2 + TLS). 4 domain paths. ~3s per warming.</li>
+                            </ol>
+                            <p><b>Supported vendors</b> in hyper_sdk_chain: <code>akamai</code> · <code>kasada</code> · <code>datadome</code> · <code>incapsula</code>. The chain tries the primary target, then falls back to others if it fails.</p>
+                            <p><b>Live activation</b>: <code>POST /api/hyper-sdk/config</code> with <code>{"mode": "live", "api_key": "&lt;your_hyper_key&gt;"}</code>.</p>
+                        </div>
+                    </details>
+
+                    <!-- CAPTCHA -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">🧠 CAPTCHA system (priority 2026)</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>4 solvers with auto-rotation and configured priority:</p>
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px">
+                                <tr style="background:var(--card);font-weight:700"><th style="padding:6px;text-align:left">Solver</th><th style="padding:6px">Priority</th><th style="padding:6px">$/1000</th><th style="padding:6px">reCAPTCHA v3</th><th style="padding:6px">Type</th></tr>
+                                <tr><td style="padding:6px"><b>CapSolver</b></td><td style="padding:6px;text-align:center">1 (top)</td><td style="padding:6px;text-align:center">$0.80</td><td style="padding:6px;text-align:center">3-5s</td><td style="padding:6px;text-align:center">AI</td></tr>
+                                <tr><td style="padding:6px"><b>CapMonster</b></td><td style="padding:6px;text-align:center">2</td><td style="padding:6px;text-align:center">$0.60</td><td style="padding:6px;text-align:center">5-8s</td><td style="padding:6px;text-align:center">AI</td></tr>
+                                <tr><td style="padding:6px"><b>2Captcha</b></td><td style="padding:6px;text-align:center">3</td><td style="padding:6px;text-align:center">$1.50</td><td style="padding:6px;text-align:center">30-60s</td><td style="padding:6px;text-align:center">Human</td></tr>
+                                <tr><td style="padding:6px"><b>Anti-Captcha</b></td><td style="padding:6px;text-align:center">4</td><td style="padding:6px;text-align:center">$2.00</td><td style="padding:6px;text-align:center">30-60s</td><td style="padding:6px;text-align:center">Human</td></tr>
+                            </table>
+                            <p style="margin-top:8px">Types covered: <b>reCAPTCHA v2/v3</b>, <b>hCaptcha</b>, <b>Cloudflare Turnstile</b>, <b>FunCaptcha</b>.</p>
+                            <p>T-5min pre-solve pool: 10 tokens ready to inject without sync wait at onsale.</p>
+                        </div>
+                    </details>
+
+                    <!-- SEAT STRATEGIES -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">🎯 Seat selection strategies</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <ul style="padding-left:20px;color:var(--text)">
+                                <li><b>best_available</b> — TM auto-assigns best available. Fastest at checkout.</li>
+                                <li><b>cheapest</b> — filters by lowest price_min. Ideal with wide ranges.</li>
+                                <li><b>fastest</b> — first seat without comparing. High-demand drops.</li>
+                                <li><b>sniper</b> — specific section only. Aborts if no stock.</li>
+                                <li><b>sniper_smart</b> — exact section first, fallback to best_available.</li>
+                                <li><b>distributed</b> — workers across 25 TM domains in parallel.</li>
+                                <li><b>vip_first</b> — VIP/Premium first, fallback Reserved.</li>
+                                <li><b>floor_only</b> — Floor/GA only, cancels if none.</li>
+                            </ul>
+                            <p style="margin-top:8px;color:#22c55e">💡 <b>Active VIP packages filter</b>: offers like "VIP PACKAGE", "Hospitality", "Meet &amp; Greet" are automatically excluded from listings. Only legitimate types (PIT, Golden Circle, Reserved, Platinum Official).</p>
+                        </div>
+                    </details>
+
+                    <!-- QUEUE MANAGER -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#f59e0b">🏃 Queue Manager — Unlimited sessions + Swarm + Auto-buy</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>The <code>Queue (Queue-it)</code> panel is the top manager. It allows creating any number of queue sessions per event (1, 5, 10, 25, 50, 100, 250, 500, 1000+, custom) with fine-grained control:</p>
+                            <ul style="padding-left:20px;color:var(--text-muted)">
+                                <li><b>Unlimited sessions</b> — quick buttons + custom input (1-9999) without hardcoded limit</li>
+                                <li><b>Auto account pool</b> — 4 modes: latest N · warmed only · all active · no accounts (free workers)</li>
+                                <li><b>Auto-rejoin</b> — toggle ON: re-enters queue automatically after disconnect (reuses Queueit-Session-XT)</li>
+                                <li><b>Auto-buy on accepted 🚨</b> — toggle: spawns <code>_compra_parallel.py</code> automatically when a session passes the queue, with configurable qty + offer_idx</li>
+                                <li><b>Swarm broadcast 🐝</b> — when 1 account passes the queue, shares its cookies with ALL siblings on the same event → all move to checkout without waiting (Sniper mode)</li>
+                                <li><b>Live table</b> — 5s refresh · filter by event/status · inline actions (inject, abandon, rejoin)</li>
+                                <li><b>Hero stats</b> — Active · Accepted · Waiting · Tokens 24h · Pass rate · Daemon status</li>
+                                <li><b>Configurable stagger</b> — delay between session creation (0-60s) to avoid TM saturation</li>
+                            </ul>
+                            <p style="margin-top:8px"><b>Automatic hook:</b> <code>tm_purchase_flow.step_inject_acpat</code> queries the queue_manager first (accepted swarm slot) before falling back to the generic cookie_warmer pool.</p>
+                            <p><b>REST endpoints:</b></p>
+                            <ul style="padding-left:20px;color:var(--text-muted);font-family:monospace;font-size:11px">
+                                <li><code>POST /api/queue/enqueue</code> · <code>/enqueue-batch</code> — create 1 or N sessions</li>
+                                <li><code>GET /api/queue/sessions</code> — list (filters event_id, status, account_id)</li>
+                                <li><code>GET /api/queue/metrics</code> — live stats</li>
+                                <li><code>POST /api/queue/accept/&lt;sid&gt;</code> — worker reports captured cookies</li>
+                                <li><code>POST /api/queue/position/&lt;sid&gt;</code> — update position + ETA</li>
+                                <li><code>POST /api/queue/swarm-broadcast</code> — share token between accounts</li>
+                                <li><code>POST /api/queue/claim</code> — request token for purchase flow</li>
+                                <li><code>POST /api/queue/abandon/&lt;sid&gt;</code> · <code>/rejoin/&lt;sid&gt;</code></li>
+                                <li><code>POST /api/queue/clear-completed</code> · <code>/start-daemon</code> · <code>/stop-daemon</code></li>
+                                <li><code>GET /api/queue/self-test</code></li>
+                            </ul>
+                            <p style="margin-top:8px;color:#22c55e">💡 Daemon starts automatically when the dashboard boots (<code>queue_manager.start_daemon()</code> at boot).</p>
+
+                            <p style="margin-top:10px;font-weight:700;color:#fbbf24">🚀 Performance:</p>
+                            <ul style="padding-left:20px;color:var(--text-muted)">
+                                <li><b>enqueue 1000 sessions</b>: 72ms (~14000 sess/s) — <span style="color:#22c55e">530× faster</span> than the first version thanks to <code>fast_mode</code> with single persist at the end</li>
+                                <li><b>claim_slot</b>: 155 claims/s — persists every 10 calls to avoid disk saturation</li>
+                                <li><b>swarm broadcast to 999 sessions</b>: 111ms</li>
+                            </ul>
+
+                            <p style="margin-top:10px;font-weight:700;color:#a855f7">🛠 Integrated advanced features:</p>
+                            <ul style="padding-left:20px;color:var(--text-muted)">
+                                <li><b>🎯 Sniper Mode</b> — concentrates N accounts on 1 event with auto-rejoin + auto-buy + swarm. Endpoint <code>POST /api/queue/sniper-mode</code>. Dedicated UI with red "🎯 SNIPE" button + confirm-buy safety toggle.</li>
+                                <li><b>💾 Attack presets</b> — save configurations (event + N + accounts + qty + auto-buy) and relaunch with 1 click. Persisted in <code>data/queue_presets.json</code>. Endpoints GET/POST/DELETE <code>/api/queue/presets</code>. Clickable chips UI.</li>
+                                <li><b>🔍 Cookie Inspector</b> — decodes AcpAT/QueueITAccepted token: extracts header (typ, customer, event_id, exp, ti) into readable JSON + validates TTL. <code>POST /api/queue/inspect-cookie</code>.</li>
+                                <li><b>📥 CSV Export</b> — downloads all sessions (15 columns: session_id, account, event, status, position, eta, accepted_token, expires_at, etc.). <code>GET /api/queue/export-csv</code>.</li>
+                                <li><b>📟 Live Logs (terminal)</b> — real-time WebSocket stream with color coding by event type (enqueue cyan, accepted green, abandon red, swarm yellow, fired orange). Filter by op. 3s auto-refresh.</li>
+                                <li><b>🔊 Sound Alerts</b> — toggle in Live Logs panel: emits 3-note tone (880→1108→1318Hz) when a session passes the queue. 2-note tone (1318→1760Hz) when auto-buy fires.</li>
+                                <li><b>🐝 Automatic swarm broadcast</b> — on receiving <code>POST /api/queue/accept/&lt;sid&gt;</code> with accepted_token, broadcaster shares cookies with ALL sessions of the same event_id that are waiting → all proceed to checkout without waiting (in-flow Sniper mode).</li>
+                                <li><b>🔄 Auto-rejoin</b> — daemon detects sessions in error with valid TTL and re-injects them without losing position.</li>
+                                <li><b>📊 Live hero stats</b> — Active · Accepted · Waiting · Tokens 24h · Pass rate · Daemon status. 5s refresh.</li>
+                                <li><b>⚙ WebSocket events</b> — <code>queue_session_created</code>, <code>queue_session_accepted</code> emitted via socketio for real-time UI.</li>
+                            </ul>
+
+                            <p style="margin-top:10px;font-weight:700;color:#06b6d4">🎯 Karol G drop workflow:</p>
+                            <ol style="padding-left:20px;color:var(--text-muted)">
+                                <li>Select event <code>476722288</code> in the main dropdown</li>
+                                <li>N=50, pool=warmed, auto-rejoin ON, auto-buy ON, qty=2, offer_idx=3 (Reserved Seat)</li>
+                                <li>Click <b>💾 Save current config</b> with name "Karol G drop"</li>
+                                <li>When sale_date arrives: <b>🚀 Launch preset</b> → 50 simultaneous sessions</li>
+                                <li>The 1st that passes shares the token → the remaining 49 proceed to checkout without waiting</li>
+                                <li>Auto-buy spawns <code>_compra_parallel.py</code> on each with qty=2 → 100 potential tickets</li>
+                            </ol>
+
+                            <p><b>Legacy mode</b>: the old "Start Queue-it Queues (manual)" panel remains available folded under "⚙ Legacy mode" for specific multi-instance real-browser cases.</p>
+                        </div>
+                    </details>
+
+                    <!-- ADYEN PAYMENT -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">💳 Adyen Payment + 3DS auto-fill</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p><b>Available modes</b>:</p>
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px">
+                                <tr style="background:var(--card);font-weight:700"><th style="padding:6px;text-align:left">Mode</th><th style="padding:6px">Behavior</th><th style="padding:6px">When to use</th></tr>
+                                <tr><td style="padding:6px"><b>simulate</b></td><td style="padding:6px">Random mock OK/fail</td><td style="padding:6px">Flow test without browser</td></tr>
+                                <tr><td style="padding:6px"><b>test</b></td><td style="padding:6px">Adyen test environment, <code>4111-1111-1111-1111</code> cards</td><td style="padding:6px">Validate real checkout without charge</td></tr>
+                                <tr><td style="padding:6px"><b>live</b></td><td style="padding:6px">Adyen live, real charge</td><td style="padding:6px">Production once real api_key is available</td></tr>
+                            </table>
+                            <p style="margin-top:8px"><b>3DS OTP autofill</b> via IMAP madre <code>johnlockperdidos@icloud.com</code>: detects bank SMS/email, extracts 4-8 digit code with contextual regex, fills form automatically.</p>
+                            <p>Card rotation: 30min cooldown/card, max 3 uses/day, anti-velocity-by-BIN.</p>
+                            <p style="color:#fbbf24">⚠️ For <code>mode=live</code> you need to paste 3 values into <code>adyen_config.json</code>: <code>api_key</code>, <code>live_url_prefix</code>, <code>client_key</code> (from Adyen Customer Area).</p>
+                        </div>
+                    </details>
+
+                    <!-- DFA COMPLIANCE -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">⚖️ DFA Compliance Gate (EU 2026)</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p><code>compliance_gate.py</code> + <code>step_dfa_compliance</code> integrated into the flow:</p>
+                            <ul style="padding-left:20px;color:var(--text-muted)">
+                                <li>Aborts EU face-value purchases if listing &gt; face_value</li>
+                                <li>Immutable consent hash chain (tamper-evident)</li>
+                                <li>Encrypted XOR mirror of the log for audit</li>
+                                <li>Quarterly scheduler with chunks (24h each)</li>
+                                <li>Endpoints: <code>/api/compliance/{stats, verify-chain, timeline, export}</code></li>
+                            </ul>
+                        </div>
+                    </details>
+
+                    <!-- MODES -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">⚙️ Modes: SIMULATE vs LIVE</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p><b style="color:#fbbf24">SIMULATE</b> (default): random OK/fail at cart/checkout, no real browser. Useful for orchestration tests. ~5s total.</p>
+                            <p><b style="color:#22c55e">LIVE</b>: <code>step_simulate_cart</code> delegates to <code>tm_real_purchase</code> which launches <code>_compra_parallel.py</code> subprocess with real browser, OAuth login, real captcha, real cart, real checkout. ~3-5 min total.</p>
+                        </div>
+                    </details>
+
+                    <!-- PRESETS -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">💾 Presets — reusable selections</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <p>Save event combinations + config (browser, captcha, account, retries) to relaunch with 1 click:</p>
+                            <ol style="padding-left:20px;color:var(--text-muted)">
+                                <li>Tick several events in <code>Sniper Bot → Launch Bot</code></li>
+                                <li>Click <b>💾 Save selection</b> and give it a name (e.g. "Karol G Drop 2027")</li>
+                                <li>When the drop arrives: <b>📂 Presets → 🚀 Launch now</b></li>
+                            </ol>
+                        </div>
+                    </details>
+
+                    <!-- ACCOUNTS -->
+                    <details class="faq-section" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+                        <summary style="cursor:pointer;font-weight:700;color:#a855f7">👤 Account management (registration · validation · recovery)</summary>
+                        <div style="margin-top:10px;font-size:12px;line-height:1.7">
+                            <ul style="padding-left:20px;color:var(--text-muted)">
+                                <li><b>register_account.py</b> — end-to-end automatic registration: pick ES profile → warming → signup → email OTP (IMAP) → SMS OTP (5sim/SMSPool) → TOC → passkey skip → save artifacts. <code>--row N</code> for batch.</li>
+                                <li><b>account_validator.py</b> — verifies login OK + fresh storage_state. Background job with max_parallel.</li>
+                                <li><b>account_recovery.py</b> — auto-recovery when TM redirects existing account to signin: password reset via IMAP, persists new pwd in template + accounts.json + CSV + tm_registrations + WS broadcast.</li>
+                                <li><b>account_warmer.py</b> — login + browse + wishlist 24-48h pre-onsale.</li>
+                                <li><b>_pool_manager.py</b> — orchestrator: keeps N simultaneous register_account.py until reaching target, Windows wmic detection.</li>
+                            </ul>
+                        </div>
+                    </details>
+                    </div><!-- /en Bot Guide -->
+
 
                     <!-- ES detailed version -->
                     <div data-lang-show="es">
@@ -17627,12 +18356,12 @@ async function loadAccountsWithPurchases(){
         data = await r.json();
     } catch(e){
         document.getElementById('ct-accounts-tbody').innerHTML =
-            `<tr><td colspan="7" style="padding:18px;text-align:center;color:var(--danger)">Error: ${esc(e.message||e)}</td></tr>`;
+            `<tr><td colspan="10" style="padding:18px;text-align:center;color:var(--danger)">Error: ${esc(e.message||e)}</td></tr>`;
         return;
     }
     if(!data?.ok){
         document.getElementById('ct-accounts-tbody').innerHTML =
-            `<tr><td colspan="7" style="padding:18px;text-align:center;color:var(--text-muted)">${tx('Sin datos','No data')}</td></tr>`;
+            `<tr><td colspan="10" style="padding:18px;text-align:center;color:var(--text-muted)">${tx('Sin datos','No data')}</td></tr>`;
         return;
     }
     window._ctAccountsCache = data.accounts || [];
@@ -17677,6 +18406,32 @@ function _renderAccountsStats(data){
     `;
 }
 
+// Helper: renderiza badge de sesión según session_status + days_left
+function _sessionBadgeHTML(a){
+    const st = a.session_status || 'missing';
+    const dl = (a.session_days_left !== null && a.session_days_left !== undefined)
+        ? a.session_days_left : null;
+    const saved = a.session_saved_at ? esc(a.session_saved_at.slice(0,16).replace('T',' ')) : '—';
+    const canon = a.session_canonical ? '✓ canonical' : 'legacy';
+    if(st === 'active'){
+        const tip = tx(`Sesión activa · guardada ${saved} · ${canon}`,
+                        `Active session · saved ${saved} · ${canon}`);
+        return `<span title="${tip}" style="background:#22c55e;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px;white-space:nowrap">🟢 ${dl}d</span>`;
+    } else if(st === 'warning'){
+        const tip = tx(`Sesión caduca pronto · guardada ${saved}`,
+                        `Session expiring soon · saved ${saved}`);
+        return `<span title="${tip}" style="background:#f59e0b;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px;white-space:nowrap">🟡 ${dl}d</span>`;
+    } else if(st === 'expired'){
+        const tip = tx(`Sesión expirada (>14d) · guardada ${saved}`,
+                        `Session expired (>14d) · saved ${saved}`);
+        return `<span title="${tip}" style="background:#ef4444;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px;white-space:nowrap">🔴 ${tx('expirada','expired')}</span>`;
+    } else {
+        const tip = tx('Sin sesión guardada · nunca logueada o sin storage_state',
+                        'No session saved · never logged in or storage_state missing');
+        return `<span title="${tip}" style="background:#64748b;color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:10px;white-space:nowrap">⚪ ${tx('sin sesión','no session')}</span>`;
+    }
+}
+
 function _renderAccountsTable(){
     const tbody = document.getElementById('ct-accounts-tbody');
     if(!tbody) return;
@@ -17687,7 +18442,7 @@ function _renderAccountsTable(){
             .some(v => (v||'').toLowerCase().includes(search));
     });
     if(!accs.length){
-        tbody.innerHTML = `<tr><td colspan="9" style="padding:18px;text-align:center;color:var(--text-muted)">${typeof t==='function'?t('common.no_results'):'Sin resultados'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="padding:18px;text-align:center;color:var(--text-muted)">${typeof t==='function'?t('common.no_results'):'Sin resultados'}</td></tr>`;
         return;
     }
     tbody.innerHTML = accs.map(a => {
@@ -17749,6 +18504,7 @@ function _renderAccountsTable(){
             <td style="padding:6px 10px;font-family:monospace;font-size:10.5px;white-space:nowrap">${esc(_dt)}${_agoTxt}</td>
             <td style="padding:6px 10px;font-family:monospace;font-size:10px">${esc(a.phone || '—')}</td>
             <td style="padding:6px 10px">${statusBadge}${validatedAt}</td>
+            <td style="padding:6px 10px;text-align:center">${_sessionBadgeHTML(a)}</td>
             <td style="padding:6px 10px;line-height:1.7">${evBadges}</td>
             <td style="padding:6px 10px;text-align:right;white-space:nowrap">
                 <button class="btn btn-sm" onclick="viewAccountUsage('${esc(a.id)}')" title="Detalle compras">👁</button>

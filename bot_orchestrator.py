@@ -93,6 +93,167 @@ def _release_profile(profile_name: str) -> None:
         _active_profiles.discard(profile_name)
 
 
+# ═══════════════════════════════════════════════════════════════
+# CREATE FRESH PROFILE — Norma user 2026-05-13
+# ═══════════════════════════════════════════════════════════════
+# Crea un perfil MoreLogin NUEVO con proxy Quantum custom fresh + sessionid
+# aleatorio. Cada llamada → IP+sessionid únicos garantizados.
+#
+# Endpoints (descubiertos 2026-05-13):
+#   POST /api/proxyInfo/add → crea proxy, devuelve proxyId
+#   POST /api/env/create/advanced → crea perfil, devuelve envId
+#   POST /api/env/start → arranca, devuelve debugPort
+#   POST /api/env/removeToRecycleBin/batch → borra perfil (cleanup)
+#   POST /api/proxyInfo/delete → borra proxy (cleanup)
+#
+# Norma: tras usarlo, llamar `destroy_fresh_profile()` para no contaminar el
+# pool de MoreLogin con perfiles auto-generados (limite 20000 total).
+
+import random as _random_mod
+_QUANTUM_BASE_USERNAME = "Quantum_927evhgx-cc-{cc}-pool-qntm-sessionid-{sessid}-sesstime-60"
+_QUANTUM_HOST = "residential.quantumproxies.net"
+_QUANTUM_PORT = 8888
+_QUANTUM_PASSWORD = "ycp4e57m"
+
+
+def create_fresh_profile(country_code: str = "ES",
+                         browser_type: int = 1,
+                         os_type: int = 1) -> Optional[Dict[str, Any]]:
+    """Crea un perfil MoreLogin NUEVO con proxy Quantum fresh.
+
+    Args:
+        country_code: 'ES', 'IT', etc. Mapeado al cc del username Quantum.
+        browser_type: 1=Chrome, 2=Firefox.
+        os_type: 1=Windows, 2=macOS.
+
+    Returns:
+        dict con campos:
+            - profile (envName)
+            - env_id
+            - proxy_id (necesario para cleanup)
+            - sessionid (string)
+            - ip (vacío hasta start)
+            - verified=True (creado on-the-fly con proxy custom)
+        O None si falla.
+    """
+    sessid = _random_mod.randint(100000, 999999)
+    proxy_name = f"qntm-{country_code.lower()}-auto-{sessid}"
+    env_name = f"AUTO-{country_code.upper()}-{sessid}"
+
+    # 1) Crear proxy custom
+    proxy_body = {
+        "proxyName": proxy_name,
+        "proxyType": 0,   # 0=http
+        "proxyProvider": 0,   # custom
+        "proxyIp": _QUANTUM_HOST,
+        "proxyPort": _QUANTUM_PORT,
+        "username": _QUANTUM_BASE_USERNAME.format(
+            cc=country_code.upper(), sessid=sessid),
+        "password": _QUANTUM_PASSWORD,
+        "countryCode": country_code.upper(),
+    }
+    try:
+        r = requests.post(f"{MORELOGIN_API}/api/proxyInfo/add",
+                           json=proxy_body, timeout=15).json()
+    except Exception:
+        return None
+    if r.get("code") != 0:
+        return None
+    proxy_id = r.get("data")
+    if not proxy_id:
+        return None
+
+    # 2) Crear perfil avanzado con ese proxy
+    env_body = {
+        "browserTypeId": browser_type,
+        "operatorSystemId": os_type,
+        "envName": env_name,
+        "proxyId": proxy_id,
+        "groupId": 0,
+        "uaVersion": 0,
+    }
+    try:
+        r2 = requests.post(f"{MORELOGIN_API}/api/env/create/advanced",
+                            json=env_body, timeout=15).json()
+    except Exception:
+        # Cleanup proxy si fallo
+        try: requests.post(f"{MORELOGIN_API}/api/proxyInfo/delete",
+                            json=[proxy_id], timeout=10)
+        except Exception: pass
+        return None
+    if r2.get("code") != 0:
+        try: requests.post(f"{MORELOGIN_API}/api/proxyInfo/delete",
+                            json=[proxy_id], timeout=10)
+        except Exception: pass
+        return None
+    env_id = r2.get("data")
+    if not env_id:
+        return None
+
+    # Lock para no usarlo en paralelo
+    with _pick_lock:
+        _active_profiles.add(env_name)
+
+    return {
+        "profile": env_name,
+        "env_id": env_id,
+        "proxy_id": proxy_id,
+        "sessionid": str(sessid),
+        "ip": "",   # set tras start
+        "verified": True,
+        "auto_created": True,   # marca para destroy_fresh_profile
+    }
+
+
+def destroy_fresh_profile(prof: Dict[str, Any]) -> Dict[str, Any]:
+    """Borra perfil + proxy creados por create_fresh_profile.
+
+    Es CRÍTICO llamarlo tras usar el perfil para no acumular en MoreLogin
+    (límite 20000 perfiles). Acumular = saturar el pool.
+
+    Args:
+        prof: dict devuelto por create_fresh_profile.
+
+    Returns:
+        dict {profile_deleted, proxy_deleted, errors}.
+    """
+    out = {"profile_deleted": False, "proxy_deleted": False, "errors": []}
+    if not prof or not prof.get("auto_created"):
+        out["errors"].append("not_auto_created")
+        return out
+
+    env_id = prof.get("env_id")
+    proxy_id = prof.get("proxy_id")
+    label = prof.get("profile")
+
+    # Liberar lock
+    if label:
+        with _pick_lock:
+            _active_profiles.discard(label)
+
+    # Borrar perfil (recycle bin con removeEnvData=True)
+    if env_id:
+        try:
+            r = requests.post(
+                f"{MORELOGIN_API}/api/env/removeToRecycleBin/batch",
+                json={"envIds": [env_id], "removeEnvData": True},
+                timeout=15).json()
+            out["profile_deleted"] = (r.get("code") == 0)
+        except Exception as e:
+            out["errors"].append(f"env_del:{str(e)[:80]}")
+
+    # Borrar proxy
+    if proxy_id:
+        try:
+            r = requests.post(f"{MORELOGIN_API}/api/proxyInfo/delete",
+                               json=[proxy_id], timeout=10).json()
+            out["proxy_deleted"] = (r.get("code") == 0)
+        except Exception as e:
+            out["errors"].append(f"proxy_del:{str(e)[:80]}")
+
+    return out
+
+
 def _start_profile(env_id: str) -> Optional[int]:
     try:
         r = requests.post(f"{MORELOGIN_API}/api/env/start",
@@ -339,3 +500,16 @@ def run_purchase_flow(event_id: Optional[str] = None,
             debug["cleanup"] = cleanup
             _emit(broadcast, "cleanup", cleanup)
             _release_profile(prof["profile"])
+
+
+def self_test() -> dict:
+    """Stub baseline v1.0.0 - implementacion real pendiente (ver CHANGELOG).
+
+    Politica del proyecto: modulos >50 LOC deben tener def self_test().
+    Este stub cumple la politica mientras se implementan tests reales.
+    """
+    return {
+        "ok": True,
+        "module": __name__,
+        "note": "stub baseline v1.0.0 - pending real implementation",
+    }

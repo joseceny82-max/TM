@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>TM Control Tower — MVP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #0a0e1a; color: #e6edf3;
+       font-family: 'SF Mono', 'Monaco', 'Consolas', monospace; font-size: 13px; line-height: 1.4; }
+.top { padding: 14px 20px; background: linear-gradient(135deg,#026CDF,#0052b4);
+       display: flex; align-items: center; gap: 14px; }
+.top h1 { margin: 0; font-size: 18px; }
+.top .sub { color: rgba(255,255,255,.75); font-size: 12px; }
+.top .nav { margin-left: auto; display: flex; gap: 12px; }
+.top .nav a { color: rgba(255,255,255,.85); text-decoration: none; padding: 4px 10px;
+              border-radius: 4px; background: rgba(0,0,0,.2); font-size: 11px; }
+.top .nav a.active { background: rgba(255,255,255,.2); }
+.top .status { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+.dot.off { background: #ef4444; }
+
+.row { display: grid; grid-template-columns: 1fr 320px; gap: 14px; padding: 14px; min-height: calc(100vh - 56px); }
+.card { background: #131826; border: 1px solid #2a3346; border-radius: 6px; padding: 14px; }
+.card h3 { margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: #8b95a8; }
+
+.state-big { font-size: 36px; font-weight: 800; text-align: center; padding: 18px;
+             background: #1a2235; border-radius: 6px; margin: 6px 0; }
+.state-big.setup    { color: #64748b; }
+.state-big.browsing { color: #06b6d4; }
+.state-big.login    { color: #f59e0b; }
+.state-big.checkout { color: #7c3aed; }
+.state-big.exit     { color: #ef4444; }
+
+.gauge { text-align: center; padding: 12px 0 4px; }
+.gauge .num { font-size: 44px; font-weight: 800; letter-spacing: -1px; }
+.gauge .verd { font-size: 11px; color: #8b95a8; letter-spacing: 1.2px; text-transform: uppercase; }
+.gauge .num.healthy   { color: #22c55e; }
+.gauge .num.degraded  { color: #f59e0b; }
+.gauge .num.unhealthy { color: #f97316; }
+.gauge .num.critical  { color: #ef4444; }
+.bar { height: 8px; background: #1a2235; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+.bar .fill { height: 100%; background: linear-gradient(90deg, #ef4444, #f59e0b, #06b6d4, #22c55e);
+             transition: width .3s ease; }
+
+.stream { font-size: 11px; max-height: calc(100vh - 200px); overflow-y: auto;
+          background: #0a0e1a; padding: 8px; border-radius: 4px; border: 1px solid #2a3346; }
+.evt { padding: 1px 4px; display: flex; gap: 8px; }
+.evt .ts { color: #8b95a8; width: 70px; flex-shrink: 0; }
+.evt .kind { width: 80px; flex-shrink: 0; font-weight: 700; }
+.evt .state { color: #8b95a8; width: 60px; flex-shrink: 0; }
+.evt.STATE         .kind { color: #22c55e; }
+.evt.STATE         { background: rgba(34,197,94,.05); }
+.evt.ACTION        .kind { color: #06b6d4; }
+.evt.OBSERVABILITY .kind { color: #8b95a8; }
+.evt.OBSERVABILITY { opacity: .75; }
+.evt.NOISE         .kind { color: #64748b; }
+.evt.NOISE         { opacity: .4; }
+.evt.UNKNOWN       .kind { color: #f59e0b; }
+.evt.drift         { border-left: 3px solid #ef4444; padding-left: 6px; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>TM Control Tower</h1>
+  <span class="sub">MVP · event stream live</span>
+  <div class="nav">
+    <a href="/" class="active">MVP</a>
+    <a href="/realtime">Realtime</a>
+    <a href="/control">Control</a>
+    <a href="/tower">Industrial</a>
+  </div>
+  <div class="status">
+    <span class="dot" id="dot"></span>
+    <span id="conn">connecting...</span>
+  </div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <h3>Event stream · live (SSE)</h3>
+    <div class="stream" id="stream"></div>
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:14px;">
+      <h3>FSM state</h3>
+      <div class="state-big" id="state">—</div>
+      <div style="text-align:center;color:#8b95a8;font-size:11px;" id="slot">slot —</div>
+    </div>
+    <div class="card">
+      <h3>Health score</h3>
+      <div class="gauge">
+        <div class="num" id="score">—</div>
+        <div class="verd" id="verd">—</div>
+      </div>
+      <div class="bar"><div class="fill" id="fill" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const MAX = 200;
+  let evts = 0;
+
+  function html(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  function renderEvent(rec) {
+    const kind = rec.kind || "UNKNOWN";
+    const ts = (rec.ts||"").substring(11,19);
+    const evt = rec.event || "?";
+    const state = rec.state || "—";
+    const d = document.createElement("div");
+    d.className = "evt " + kind + (rec.drift ? " drift" : "");
+    d.innerHTML = `<span class="ts">${ts}</span><span class="kind">${kind.padEnd(13)}</span>` +
+                  `<span class="state">${state}</span><span>${html(evt)}</span>`;
+    const s = $("stream");
+    s.appendChild(d);
+    while (s.children.length > MAX) s.removeChild(s.firstChild);
+    s.scrollTop = s.scrollHeight;
+  }
+
+  async function pollState() {
+    try {
+      const r = await fetch("/api/v1/state"); const data = await r.json();
+      const st = (data.state || "setup").toLowerCase();
+      $("state").textContent = st.toUpperCase();
+      $("state").className = "state-big " + st;
+      $("slot").textContent = data.slot ? `slot ${data.slot}` : "no run";
+    } catch(e){}
+    try {
+      const r = await fetch("/api/v1/health"); const data = await r.json();
+      const sc = data.score || 0;
+      const v = (data.verdict || "—").toLowerCase();
+      $("score").textContent = sc;
+      $("score").className = "num " + v;
+      $("verd").textContent = (data.verdict || "—").toUpperCase();
+      $("fill").style.width = Math.max(0, Math.min(100, sc)) + "%";
+    } catch(e){}
+  }
+
+  function connectSSE() {
+    const es = new EventSource("/api/v1/stream");
+    es.addEventListener("hello", () => { $("dot").classList.remove("off"); $("conn").textContent = "live"; });
+    es.onmessage = e => { try { renderEvent(JSON.parse(e.data)); evts++; } catch(_){} };
+    es.onerror = () => { $("dot").classList.add("off"); $("conn").textContent = "reconnecting..."; es.close(); setTimeout(connectSSE, 2000); };
+  }
+  pollState();
+  setInterval(pollState, 1500);
+  connectSSE();
+})();
+</script>
+</body>
+</html>

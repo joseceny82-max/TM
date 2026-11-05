@@ -4,12 +4,51 @@ i18n:
   Los logs del worker se almacenan localizados según `lang` que se
   guarda en cada Worker/Group cuando se crean. Por defecto 'es'.
   El frontend del Sniper Bot envía el lang actual al crear grupos.
+
+Ejecución real:
+  Worker._run() spawn `_compra_with_swap.py` como subprocess
+  (el wrapper aplica routing legacy/flowcore + bot_block retry).
 """
-import uuid
+import json
+import os
+import subprocess
+import sys
 import threading
+import uuid
 from datetime import datetime
+from pathlib import Path
+
 import config
 import json_atomic
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Slot counter — asigna slots únicos a workers spawneados
+# ─────────────────────────────────────────────────────────────────
+_PROYECTO = os.path.dirname(os.path.abspath(__file__))
+_SLOT_COUNTER_FILE = os.path.join(_PROYECTO, "_bot_engine_slot_counter.txt")
+_SLOT_LOCK = threading.Lock()
+
+
+def _next_slot(start: int = 100) -> int:
+    """Devuelve un slot único, persistente entre runs del dashboard.
+
+    Empieza en 100 para no chocar con slots 1-99 que el usuario suele
+    usar manualmente desde CLI. Roll-over a 100 cuando llega a 999.
+    """
+    with _SLOT_LOCK:
+        try:
+            with open(_SLOT_COUNTER_FILE, encoding="utf-8") as f:
+                n = int((f.read() or "").strip() or str(start - 1))
+        except Exception:
+            n = start - 1
+        n = n + 1 if start <= n < 999 else start
+        try:
+            with open(_SLOT_COUNTER_FILE, "w", encoding="utf-8") as f:
+                f.write(str(n))
+        except Exception:
+            pass
+        return n
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -179,8 +218,12 @@ class Worker:
         self._thread.start()
 
     def _run(self):
-        # Stub orquestador. El executor real (tm_purchase_flow / ticket_selector) se conecta aquí.
-        # Por ahora deja constancia clara de que el payload ha viajado correctamente.
+        """Spawn `_compra_with_swap.py` con los params del worker.
+
+        El wrapper aplica routing legacy/flowcore + bot_block retry.
+        Tras terminar, lee outcome.json y mapea el resultado al
+        worker.status para que la UI lo muestre.
+        """
         sel_mode = self.params.get("selection_mode", "quick")
         self.log(_t("worker.mode_quick" if sel_mode == "quick" else "worker.mode_seatmap", self.lang))
         if self.params.get("category"):
@@ -197,7 +240,6 @@ class Worker:
                 self.log(_t("worker.max_prices_raw", self.lang, raw=omp))
         secs = self.params.get("selected_sections") or []
         if sel_mode == "seatmap" and secs:
-            # Default: si el usuario marcó sectores, modo estricto (solo esos).
             strict = self.params.get("strict_targets")
             if strict is None: strict = True
             ell = '...' if len(secs) > 8 else ''
@@ -207,95 +249,128 @@ class Worker:
             self.log(_t("worker.strict_targets", self.lang, strict=strict, explain=explain))
         if self.params.get("venue_id"):
             self.log(_t("worker.venue_cached", self.lang, vid=self.params["venue_id"]))
-        self.log(_t("worker.launching", self.lang))
-        self.status = "in_queue"
-        self.log(_t("worker.in_queue", self.lang))
 
-        # Derivar prefer_offer_indices / selected_sections / strict_targets
-        # ANTES de usarlas en cualquier orquestador (fix F821).
-        _secs = self.params.get("selected_sections") or []
-        _strict = self.params.get("strict_targets")
-        if _strict is None and _secs:
-            _strict = True
-        _multi = self.params.get("selected_offer_indices") or []
-        _oi = self.params.get("offer_index")
-        if _multi:
-            _prefer = [int(x) for x in _multi]
-        elif _oi is not None:
-            _prefer = [int(_oi)]
-        else:
-            _prefer = None
-
-        # Hook real BROWSER-BASED: orquestador integrado venue/ticket/cart/queue.
-        try:
-            import bot_orchestrator
-            run_kwargs_browser = {
-                "event_id": self.event_id,
-                "url": self.params.get("url"),
-                "quantity": self.params.get("quantity") or 1,
-                "selection_mode": sel_mode,
-                "prefer_offer_indices": _prefer,
-                "selected_sections": _secs or None,
-                "strict_targets": _strict,
-                "venue_id": self.params.get("venue_id"),
-                "offer_max_prices": self.params.get("offer_max_prices"),
-                "account_id": self.account_id,
-                "captcha_provider": self.params.get("captcha_provider") or "auto",
-                "browser": self.params.get("browser") or "auto",
-                "worker_id": self.id,
-            }
-            self.log(_t("worker.invoking_orchestrator", self.lang))
+        # ─── Resolver event_url ────────────────────────────────────
+        event_url = (self.params.get("url") or "").strip()
+        if not event_url and self.event_id:
             try:
-                res = bot_orchestrator.run_purchase_flow(**run_kwargs_browser)
-                self.log(_t("worker.orch_stage", self.lang,
-                              stage=res.get('stage'), ok=res.get('ok')))
-                if res.get("next_action"):
-                    self.log(_t("worker.orch_next", self.lang, nxt=res['next_action'][:160]))
-                self.status = "success" if res.get("ok") else "error"
-            except Exception as e:
-                self.log(_t("worker.orch_error", self.lang, err=e), level="error")
-                self.status = "error"
-        except ImportError:
+                import event_manager
+                for e in event_manager.list_events():
+                    if (str(e.get("id")) == str(self.event_id)
+                            or str(e.get("tm_id")) == str(self.event_id)):
+                        event_url = e.get("tm_url") or e.get("url") or ""
+                        break
+            except Exception:
+                pass
+        if not event_url:
+            self.status = "error"
+            self.log("ERROR: no event_url disponible (set params.url o event_id mapeable)", level="error")
+            return
+
+        # ─── Resolver engine (browser) ──────────────────────────────
+        # MoreLogin no pasa Akamai en TM España (bmak.js no sirve).
+        # Camoufox sí (Firefox C++ patched, WebRTC block, stealth nativo).
+        # Memoria 2026-05-12 confirma camoufox funciona end-to-end.
+        # Mapeo:
+        #   params.browser=morelogin → --engine morelogin
+        #   params.browser=camoufox  → --engine camoufox
+        #   params.browser=auto/None → --engine camoufox (default operativo)
+        browser_raw = (self.params.get("browser") or "").strip().lower()
+        if browser_raw == "morelogin":
+            engine = "morelogin"
+        else:
+            engine = "camoufox"   # auto + camoufox + cualquier otra cosa
+        self.log(f"engine seleccionado: {engine} "
+                  f"(browser param='{browser_raw or 'auto'}')")
+
+        # ─── Construir argv para _compra_with_swap.py ───────────────
+        slot = _next_slot()
+        wrapper = os.path.join(_PROYECTO, "_compra_with_swap.py")
+        argv = [
+            sys.executable, wrapper,
+            "--slot", str(slot),
+            "--event-url", event_url,
+            "--qty", str(self.params.get("quantity") or 1),
+            "--mode", sel_mode,
+            "--engine", engine,
+        ]
+        if self.params.get("offer_index") is not None:
+            argv += ["--offer-idx", str(self.params["offer_index"])]
+        if secs:
+            argv += ["--sections", ",".join(str(s) for s in secs)]
+        if self.params.get("allow_separated"):
+            argv.append("--allow-separated")
+        # --confirm queda DESHABILITADO por defecto: pruebas sin click final
+        # en "Pagar". Para compra real, añade --confirm vía CLI o param.
+        if self.params.get("confirm_buy"):
+            argv.append("--confirm")
+
+        # ─── Spawn subprocess ───────────────────────────────────────
+        log_path = os.path.join(_PROYECTO, f"_compra_worker_{self.id}.log")
+        self.log(_t("worker.launching", self.lang))
+        self.log(f"spawn _compra_with_swap.py · slot={slot} · "
+                  f"qty={self.params.get('quantity') or 1} · "
+                  f"mode={sel_mode} · engine={engine} · "
+                  f"log=_compra_worker_{self.id}.log")
+        try:
+            logf = open(log_path, "w", encoding="utf-8")
+            proc = subprocess.Popen(
+                argv, cwd=_PROYECTO,
+                stdout=logf, stderr=subprocess.STDOUT,
+                creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+            )
+            self._proc = proc  # para que stop() pueda terminate()
+            self.status = "purchasing"
+            self.log(f"subprocess started · pid={proc.pid}")
+        except Exception as e:
+            self.status = "error"
+            self.log(f"spawn_error: {type(e).__name__}: {e}", level="error")
+            try: logf.close()
+            except Exception: pass
+            return
+
+        # ─── Wait + outcome ─────────────────────────────────────────
+        try:
+            rc = proc.wait()
+        except Exception as e:
+            self.status = "error"
+            self.log(f"wait_error: {type(e).__name__}: {e}", level="error")
+            return
+        finally:
+            try: logf.close()
+            except Exception: pass
+
+        outcome_path = os.path.join(_PROYECTO,
+                                      f"_compra_parallel_slot{slot}.outcome.json")
+        outcome = {}
+        try:
+            with open(outcome_path, encoding="utf-8") as f:
+                outcome = json.load(f)
+        except Exception:
             pass
 
-        # Hook fallback simulate: si bot_orchestrator no disponible o falla, prueba flow simulate.
-        try:
-            import tm_purchase_flow
-            # _prefer / _secs / _strict ya derivados arriba (línea ~125)
-            run_kwargs = {
-                "event_id": self.event_id,
-                "url": self.params.get("url"),
-                "quantity": self.params.get("quantity") or 1,
-                "category": self.params.get("category"),
-                "selection_mode": sel_mode,
-                "offer_index": _oi,
-                "selected_offer_indices": _multi or None,
-                "prefer_offer_indices": _prefer,  # NUEVO: para select_quick_smart
-                "offer_max_prices": self.params.get("offer_max_prices"),
-                "selected_sections": _secs or None,
-                "strict_targets": _strict,
-                "venue_id": self.params.get("venue_id"),
-                "domain_id": self.domain_id,
-                "account_id": self.account_id,
-                "browser": self.params.get("browser") or "auto",
-                "captcha_provider": self.params.get("captcha_provider") or "auto",
-                "worker_id": self.id,
-            }
-            if hasattr(tm_purchase_flow, "run_flow"):
-                self.log(_t("worker.invoking_flow", self.lang))
-                # Best-effort: si falla, queda registrado pero el worker no crashea.
-                try:
-                    res = tm_purchase_flow.run_flow(**run_kwargs)
-                    self.log(_t("worker.flow_result", self.lang, res=str(res)[:200]))
-                except TypeError as e:
-                    # run_flow no acepta esos kwargs todavía → fallback a sus args originales
-                    self.log(_t("worker.flow_signature_mismatch", self.lang, err=e))
-                except Exception as e:
-                    self.log(_t("worker.flow_error", self.lang, err=e), level="error")
-        except ImportError:
-            pass
+        status = outcome.get("status", "unknown")
+        step = outcome.get("step_reached", "?")
+        self.log(f"subprocess finished · rc={rc} · status={status} · step={step}")
+
+        # Map outcome → worker.status
+        if rc == 0 and status in ("checkout_ok", "purchase_completed", "success", "ok"):
+            self.status = "success"
+        elif rc == 99 or status in ("bot_block", "kill_switch_aborted",
+                                       "fatal_exception"):
+            self.status = "error"
+        else:
+            self.status = "error"
 
     def stop(self):
+        # Si hay subprocess vivo, terminar de forma controlada
+        proc = getattr(self, "_proc", None)
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.terminate()
+                self.log(f"subprocess terminate · pid={proc.pid}")
+            except Exception as e:
+                self.log(f"stop_error: {type(e).__name__}: {e}", level="error")
         self.status = "stopped"
         self.log(_t("worker.stopped", self.lang))
 

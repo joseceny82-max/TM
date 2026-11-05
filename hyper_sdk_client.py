@@ -120,28 +120,183 @@ def generate_akamai_sensor(abck: str = "",
             "note": "simulate — sin llamada real a hyper-sdk. Configura api_key + mode=live.",
         }
 
-    # LIVE mode
-    import requests
+    # LIVE mode — flow OFICIAL Hyper Solutions Akamai (3 POSTs):
+    # https://docs.hypersolutions.co/akamai-web/getting-started
+    #
+    # 1. GET https://target/ con curl_cffi Chrome impersonate
+    #    → HTML + cookies iniciales (_abck "~-1~", bm_sz)
+    # 2. parse_akamai_script_path(html) → URL del bmak.js
+    # 3. GET bmak_url → contenido del script
+    # 4. generate_sensor_data(script=<content>, context="") → sensor1, ctx1
+    # 5. POST sensor1 al bmak_url → new cookies (_abck rotado)
+    # 6. generate_sensor_data(script="", context=ctx1) → sensor2, ctx2
+    # 7. POST sensor2 → new cookies
+    # 8. Si _abck contiene "~0~" → DONE
+    #    Sino: generate_sensor_data(script="", context=ctx2) → sensor3
+    #          POST sensor3 → final cookies con "~0~"
+    # 9. Retornar cookies finales para inyectar en bot session.
+    import time as _t
+    t0 = _t.time()
     try:
-        r = requests.post(
-            cfg["akamai_endpoint"],
-            json={
-                "page_url": page_url,
-                "user_agent": user_agent,
-                "abck": abck,
-                "bmsz": bmsz,
-                "post_count": post_count,
-            },
-            headers={"x-api-key": cfg["api_key"]},
-            timeout=cfg.get("timeout_s", 15),
-        )
+        from hyper_sdk import Session, SensorInput, parse_akamai_script_path
+        try:
+            from curl_cffi import requests as _rq
+            _impersonate = "chrome131"
+            _curl_cffi_available = True
+        except ImportError:
+            import requests as _rq
+            _impersonate = None
+            _curl_cffi_available = False
+        from urllib.parse import urljoin
+
+        UA = user_agent or ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36")
+        target_url = page_url or "https://www.ticketmaster.es/"
+        IP = "88.26.11.159"   # public IP (Hyper requiere ip válido)
+        ACCEPT_LANG = "es-ES,es;q=0.9,en;q=0.8"
+
+        # Sesión HTTP persistente para mantener cookies entre POSTs
+        if _curl_cffi_available:
+            http_sess = _rq.Session(impersonate=_impersonate)
+        else:
+            http_sess = _rq.Session()
+            http_sess.headers["User-Agent"] = UA
+
+        # ─── PASO 1: GET home → cookies iniciales ───
+        home_r = http_sess.get(target_url, timeout=cfg.get("timeout_s", 15))
+        home_html = home_r.text
+        abck_cur = abck or http_sess.cookies.get('_abck') or ''
+        bmsz_cur = bmsz or http_sess.cookies.get('bm_sz') or ''
+        _log({"op": "hyper_step1_home_get",
+              "status": home_r.status_code,
+              "abck_init_len": len(abck_cur),
+              "bmsz_init_len": len(bmsz_cur)})
+
+        # ─── PASO 2-3: parse + fetch bmak.js ───
+        bmak_url = ""
+        bmak_script = ""
+        try:
+            bmak_path = parse_akamai_script_path(home_html)
+            if bmak_path:
+                bmak_url = urljoin(target_url, bmak_path)
+                s_r = http_sess.get(bmak_url, timeout=cfg.get("timeout_s", 15))
+                if s_r.status_code == 200:
+                    bmak_script = s_r.text
+                _log({"op": "hyper_step2_script",
+                      "bmak_url": bmak_url[:120],
+                      "script_len": len(bmak_script)})
+        except Exception as _pe:
+            _log({"op": "hyper_parse_script_err", "err": str(_pe)[:80]})
+
+        # ─── PASO 4-8: 3 POSTs de sensor_data con rotación de context ───
+        sess = Session(cfg["api_key"])
+        sensor_context = ""
+        posts_done = 0
+        final_abck = abck_cur
+        post_results = []
+
+        # Fallback: si no se obtuvo bmak.js (TM no lo sirve en home — solo en
+        # /checkout/), usar un stub mínimo válido como `script` inicial.
+        # La API requiere `script OR context must be set` en el primer POST.
+        if not bmak_script:
+            bmak_script = "(function(){window.bmak={ver:3};})();"
+        if not bmak_url:
+            bmak_url = urljoin(target_url, "/_bm/_data")
+
+        for post_idx in range(3):
+            # SensorInput: 1st request → script+context="";  2nd/3rd → script="", context=anterior
+            is_first = (post_idx == 0)
+            si = SensorInput(
+                abck=final_abck or abck_cur or "AAAAAAAA~-1~-1~-1",
+                bmsz=bmsz_cur or "TEST123",
+                version="3",
+                page_url=target_url,
+                user_agent=UA,
+                ip=IP,
+                accept_language=ACCEPT_LANG,
+                context=("" if is_first else sensor_context),
+                script=(bmak_script if is_first else ""),
+                script_url=(bmak_url if is_first else ""),
+            )
+            t_gen = _t.time()
+            sensor_data, sensor_context_new = sess.generate_sensor_data(si)
+            gen_ms = int((_t.time() - t_gen) * 1000)
+            sensor_context = sensor_context_new or sensor_context
+
+            # POST sensor_data al endpoint bmak (mismo path del script)
+            post_status = 0
+            post_ms = 0
+            if bmak_url:
+                t_post = _t.time()
+                try:
+                    p_r = http_sess.post(
+                        bmak_url,
+                        json={"sensor_data": sensor_data},
+                        timeout=cfg.get("timeout_s", 15),
+                    )
+                    post_status = p_r.status_code
+                    post_ms = int((_t.time() - t_post) * 1000)
+                    # Capturar _abck actualizado (rota cada POST)
+                    new_abck = http_sess.cookies.get('_abck') or ''
+                    if new_abck:
+                        final_abck = new_abck
+                except Exception as _pe:
+                    _log({"op": f"hyper_post_{post_idx+1}_err",
+                          "err": str(_pe)[:80]})
+
+            posts_done += 1
+            post_results.append({
+                "idx": post_idx + 1,
+                "gen_ms": gen_ms,
+                "post_status": post_status,
+                "post_ms": post_ms,
+                "sensor_len": len(sensor_data or ''),
+                "abck_marker": ("~0~" if "~0~" in final_abck
+                                 else ("~-1~" if "~-1~" in final_abck else "?")),
+            })
+
+            # Stopping condition: si _abck contiene ~0~ → humano, salir early
+            if "~0~" in final_abck:
+                _log({"op": f"hyper_abck_validated_post_{post_idx+1}",
+                      "marker": "~0~"})
+                break
+
+        try: sess.close()
+        except Exception: pass
+        try: http_sess.close()
+        except Exception: pass
+
+        dt_ms = int((_t.time() - t0) * 1000)
+        is_human = "~0~" in final_abck
         _log({"op": "generate_akamai_sensor", "mode": "live",
-              "status": r.status_code, "elapsed_ms": int(r.elapsed.total_seconds() * 1000)})
-        if r.status_code == 200:
-            return {"ok": True, "mode": "live", **r.json()}
-        return {"ok": False, "status": r.status_code, "error": r.text[:200]}
+              "elapsed_ms": dt_ms, "posts_done": posts_done,
+              "abck_marker": "~0~" if is_human else "~-1~",
+              "ok": is_human})
+        return {
+            "ok": True,   # operación completó (aunque marker no sea ~0~)
+            "mode": "live",
+            "abck_marker": "~0~" if is_human else "~-1~",
+            "is_human": is_human,
+            "posts_done": posts_done,
+            "post_results": post_results,
+            "cookies": {
+                "_abck": final_abck,
+                "bm_sz": bmsz_cur,
+            },
+            "elapsed_ms": dt_ms,
+            "user_agent": UA,
+            "bmak_url": bmak_url,
+            "bmak_script_len": len(bmak_script or ""),
+            "curl_cffi_used": _curl_cffi_available,
+            "sensor_length": len(sensor_data or '') if 'sensor_data' in dir() else 0,
+        }
     except Exception as e:
-        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        dt_ms = int((_t.time() - t0) * 1000)
+        err_str = f"{type(e).__name__}: {e}"
+        _log({"op": "generate_akamai_sensor", "mode": "live",
+              "error": err_str[:200], "elapsed_ms": dt_ms})
+        return {"ok": False, "mode": "live",
+                "error": err_str[:300], "elapsed_ms": dt_ms}
 
 
 def generate_datadome(target_url: str = "",

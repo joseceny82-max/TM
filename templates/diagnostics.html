@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>TM Diagnostics — Self-Diagnosing Runtime</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #0a0e1a;
+  --bg-card: #131826;
+  --bg-card2: #1a2235;
+  --border: #2a3346;
+  --text: #e6edf3;
+  --text-muted: #8b95a8;
+  --blue: #026CDF;
+  --green: #22c55e;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --purple: #7c3aed;
+  --cyan: #06b6d4;
+  --gray: #64748b;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #026CDF, #0052b4);
+  border-bottom: 1px solid var(--border);
+}
+.topbar h1 { margin: 0; font-size: 18px; font-weight: 800; }
+.topbar .sub { margin-left: 12px; color: rgba(255,255,255,.7); font-size: 12px; }
+.topbar .status { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+.status-dot.disconnected { background: var(--red); }
+
+.grid {
+  display: grid;
+  grid-template-columns: 320px 1fr 360px;
+  gap: 12px;
+  padding: 12px;
+  min-height: calc(100vh - 56px);
+}
+.col { display: flex; flex-direction: column; gap: 12px; }
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.card h3 {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--text-muted);
+}
+
+/* ── State badge ── */
+.state-current {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 16px;
+  border-radius: 4px;
+  background: var(--bg-card2);
+  margin: 4px 0;
+}
+.state-current.setup    { color: var(--gray);   border: 2px solid var(--gray); }
+.state-current.browsing { color: var(--cyan);   border: 2px solid var(--cyan); }
+.state-current.login    { color: var(--orange); border: 2px solid var(--orange); }
+.state-current.checkout { color: var(--purple); border: 2px solid var(--purple); }
+.state-current.exit     { color: var(--red);    border: 2px solid var(--red); }
+.state-previous { color: var(--text-muted); font-size: 11px; margin-top: 6px; text-align: center; }
+.state-history { font-size: 11px; max-height: 160px; overflow-y: auto; }
+.state-history .item { padding: 4px 0; border-bottom: 1px solid var(--border); }
+.state-history .arrow { color: var(--text-muted); }
+
+/* ── Health gauge ── */
+.health-gauge {
+  position: relative;
+  text-align: center;
+  padding: 12px 0 6px;
+}
+.health-gauge .score {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.health-gauge .score.healthy   { color: var(--green); }
+.health-gauge .score.degraded  { color: var(--orange); }
+.health-gauge .score.unhealthy { color: #f97316; }
+.health-gauge .score.critical  { color: var(--red); }
+.health-gauge .verdict {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+}
+.gauge-bar {
+  height: 8px;
+  background: var(--bg-card2);
+  border-radius: 4px;
+  margin-top: 10px;
+  overflow: hidden;
+  position: relative;
+}
+.gauge-bar .fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--red) 0%, var(--orange) 30%, var(--cyan) 60%, var(--green) 80%);
+  transition: width .3s ease;
+}
+
+/* ── Event stream ── */
+.event-stream {
+  font-family: 'SF Mono', monospace;
+  font-size: 11px;
+  max-height: 480px;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.event-line { padding: 1px 4px; display: flex; gap: 8px; }
+.event-line .ts { color: var(--text-muted); width: 70px; flex-shrink: 0; }
+.event-line .kind { width: 80px; flex-shrink: 0; font-weight: 700; }
+.event-line .state { color: var(--text-muted); width: 60px; flex-shrink: 0; }
+.event-line .evt { flex: 1; }
+.event-line.STATE         .kind { color: var(--green); }
+.event-line.STATE         { background: rgba(34,197,94,.05); }
+.event-line.ACTION        .kind { color: var(--cyan); }
+.event-line.OBSERVABILITY .kind { color: var(--text-muted); }
+.event-line.OBSERVABILITY { opacity: .75; }
+.event-line.NOISE         .kind { color: var(--gray); }
+.event-line.NOISE         { opacity: .4; }
+.event-line.UNKNOWN       .kind { color: var(--orange); }
+.event-line.drift         { border-left: 3px solid var(--red); padding-left: 6px; }
+.filter-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.filter-pill {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  user-select: none;
+}
+.filter-pill.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* ── Drift panel ── */
+.drift-stat {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 0;
+}
+.drift-stat.zero { color: var(--green); }
+.drift-stat.has  { color: var(--red); }
+.drift-list { font-size: 11px; max-height: 220px; overflow-y: auto; }
+.drift-item {
+  padding: 6px 8px;
+  border-left: 3px solid var(--red);
+  margin-bottom: 4px;
+  background: rgba(239,68,68,.08);
+  border-radius: 2px;
+}
+.drift-item .kind { font-weight: 700; color: var(--red); }
+.drift-item .detail { color: var(--text-muted); font-size: 10px; margin-top: 2px; }
+
+/* ── Loops ── */
+.loop-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border-radius: 3px;
+  margin-bottom: 3px;
+  background: var(--bg-card2);
+}
+.loop-item .count {
+  font-weight: 700;
+  font-family: monospace;
+}
+.loop-item .count.cold   { color: var(--green); }
+.loop-item .count.warm   { color: var(--orange); }
+.loop-item .count.hot    { color: var(--red); }
+.loop-item .count.danger { color: var(--red); font-size: 14px; }
+
+/* ── Failure trace ── */
+.failure-box {
+  background: var(--bg-card2);
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  border-left: 3px solid var(--red);
+}
+.failure-box .step { padding: 3px 0; }
+.failure-box .arrow { color: var(--text-muted); }
+.failure-box .failure { color: var(--red); font-weight: 700; }
+.failure-box .outcome { font-size: 10px; color: var(--text-muted); margin-top: 6px; }
+
+/* ── Counts ── */
+.counts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; }
+.count-row { display: flex; justify-content: space-between; padding: 3px 6px; background: var(--bg-card2); border-radius: 3px; }
+.count-row .label { color: var(--text-muted); }
+.count-row .value { font-weight: 700; }
+.count-row.STATE          .value { color: var(--green); }
+.count-row.ACTION         .value { color: var(--cyan); }
+.count-row.OBSERVABILITY  .value { color: var(--text-muted); }
+.count-row.NOISE          .value { color: var(--gray); }
+
+/* ── Misc ── */
+.meta { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+.meta-row { display: flex; justify-content: space-between; padding: 2px 0; }
+.empty { color: var(--text-muted); padding: 8px 0; text-align: center; font-size: 11px; }
+.runs-active {
+  font-size: 11px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.runs-active .pill {
+  padding: 3px 8px;
+  background: var(--bg-card2);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.runs-active .pill.active {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>TM DIAGNOSTICS</h1>
+  <span class="sub">self-diagnosing runtime · live observability</span>
+  <div class="status">
+    <span class="status-dot" id="conn-dot"></span>
+    <span id="conn-text">connecting...</span>
+    <span id="event-rate">— evt/s</span>
+  </div>
+</div>
+
+<div class="grid">
+  <!-- ═══════════ COLUMNA IZQUIERDA ═══════════ -->
+  <div class="col">
+
+    <!-- Active runs -->
+    <div class="card">
+      <h3>Active runs</h3>
+      <div class="runs-active" id="runs-active"></div>
+      <div class="meta">
+        <div class="meta-row"><span>Tracked</span><span id="g-tracked">0</span></div>
+        <div class="meta-row"><span>Active</span><span id="g-active">0</span></div>
+        <div class="meta-row"><span>Total events</span><span id="g-events">0</span></div>
+        <div class="meta-row"><span>Avg health</span><span id="g-avg-health">0</span></div>
+      </div>
+    </div>
+
+    <!-- FSM State -->
+    <div class="card">
+      <h3>FSM state · live</h3>
+      <div class="state-current" id="state-current">—</div>
+      <div class="state-previous" id="state-previous">previous: —</div>
+      <div class="state-history" id="state-history"></div>
+    </div>
+
+    <!-- Health -->
+    <div class="card">
+      <h3>Health score</h3>
+      <div class="health-gauge">
+        <div class="score" id="health-score">—</div>
+        <div class="verdict" id="health-verdict">—</div>
+      </div>
+      <div class="gauge-bar"><div class="fill" id="gauge-fill" style="width:0%"></div></div>
+      <div class="meta">
+        <div class="meta-row"><span>Events</span><span id="h-events">0</span></div>
+        <div class="meta-row"><span>Elapsed</span><span id="h-elapsed">0s</span></div>
+        <div class="meta-row"><span>Outcome</span><span id="h-outcome">—</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════ COLUMNA CENTRAL ═══════════ -->
+  <div class="col">
+
+    <!-- Event stream -->
+    <div class="card" style="flex:1;">
+      <h3>Event stream · live</h3>
+      <div class="filter-row">
+        <span class="filter-pill active" data-kind="STATE">STATE</span>
+        <span class="filter-pill active" data-kind="ACTION">ACTION</span>
+        <span class="filter-pill active" data-kind="OBSERVABILITY">OBSERVABILITY</span>
+        <span class="filter-pill" data-kind="NOISE">NOISE</span>
+        <span class="filter-pill active" data-kind="UNKNOWN">UNKNOWN</span>
+        <span class="filter-pill" id="pause-btn" data-pause="0" style="margin-left:auto;">⏸ pause</span>
+      </div>
+      <div class="event-stream" id="event-stream"></div>
+    </div>
+
+    <!-- Event kind counts -->
+    <div class="card">
+      <h3>Event kinds (current run)</h3>
+      <div class="counts" id="kind-counts"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════ COLUMNA DERECHA ═══════════ -->
+  <div class="col">
+
+    <!-- Drift panel -->
+    <div class="card">
+      <h3>Drift detection</h3>
+      <div class="drift-stat zero" id="drift-stat">0 drifts</div>
+      <div class="drift-list" id="drift-list">
+        <div class="empty">No drifts detected</div>
+      </div>
+    </div>
+
+    <!-- Loops -->
+    <div class="card">
+      <h3>Active loops</h3>
+      <div id="loops-list">
+        <div class="empty">No active loops</div>
+      </div>
+    </div>
+
+    <!-- Failure trace -->
+    <div class="card">
+      <h3>Last failure trace</h3>
+      <div class="failure-box" id="failure-box">
+        <div class="empty" style="text-align:center;color:var(--text-muted);">No failures yet</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     M13.4 — PurchaseGate live pane (full-width, below 3-col grid)
+     Read-only consumer del endpoint M13.3 /api/diagnostics/purchase_gate
+     ═══════════════════════════════════════════════════════════════════ -->
+<div style="padding: 0 12px 12px 12px;">
+  <div class="card" id="gate-card">
+    <h3>Purchase Gate — M13 (read-only)</h3>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
+      <div style="background:var(--bg-card2);padding:10px;border-radius:4px;">
+        <div style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;">Mode</div>
+        <div id="gate-mode" style="font-size:18px;font-weight:800;color:var(--cyan);margin-top:4px;">—</div>
+      </div>
+      <div style="background:var(--bg-card2);padding:10px;border-radius:4px;">
+        <div style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;">Kill switch</div>
+        <div id="gate-enabled" style="font-size:18px;font-weight:800;margin-top:4px;">—</div>
+      </div>
+      <div style="background:var(--bg-card2);padding:10px;border-radius:4px;">
+        <div style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;">Attempted</div>
+        <div id="gate-attempted" style="font-size:18px;font-weight:800;color:var(--blue);margin-top:4px;">—</div>
+      </div>
+      <div style="background:var(--bg-card2);padding:10px;border-radius:4px;">
+        <div style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;">Live purchases</div>
+        <div id="gate-live" style="font-size:18px;font-weight:800;color:var(--red);margin-top:4px;">—</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--text-muted);padding:4px 0;">
+      <span>dry_run: <strong id="gate-dry-run" style="color:var(--green);">—</strong></span>
+      <span>blocked: <strong id="gate-blocked" style="color:var(--orange);">—</strong></span>
+      <span>dry_run_rate: <strong id="gate-dry-rate">—</strong></span>
+      <span>block_rate: <strong id="gate-block-rate">—</strong></span>
+      <span>idem cache: <strong id="gate-idem">—</strong></span>
+      <span>session locks: <strong id="gate-locks">—</strong></span>
+      <span>errors: <strong id="gate-errors" style="color:var(--red);">—</strong></span>
+    </div>
+    <details style="margin-top:8px;">
+      <summary style="cursor:pointer;font-size:11px;color:var(--text-muted);">Denial breakdown</summary>
+      <div id="gate-denials" style="font-size:11px;margin-top:6px;line-height:1.6;color:var(--text);"></div>
+    </details>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+
+  // ── Connection state ──
+  const connDot = $("conn-dot");
+  const connText = $("conn-text");
+  const eventRate = $("event-rate");
+  let evtCounter = 0;
+  let rateWindow = [];
+  setInterval(() => {
+    const now = Date.now();
+    rateWindow = rateWindow.filter(t => now - t < 1000);
+    eventRate.textContent = `${rateWindow.length} evt/s`;
+  }, 250);
+
+  // ── Filters ──
+  const enabledKinds = new Set(["STATE", "ACTION", "OBSERVABILITY", "UNKNOWN"]);
+  document.querySelectorAll(".filter-pill[data-kind]").forEach(p => {
+    p.addEventListener("click", () => {
+      const k = p.dataset.kind;
+      if (enabledKinds.has(k)) {
+        enabledKinds.delete(k);
+        p.classList.remove("active");
+      } else {
+        enabledKinds.add(k);
+        p.classList.add("active");
+      }
+    });
+  });
+
+  // Pause
+  let paused = false;
+  $("pause-btn").addEventListener("click", () => {
+    paused = !paused;
+    $("pause-btn").classList.toggle("active", paused);
+    $("pause-btn").textContent = paused ? "▶ resume" : "⏸ pause";
+  });
+
+  // ── Event stream rendering ──
+  const streamEl = $("event-stream");
+  const MAX_LINES = 200;
+  function renderEvent(rec) {
+    if (paused) return;
+    const kind = rec.kind || "UNKNOWN";
+    if (!enabledKinds.has(kind)) return;
+    const ts = (rec.ts || "").substring(11, 19);
+    const evt = rec.event || "?";
+    const state = rec.state || "—";
+    const hasDrift = !!rec.drift;
+    const line = document.createElement("div");
+    line.className = `event-line ${kind}` + (hasDrift ? " drift" : "");
+    line.innerHTML = `
+      <span class="ts">${ts}</span>
+      <span class="kind">${kind.padEnd(13)}</span>
+      <span class="state">${state.padEnd(8)}</span>
+      <span class="evt">${escapeHtml(evt)}</span>
+    `;
+    streamEl.appendChild(line);
+    while (streamEl.children.length > MAX_LINES) {
+      streamEl.removeChild(streamEl.firstChild);
+    }
+    streamEl.scrollTop = streamEl.scrollHeight;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>'"]/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
+    }[c]));
+  }
+
+  // ── Render current run panels ──
+  function renderCurrentRun(run) {
+    if (!run) {
+      $("state-current").textContent = "—";
+      $("state-current").className = "state-current";
+      $("state-previous").textContent = "previous: —";
+      $("health-score").textContent = "—";
+      $("health-verdict").textContent = "—";
+      $("gauge-fill").style.width = "0%";
+      $("drift-stat").textContent = "0 drifts";
+      $("drift-stat").className = "drift-stat zero";
+      $("drift-list").innerHTML = '<div class="empty">No drifts detected</div>';
+      $("loops-list").innerHTML = '<div class="empty">No active loops</div>';
+      $("failure-box").innerHTML = '<div class="empty">No failures yet</div>';
+      $("kind-counts").innerHTML = '';
+      return;
+    }
+
+    // State
+    const cs = (run.current_state || "setup").toLowerCase();
+    $("state-current").textContent = cs.toUpperCase();
+    $("state-current").className = `state-current ${cs}`;
+    const prev = run.previous_state ? run.previous_state.toUpperCase() : "—";
+    $("state-previous").textContent = `previous: ${prev}`;
+
+    // History
+    const histEl = $("state-history");
+    histEl.innerHTML = "";
+    (run.state_history || []).slice(-8).forEach(h => {
+      const d = document.createElement("div");
+      d.className = "item";
+      d.innerHTML = `<span>${h.from}</span> <span class="arrow">→</span> <strong>${h.to}</strong>
+                     <span class="arrow"> via</span> ${escapeHtml(h.via || "")}`;
+      histEl.appendChild(d);
+    });
+
+    // Health
+    const score = run.health_score || 0;
+    const verdict = (run.health_verdict || "—").toLowerCase();
+    $("health-score").textContent = score;
+    $("health-score").className = `score ${verdict}`;
+    $("health-verdict").textContent = verdict.toUpperCase();
+    $("gauge-fill").style.width = `${Math.max(0, Math.min(100, score))}%`;
+    $("h-events").textContent = run.event_count || 0;
+    $("h-elapsed").textContent = (run.elapsed_s || 0).toFixed(1) + "s";
+    $("h-outcome").textContent = run.exit_outcome || "in_progress";
+
+    // Drift
+    const dc = run.drift_count || 0;
+    $("drift-stat").textContent = `${dc} drift${dc === 1 ? "" : "s"}`;
+    $("drift-stat").className = `drift-stat ${dc === 0 ? "zero" : "has"}`;
+    const dList = $("drift-list");
+    dList.innerHTML = "";
+    if ((run.drifts || []).length === 0) {
+      dList.innerHTML = '<div class="empty">No drifts detected</div>';
+    } else {
+      run.drifts.slice(-10).reverse().forEach(d => {
+        const el = document.createElement("div");
+        el.className = "drift-item";
+        el.innerHTML = `
+          <div class="kind">${escapeHtml(d.kind)}</div>
+          <div>event: <strong>${escapeHtml(d.event || "?")}</strong></div>
+          <div class="detail">${escapeHtml(d.detail || "")}</div>
+        `;
+        dList.appendChild(el);
+      });
+    }
+
+    // Loops
+    const lEl = $("loops-list");
+    lEl.innerHTML = "";
+    const loops = (run.active_loops || []).sort((a,b) => b.count - a.count);
+    if (loops.length === 0) {
+      lEl.innerHTML = '<div class="empty">No active loops</div>';
+    } else {
+      loops.slice(0, 10).forEach(l => {
+        const c = l.count;
+        const cls = c >= 15 ? "danger" : c >= 8 ? "hot" : c >= 4 ? "warm" : "cold";
+        const d = document.createElement("div");
+        d.className = "loop-item";
+        d.innerHTML = `<span>${escapeHtml(l.event)}</span><span class="count ${cls}">${c}×</span>`;
+        lEl.appendChild(d);
+      });
+    }
+
+    // Failure trace
+    const fbox = $("failure-box");
+    const trace = run.failure_trace || [];
+    if (trace.length === 0) {
+      fbox.innerHTML = '<div class="empty" style="text-align:center;">No failures yet</div>';
+    } else {
+      const steps = trace.map((s, i) => {
+        const isLast = (i === trace.length - 1);
+        const cls = isLast ? "failure" : "step";
+        const arrow = isLast ? "" : '<span class="arrow"> ↓</span>';
+        return `<div class="${cls}">${escapeHtml(s)}${arrow}</div>`;
+      }).join("");
+      fbox.innerHTML = `${steps}
+        <div class="outcome">outcome: ${run.exit_outcome || "in_progress"}</div>`;
+    }
+
+    // Kind counts
+    const kc = $("kind-counts");
+    kc.innerHTML = "";
+    const kinds = run.kind_counts || {};
+    ["STATE","ACTION","OBSERVABILITY","NOISE","UNKNOWN"].forEach(k => {
+      const v = kinds[k] || 0;
+      const row = document.createElement("div");
+      row.className = `count-row ${k}`;
+      row.innerHTML = `<span class="label">${k}</span><span class="value">${v}</span>`;
+      kc.appendChild(row);
+    });
+  }
+
+  // ── Render runs sidebar ──
+  let selectedRun = null;
+  function renderRuns(runs, globalSummary) {
+    const c = $("runs-active");
+    c.innerHTML = "";
+    if (!runs || runs.length === 0) {
+      c.innerHTML = '<div class="empty">No active runs</div>';
+    } else {
+      runs.slice(0, 8).forEach(r => {
+        const pill = document.createElement("span");
+        pill.className = "pill" + (selectedRun === null ? " active" : "");
+        const verdict = (r.health_verdict || "").toLowerCase();
+        pill.innerHTML = `slot ${r.slot} · ${r.health_score}/100`;
+        pill.title = `${r.run_id} · ${r.current_state}`;
+        pill.addEventListener("click", () => {
+          selectedRun = r.slot;
+          fetchRun(r.slot, r.run_id);
+        });
+        c.appendChild(pill);
+      });
+    }
+    if (globalSummary) {
+      $("g-tracked").textContent = globalSummary.runs_tracked || 0;
+      $("g-active").textContent = globalSummary.runs_active || 0;
+      $("g-events").textContent = globalSummary.global_event_count || 0;
+      $("g-avg-health").textContent = globalSummary.avg_health_score || 0;
+    }
+  }
+
+  // ── API polling ──
+  async function fetchAll() {
+    try {
+      const r = await fetch("/api/diagnostics/runs");
+      if (!r.ok) return;
+      const data = await r.json();
+      renderRuns(data.runs, data.global);
+      // Render current (más reciente)
+      if (selectedRun === null) {
+        const cr = await fetch("/api/diagnostics/run/current");
+        if (cr.ok) {
+          const cj = await cr.json();
+          renderCurrentRun(cj.run);
+        }
+      }
+    } catch (e) {}
+  }
+  async function fetchRun(slot, runId) {
+    try {
+      const r = await fetch(`/api/diagnostics/run/${slot}?run_id=${encodeURIComponent(runId || "default")}`);
+      if (!r.ok) return;
+      const data = await r.json();
+      renderCurrentRun(data.run);
+    } catch (e) {}
+  }
+
+  // ── SSE connection ──
+  function connectSSE() {
+    let es;
+    try {
+      es = new EventSource("/api/diagnostics/events/stream");
+    } catch (e) {
+      connDot.classList.add("disconnected");
+      connText.textContent = "SSE unavailable";
+      return;
+    }
+    es.addEventListener("hello", () => {
+      connDot.classList.remove("disconnected");
+      connText.textContent = "live";
+    });
+    es.onmessage = (e) => {
+      try {
+        const rec = JSON.parse(e.data);
+        evtCounter++;
+        rateWindow.push(Date.now());
+        renderEvent(rec);
+      } catch (err) {}
+    };
+    es.onerror = () => {
+      connDot.classList.add("disconnected");
+      connText.textContent = "reconnecting...";
+      es.close();
+      setTimeout(connectSSE, 2000);
+    };
+  }
+
+  // ── Initial state ──
+  renderCurrentRun(null);
+  fetchAll();
+  setInterval(fetchAll, 1500);
+  connectSSE();
+
+  // ── M13.4: PurchaseGate live pane (3s poll, read-only) ──
+  async function refreshGate() {
+    try {
+      const r = await fetch("/api/diagnostics/purchase_gate");
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.error) {
+        const me = $("gate-mode"); if (me) me.textContent = "ERROR";
+        return;
+      }
+      const setText = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+      const cfg = d.config || {};
+      const cnt = d.counters || {};
+      const rts = d.rates || {};
+      const dnb = d.denial_breakdown || {};
+      const cch = d.cache_state || {};
+
+      setText("gate-mode", cfg.mode || "—");
+      setText("gate-enabled", cfg.global_enabled ? "ON" : "OFF");
+      setText("gate-attempted", cnt.purchase_attempted_count ?? 0);
+      setText("gate-live", cnt.purchase_live_count ?? 0);
+      setText("gate-dry-run", cnt.purchase_dry_run_count ?? 0);
+      setText("gate-blocked", cnt.purchase_blocked_count ?? 0);
+      setText("gate-errors", cnt.internal_errors ?? 0);
+      const dryRate = (rts.purchase_dry_run_rate ?? 0) * 100;
+      const blockRate = (rts.purchase_block_rate ?? 0) * 100;
+      setText("gate-dry-rate", dryRate.toFixed(1) + "%");
+      setText("gate-block-rate", blockRate.toFixed(1) + "%");
+      setText("gate-idem", cch.idempotency_size ?? 0);
+      setText("gate-locks", cch.session_locks_count ?? 0);
+
+      const denials = Object.entries(dnb)
+        .filter(([k, v]) => v > 0)
+        .map(([k, v]) => k + ": " + v)
+        .join(" · ");
+      const dEl = $("gate-denials");
+      if (dEl) dEl.textContent = denials || "(no denials)";
+    } catch (e) { /* silent fail — read-only pane */ }
+  }
+  refreshGate();
+  setInterval(refreshGate, 3000);
+})();
+</script>
+
+</body>
+</html>

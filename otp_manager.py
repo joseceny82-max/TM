@@ -852,13 +852,56 @@ def fetch_otp_for_alias(alias_email: str,
 #  Persistencia history + stats
 # ═══════════════════════════════════════════════════════════════
 def _persist_history(entries: List[Dict[str, Any]]):
+    """Persiste OTPs en historial con filtros (norma user 2026-05-12):
+      1. Excluir sources de test (`pytest`, `selftest`, `self-test`, `mock`,
+         `test`) — solo OTPs REALES de imap/imap_alias/manual.
+      2. Deduplicar: si el MISMO `code` aparece de la MISMA `source` en los
+         últimos 60s, no añadir copia. Evita el efecto 'todos iguales' del
+         usuario cuando varios checks devuelven el mismo OTP fresco."""
+    if not entries:
+        return
+    # Filtrar test sources — cualquier source que contenga estos tokens
+    _BLOCKED_TOKENS = ("pytest", "selftest", "self-test", "self_test",
+                       "e2e_test", "e2e-test", "e2etest", "smoke",
+                       "mock", "stub", "fake", "dummy",
+                       "test_", "_test", "unit_test", "unittest")
+    def _is_test_source(src: str) -> bool:
+        s = (src or "").lower().strip()
+        if not s: return False
+        if s in ("test",): return True
+        return any(t in s for t in _BLOCKED_TOKENS)
+    real_entries = [e for e in entries if not _is_test_source(e.get("source"))]
+    if not real_entries:
+        return
     with _lock:
         cfg = get_config()
         hist = cfg.get("history") or []
-        for e in entries:
+        now = datetime.now()
+        for e in real_entries:
+            # Deduplicar: skip si misma code+source en últimos 60s
+            try:
+                e_code = e.get("code")
+                e_src = e.get("source")
+                e_acc = e.get("account_id") or e.get("account_email")
+                is_dup = False
+                for h in hist[:20]:   # solo chequear las 20 más recientes
+                    if (h.get("code") == e_code
+                          and h.get("source") == e_src
+                          and (h.get("account_id") or h.get("account_email")) == e_acc):
+                        try:
+                            t = datetime.fromisoformat(h.get("ts")
+                                or h.get("extracted_at") or "")
+                            if (now - t).total_seconds() < 60:
+                                is_dup = True
+                                break
+                        except Exception: continue
+                if is_dup:
+                    continue
+            except Exception: pass
             hist.insert(0, e)
         cfg["history"] = hist[:200]
-        cfg["stats"]["total_received"] = cfg["stats"].get("total_received", 0) + len(entries)
+        cfg["stats"]["total_received"] = (cfg["stats"].get("total_received", 0)
+                                            + len(real_entries))
         json_atomic.save(config.ruta(_CONFIG_KEY), cfg)
 
 

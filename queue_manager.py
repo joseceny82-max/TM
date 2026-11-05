@@ -423,7 +423,7 @@ def _spawn_purchase_flow(s: QueueSession) -> None:
     try:
         import subprocess
         import sys
-        args = [sys.executable, os.path.join(PROYECTO, "_compra_parallel.py"),
+        args = [sys.executable, os.path.join(PROYECTO, "_compra_with_swap.py"),
                 "--slot", str(s.purchase_flow_args.get("slot", 1)),
                 "--event-url", s.purchase_flow_args.get("event_url") or s.tm_url,
                 "--qty", str(s.purchase_flow_args.get("qty", 2)),
