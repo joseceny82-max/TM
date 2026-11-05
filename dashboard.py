@@ -8065,7 +8065,7 @@ def api_accounts_links():
 @login_required
 def api_bot_proxies_raw():
     import os
-    path = os.path.join(config.BASE_DIR, "proxies.txt") if hasattr(config, "BASE_DIR") else "proxies.txt"
+    path = config.ruta("proxies.txt")
     if request.method == "POST":
         d = request.get_json() or {}
         try:

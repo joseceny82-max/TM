@@ -37,11 +37,7 @@ def _load_pool(force: bool = False) -> List[Dict[str, Any]]:
         return _pool_cache["proxies"]
 
     proxies: List[Dict[str, Any]] = []
-    paths = [_PROXIES_TXT]
-    try:
-        if hasattr(config, "BASE_DIR"):
-            paths.append(os.path.join(config.BASE_DIR, _PROXIES_TXT))
-    except Exception: pass
+    paths = [config.ruta(_PROXIES_TXT)]
 
     for path in paths:
         if not os.path.isfile(path): continue

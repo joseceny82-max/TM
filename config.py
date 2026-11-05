@@ -42,6 +42,7 @@ DATOS_NOTAS          = os.path.join(DATOS_DIR, "notas")
 DATOS_NOTAS_FILES    = os.path.join(DATOS_NOTAS, "files")
 DATOS_CONFIG_APP     = os.path.join(DATOS_DIR, "config_app")
 DATOS_DOMINIOS       = os.path.join(DATOS_DIR, "dominios")
+DATOS_ESTADO         = os.path.join(DATOS_DIR, "estado")
 
 # Subcarpetas Sniper Bot
 SB_PROXIES     = os.path.join(DATOS_SNIPER_BOT, "proxies")
@@ -146,6 +147,41 @@ RUTAS = {
     "bot_groups.json":        os.path.join(DATOS_SNIPER_BOT, "groups.json"),
     "queues.json":            os.path.join(DATOS_FILAS, "queues.json"),
     "cookies.json":           os.path.join(DATOS_COOKIES, "cookies.json"),
+
+    # --- Estado suelto (antes en raiz) ---
+    "proxy_health.json":              os.path.join(DATOS_ESTADO, "proxy_health.json"),
+    "acpat_pool.json":                os.path.join(DATOS_ESTADO, "acpat_pool.json"),
+    "cookie_warm_log.json":           os.path.join(DATOS_ESTADO, "cookie_warm_log.json"),
+    "behavior_chain_matrix.json":     os.path.join(DATOS_ESTADO, "behavior_chain_matrix.json"),
+    "behavior_chain_log.json":        os.path.join(DATOS_ESTADO, "behavior_chain_log.json"),
+    "event_discovery.json":           os.path.join(DATOS_ESTADO, "event_discovery.json"),
+    "featured_cache.json":            os.path.join(DATOS_ESTADO, "featured_cache.json"),
+    "health_monitor.json":            os.path.join(DATOS_ESTADO, "health_monitor.json"),
+    "captcha_budget.json":            os.path.join(DATOS_ESTADO, "captcha_budget.json"),
+    "hyper_sdk_chain_config.json":    os.path.join(DATOS_ESTADO, "hyper_sdk_chain_config.json"),
+    "hyper_sdk_chain_stats.json":     os.path.join(DATOS_ESTADO, "hyper_sdk_chain_stats.json"),
+    "hyper_sdk_chain_log.json":       os.path.join(DATOS_ESTADO, "hyper_sdk_chain_log.json"),
+    "imperva_cache.json":             os.path.join(DATOS_ESTADO, "imperva_cache.json"),
+    "otp_3ds_config.json":            os.path.join(DATOS_ESTADO, "otp_3ds_config.json"),
+    "otp_3ds_log.json":               os.path.join(DATOS_ESTADO, "otp_3ds_log.json"),
+    "otp_3ds_autofill_config.json":   os.path.join(DATOS_ESTADO, "otp_3ds_autofill_config.json"),
+    "otp_3ds_autofill_stats.json":    os.path.join(DATOS_ESTADO, "otp_3ds_autofill_stats.json"),
+    "otp_3ds_webhook_inbox.json":     os.path.join(DATOS_ESTADO, "otp_3ds_webhook_inbox.json"),
+    "polling_rotate_state.json":      os.path.join(DATOS_ESTADO, "polling_rotate_state.json"),
+    "polling_rotate_log.json":        os.path.join(DATOS_ESTADO, "polling_rotate_log.json"),
+    "presale_codes.json":             os.path.join(DATOS_ESTADO, "presale_codes.json"),
+    "presale_farming_config.json":    os.path.join(DATOS_ESTADO, "presale_farming_config.json"),
+    "proxy_sticky_state.json":        os.path.join(DATOS_ESTADO, "proxy_sticky_state.json"),
+    "proxy_sticky_iplog.json":        os.path.join(DATOS_ESTADO, "proxy_sticky_iplog.json"),
+    "queue_monitor_state.json":       os.path.join(DATOS_ESTADO, "queue_monitor_state.json"),
+    "research_audit.json":            os.path.join(DATOS_ESTADO, "research_audit.json"),
+    "session_persistence_log.json":   os.path.join(DATOS_ESTADO, "session_persistence_log.json"),
+    "http2_frame_stats.json":         os.path.join(DATOS_ESTADO, "http2_frame_stats.json"),
+    "http2_frame_config.json":        os.path.join(DATOS_ESTADO, "http2_frame_config.json"),
+    "akamai_sbsd_log.json":           os.path.join(DATOS_ESTADO, "akamai_sbsd_log.json"),
+    "proxies.txt":                    os.path.join(DATOS_ESTADO, "proxies.txt"),
+    "_instance_id.txt":               os.path.join(DATOS_ESTADO, "_instance_id.txt"),
+    "kv_store.db":                    os.path.join(DATOS_ESTADO, "kv_store.db"),
 }
 
 LOGS = {
@@ -190,3 +226,15 @@ SECRET_KEY       = "tm-perros-secret-change-me"
 MONITOR_INTERVAL = 30
 APP_NAME         = "TM PERROS"
 APP_VERSION      = "1.0.0"
+
+
+def self_test() -> dict:
+    """Valida que ruta() resuelve nombres de estado a datos/estado/."""
+    try:
+        for name in ("proxy_health.json", "proxies.txt", "kv_store.db", "_instance_id.txt"):
+            p = ruta(name)
+            assert os.path.isabs(p), name
+            assert os.path.dirname(p) == DATOS_ESTADO, f"{name} -> {p}"
+        return {"ok": True, "rutas": len(RUTAS)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

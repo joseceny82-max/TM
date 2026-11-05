@@ -16,11 +16,12 @@ from typing import Optional, Dict, Any, List
 
 import json_atomic
 import otp_3ds  # módulo IMAP existente
+import config
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-WEBHOOK_PATH = os.path.join(ROOT, 'otp_3ds_webhook_inbox.json')
-STATS_PATH = os.path.join(ROOT, 'otp_3ds_autofill_stats.json')
-CONFIG_PATH = os.path.join(ROOT, 'otp_3ds_autofill_config.json')
+WEBHOOK_PATH = config.ruta('otp_3ds_webhook_inbox.json')
+STATS_PATH = config.ruta('otp_3ds_autofill_stats.json')
+CONFIG_PATH = config.ruta('otp_3ds_autofill_config.json')
 
 # Patterns por banco (regex case-insensitive aplicado a subject + body).
 # Cada banco tiene su frase típica + extracción del código de 6 dígitos.
@@ -572,3 +573,17 @@ def test_pattern(text: str, bank: Optional[str] = None) -> Dict[str, Any]:
                 if m: matches.append({'bank': b, 'pattern': p, 'code': m.group(1)})
             except re.error: pass
     return {'ok': True, 'matches': matches, 'count': len(matches)}
+
+
+def self_test() -> dict:
+    """Valida patterns por banco y resolución de paths de estado."""
+    try:
+        assert isinstance(BANK_PATTERNS, dict) and len(BANK_PATTERNS) > 0
+        for paths in BANK_PATTERNS.values():
+            for p in paths:
+                re.compile(p)
+        for p in (CONFIG_PATH, STATS_PATH, WEBHOOK_PATH):
+            assert os.path.isabs(p) and "estado" in p, p
+        return {"ok": True, "banks": len(BANK_PATTERNS)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

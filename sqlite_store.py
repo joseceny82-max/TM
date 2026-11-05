@@ -30,8 +30,10 @@ import time
 from datetime import datetime
 from typing import Any, Dict, Optional
 
+import config
+
 PROYECTO = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(PROYECTO, "kv_store.db")
+DB_PATH = config.ruta("kv_store.db")
 _lock = threading.RLock()
 _db: Optional[sqlite3.Connection] = None
 

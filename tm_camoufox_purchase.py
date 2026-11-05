@@ -51,7 +51,16 @@ def _bezier_points(p0, p1, n=25):
     return pts
 
 
-def human_mouse_to(page, x, y, last=None):
+def self_test() -> dict:
+    """Valida utilidades puras sin lanzar navegador."""
+    try:
+        pts = _bezier_points((0, 0), (100, 100), n=10)
+        assert len(pts) == 11 and pts[0] == (0, 0) and pts[-1] == (100, 100)
+        import config
+        assert os.path.isabs(config.ruta("proxies.txt"))
+        return {"ok": True, "event_url": EVENT_URL}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
     if last is None: last = (random.randint(100,800), random.randint(100,600))
     n = random.randint(20,40)
     pts = _bezier_points(last, (x,y), n=n)
@@ -239,7 +248,8 @@ def main():
     elif os.environ.get('USE_QUANTUM_PROXY') == '1':
         # Pickear línea aleatoria de proxies.txt para rotar sessionId
         try:
-            with open(os.path.join(os.path.dirname(__file__), 'proxies.txt')) as f:
+            import config
+            with open(config.ruta('proxies.txt')) as f:
                 lines = [l.strip() for l in f if l.strip()]
             line = random.choice(lines)  # host:port:user:pass
             parts = line.split(':')

@@ -19,10 +19,11 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
 import json_atomic
+import config
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(ROOT, 'http2_frame_config.json')
-STATS_PATH = os.path.join(ROOT, 'http2_frame_stats.json')
+CONFIG_PATH = config.ruta('http2_frame_config.json')
+STATS_PATH = config.ruta('http2_frame_stats.json')
 
 # Perfil Chrome 131 — capturado con Wireshark (frames SETTINGS).
 # Estos valores deben mantenerse sincronizados con la versión Chrome usada.

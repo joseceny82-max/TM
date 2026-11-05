@@ -206,13 +206,7 @@ def _check_accounts(lang: str = "es") -> Dict[str, Any]:
 
 def _read_proxies_txt() -> List[Dict[str, Any]]:
     """Lee proxies.txt (formato bulk del usuario) y devuelve entries normalizadas."""
-    paths = []
-    try:
-        if hasattr(config, "BASE_DIR"):
-            paths.append(os.path.join(config.BASE_DIR, "proxies.txt"))
-    except Exception:
-        pass
-    paths.append("proxies.txt")
+    paths = [config.ruta("proxies.txt")]
     items: List[Dict[str, Any]] = []
     for path in paths:
         if not os.path.isfile(path):
