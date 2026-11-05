@@ -175,6 +175,7 @@ RUTAS = {
     "proxy_sticky_iplog.json":        os.path.join(DATOS_ESTADO, "proxy_sticky_iplog.json"),
     "queue_monitor_state.json":       os.path.join(DATOS_ESTADO, "queue_monitor_state.json"),
     "research_audit.json":            os.path.join(DATOS_ESTADO, "research_audit.json"),
+    "compliance_gate.json":           os.path.join(DATOS_ESTADO, "compliance_gate.json"),
     "session_persistence_log.json":   os.path.join(DATOS_ESTADO, "session_persistence_log.json"),
     "http2_frame_stats.json":         os.path.join(DATOS_ESTADO, "http2_frame_stats.json"),
     "http2_frame_config.json":        os.path.join(DATOS_ESTADO, "http2_frame_config.json"),
