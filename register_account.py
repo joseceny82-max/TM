@@ -29,7 +29,21 @@ os.chdir(r'C:\Users\user\TM\proyecto')
 import requests
 from playwright.sync_api import sync_playwright, Page, BrowserContext
 
-import bot_orchestrator as bo
+import bot_orchestrator as _bo_morelogin
+
+ENGINE = os.environ.get('TM_ENGINE', 'morelogin').lower()
+
+
+def _load_engine(engine: str = None):
+    """Motor de perfiles: 'morelogin' (default) o 'silent' (Silent del usuario).
+    silent_engine expone la misma superficie que bot_orchestrator."""
+    if (engine or ENGINE) == 'silent':
+        import silent_engine
+        return silent_engine
+    return _bo_morelogin
+
+
+bo = _load_engine()
 import sms_receiver
 import cookie_warmer
 import account_manager as am
@@ -265,7 +279,7 @@ def human_type(loc, text: str, lo: int = 35, hi: int = 70):
 def _pick_es_profile_smart(burned: set) -> Optional[dict]:
     """Pick perfil ES detectando país por countryCode O por username del proxy.
     Verifica proxy via HTTP request directo ANTES de devolver. Si falla, sigue."""
-    import bot_orchestrator as bo
+    bo = _load_engine()
     used_ips = load_used_ips()
     with bo._pick_lock:
         for page_no in range(1, 21):
@@ -2870,7 +2884,13 @@ def main():
     p.add_argument('--first', help='override Nombre')
     p.add_argument('--last', help='override Apellidos')
     p.add_argument('--burned', help='perfiles a excluir CSV')
+    p.add_argument('--engine', choices=['morelogin', 'silent'], default=None,
+                   help='motor de perfiles (default: env TM_ENGINE o morelogin)')
     args = p.parse_args()
+
+    if args.engine and args.engine != ENGINE:
+        global bo
+        bo = _load_engine(args.engine)
 
     burned = set((args.burned or '').split(',')) - {''}
     runs = []
