@@ -170,8 +170,21 @@ def _has_self_test(path: Path) -> bool:
         return False
 
 
+_CLASSIFY_CACHE: Dict[str, Any] = {"at": 0.0, "result": None}
+_CLASSIFY_TTL_S = 300.0
+
+
 def classify_modules() -> Dict[str, Any]:
-    """Clasifica TODOS los módulos del proyecto."""
+    """Clasifica TODOS los módulos del proyecto.
+
+    Resultado cacheado 5 min: el escaneo tarda ~35s y el widget del
+    dashboard lo pide al entrar — sin cache cada petición bloqueaba.
+    """
+    import time
+    now = time.time()
+    if _CLASSIFY_CACHE["result"] is not None and \
+            now - _CLASSIFY_CACHE["at"] < _CLASSIFY_TTL_S:
+        return _CLASSIFY_CACHE["result"]
     all_files = list_all_files()
     modules = list_module_files()
     classified = []
@@ -191,7 +204,7 @@ def classify_modules() -> Dict[str, Any]:
         by_cat[cat].sort(key=lambda x: -x["loc"])
 
     total_loc = sum(c["loc"] for c in classified)
-    return {
+    result = {
         "generated_at": datetime.now().isoformat(),
         "totals": {
             "modules": len(classified),
@@ -205,6 +218,9 @@ def classify_modules() -> Dict[str, Any]:
         },
         "by_category": by_cat,
     }
+    _CLASSIFY_CACHE["result"] = result
+    _CLASSIFY_CACHE["at"] = now
+    return result
 
 
 def get_classification(module_name: str) -> Dict[str, Any]:
