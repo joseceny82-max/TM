@@ -3198,6 +3198,24 @@ def api_console_logs():
     return jsonify({"ok": True, "lines": lines})
 
 
+@app.route("/api/console/export")
+@login_required
+def api_console_export():
+    """Descarga el log del dashboard como archivo (botón Export de la consola)."""
+    from flask import Response
+    path = config.ruta("dashboard.log")
+    if not os.path.exists(path):
+        return Response("", mimetype="text/plain", headers={
+            "Content-Disposition": "attachment; filename=console.log"})
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+    return Response(content, mimetype="text/plain", headers={
+        "Content-Disposition": "attachment; filename=console.log"})
+
+
 # ==========================================
 #  API — BACKUP
 # ==========================================
