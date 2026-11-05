@@ -12,6 +12,38 @@ y añade un bloque aquí. Nunca se reutiliza un número.
 
 ---
 
+## [1.1.0] - 2026-11-05
+
+**Motor de perfiles Silent + auto-actualización + fixes de dashboard.**
+
+### Added
+- `silent_engine.py` — adaptador de la API local de Silent (perfiles,
+  enganche CDP, cleanup) como alternativa a MoreLogin; drop-in de la
+  superficie de `bot_orchestrator`.
+- Registro con `--engine silent` (`register_account.py`, también vía
+  `TM_ENGINE=silent`); default inalterado (morelogin).
+- Compra con `--engine silent` (`_compra_parallel.py`, tercer engine junto
+  a morelogin/camoufox); passthrough de `engine` en `queue_manager` y
+  `tm_real_purchase`.
+- `auto_updater.py` — daemon de auto-actualización desde `origin/main`:
+  fetch → pull --ff-only (siempre que el árbol esté limpio) → gate pytest
+  (rollback automático si falla) → reinicio controlado del dashboard con
+  espera de `/api/healthz`. Estado en `logs/auto_updater_state.json`.
+
+### Fixed
+- `/api/console/export` — la ruta no existía y el botón Export de la
+  pestaña Consola daba 404 permanente.
+- `/api/honest-dashboard` — caché TTL 5 min en `classify_modules()`
+  (era ~34s por petición; ahora 0.004s en caliente).
+- Pestaña Filas verificada end-to-end (enqueue, batch, position,
+  swarm-broadcast, accept, claim, auto-rejoin del daemon, export CSV).
+
+### Changed
+- Dashboard consolidado: un único proceso en el puerto 5055
+  (antes 3 procesos competían el puerto desde copias distintas).
+
+---
+
 ## [1.0.0] - 2026-11-05
 
 **Baseline consolidada del proyecto.** Consolida ~83 memorias de desarrollo
