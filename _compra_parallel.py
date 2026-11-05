@@ -200,11 +200,13 @@ def parse_args():
     p.add_argument("--confirm", action="store_true",
                     help="SOLO si quieres pulsar Pagar al final (peligroso)")
     p.add_argument("--engine", default="morelogin",
-                    choices=("morelogin", "camoufox"),
+                    choices=("morelogin", "camoufox", "silent"),
                     help="Motor de browser: morelogin (default, perfiles "
-                         "MoreLogin + Quantum proxy embebido) o camoufox "
+                         "MoreLogin + Quantum proxy embebido), camoufox "
                          "(Firefox C++ patched, mejor stealth Akamai, "
-                         "usa Quantum proxy directo con sessionid random)")
+                         "usa Quantum proxy directo con sessionid random) "
+                         "o silent (perfiles Silent con proxy ya embebido "
+                         "en el perfil, CDP via API local 127.0.0.1:8788)")
     p.add_argument("--headless", action="store_true",
                     help="Solo camoufox: lanzar sin ventana visible")
     return p.parse_args()
@@ -1955,6 +1957,34 @@ def pick_morelogin_profile(slot):
     return None
 
 
+def pick_silent_profile(slot):
+    """Pick perfil Silent (proxy embebido en el perfil, sin proxy Quantum).
+    Devuelve dict {profile, env_id, ip} adaptado al shape del flow, o None.
+    Import lazy: silent_engine exige SILENT_TOKEN solo cuando se usa."""
+    try:
+        import silent_engine as se
+    except ImportError as _ie:
+        log(slot, "FATAL_silent_import", err=str(_ie)[:120])
+        return None
+    try:
+        prof = se._pick_fresh_profile('ES', set())
+    except Exception as _pe:
+        log(slot, "silent_pick_err", err=str(_pe)[:160])
+        return None
+    if not prof:
+        log(slot, "silent_no_profile_available")
+        return None
+    # Shape esperado por el resto del flow. SIN proxy_username/proxy_host:
+    # el proxy va embebido en el perfil Silent → pre_flight Quantum y
+    # proxy en launch NO aplican (quedan guardados por prof.get(...)).
+    prof.setdefault('ip', '')
+    prof['proxy_country'] = 'ES'
+    log(slot, "silent_profile_picked",
+        profile=prof.get('profile'), env_id=prof.get('env_id'),
+        ip=prof.get('ip'))
+    return prof
+
+
 def pick_account(slot, used_ids, bad_creds=None):
     """Pick cuenta TM ES activa con tarjeta asociada, no usada por otro slot
     y no marcada con credenciales inválidas.
@@ -2593,12 +2623,15 @@ def main():
     # solo cambia el navegador).
     prof = None
     engine = getattr(args, 'engine', 'morelogin')
-    if engine == 'morelogin':
+    if engine in ('morelogin', 'silent'):
         for retry in range(RETRY_PROFILE_PICK):
             if not _acquire_pick_mutex(timeout=30):
                 log(slot, "pick_mutex_timeout"); time.sleep(3); continue
             try:
-                prof = pick_morelogin_profile(slot)
+                if engine == 'silent':
+                    prof = pick_silent_profile(slot)
+                else:
+                    prof = pick_morelogin_profile(slot)
             finally:
                 _release_pick_mutex()
             if prof: break
@@ -2846,6 +2879,53 @@ def main():
             write_outcome(slot, {
                 "status": "fatal_profile_start_exhausted",
                 "step_reached": "profile_start",
+                "swap_attempts_exhausted": True,
+                "rc": 1,
+            })
+            return 1
+        time.sleep(5)
+
+    elif engine == 'silent':
+        # Silent: perfil ya tiene proxy embebido; /open con cdp:true devuelve
+        # el puerto CDP y el connect es idéntico a morelogin (mismo `port`).
+        import silent_engine as _se
+        port = None
+        for swap_attempt in range(RETRY_PROFILE_START):
+            port = _se._start_profile(prof['env_id'])
+            if port:
+                log(slot, "profile_started", port=port,
+                    profile=prof.get('profile'), engine='silent')
+                break
+            log(slot, "profile_start_failed",
+                profile=prof.get('profile'),
+                msg="Silent devolvio None: habilita CDP via API en "
+                    "Ajustes de Silent (y revisa SILENT_TOKEN)",
+                swap_attempt=swap_attempt+1)
+            # Liberar y pickear OTRO perfil Silent
+            try:
+                _se._release_profile(prof.get('profile'))
+            except Exception: pass
+            if not _acquire_pick_mutex(timeout=15):
+                log(slot, "pick_mutex_timeout_after_swap")
+                break
+            try:
+                new_prof = pick_silent_profile(slot)
+            finally:
+                _release_pick_mutex()
+            if not new_prof:
+                log(slot, "no_more_profiles_after_swap")
+                break
+            prof = new_prof
+            log(slot, "profile_swap", to=prof.get('profile'), ip=prof.get('ip'))
+            time.sleep(2)
+        if not port:
+            log(slot, "FATAL_profile_start",
+                err="silent: all swap_attempts exhausted. Silent: habilita "
+                    "CDP via API en Ajustes de Silent")
+            write_outcome(slot, {
+                "status": "fatal_profile_start_exhausted",
+                "step_reached": "profile_start",
+                "engine": "silent",
                 "swap_attempts_exhausted": True,
                 "rc": 1,
             })
@@ -4749,7 +4829,24 @@ def main():
             except Exception as _ce:
                 log(slot, "camoufox_explicit_cleanup_err", err=str(_ce)[:120])
         # ─── Cerrar browser + locks ───
-        if engine == 'morelogin':
+        if engine == 'silent':
+            # Silent: cerrar via API (+ limpieza CDP best-effort interna de
+            # silent_engine). El proxy está embebido: no hay destroy/burn.
+            try:
+                if '_pw_dummy' in dir() and _pw_dummy is not None:
+                    _pw_dummy.__exit__(None, None, None)
+            except Exception: pass
+            try:
+                import silent_engine as _se
+                _close_res = _se._close_profile_clean(
+                    prof['env_id'], port, prof.get('profile', ''))
+                log(slot, "profile_closed", engine='silent',
+                    closed=_close_res.get('closed'),
+                    keep=_close_res.get('keep'),
+                    drop=_close_res.get('drop'))
+            except Exception as e:
+                log(slot, "profile_close_err", err=str(e)[:80])
+        elif engine == 'morelogin':
             try:
                 requests.post(f'{bo.MORELOGIN_API}/api/env/close',
                                json={'envId': prof['env_id']}, timeout=15)
@@ -4814,9 +4911,14 @@ def main():
                         errors=len(files_res.get('errors', [])))
             except Exception as _fe:
                 log(slot, "history_files_purge_err", err=str(_fe)[:120])
-        # Liberar locks (solo en MoreLogin; camoufox no usa active_profiles)
+        # Liberar locks (MoreLogin/Silent usan active_profiles; camoufox no)
         if engine == 'morelogin':
             _remove_active_profile(prof['profile'])
+        elif engine == 'silent':
+            try:
+                import silent_engine as _se
+                _se._release_profile(prof.get('profile', ''))
+            except Exception: pass
         try:
             with open(used_lock_path, encoding='utf-8') as f:
                 ids = set(json.load(f))
