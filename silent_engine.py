@@ -64,6 +64,15 @@ def _token() -> str:
             except OSError:
                 continue
     if not tok:
+        # Descubrimiento local de Silent: ~/.silent/api.json (token rotado en
+        # cada arranque de la app, scopes de agente incl. profiles:read/write).
+        try:
+            home = os.environ.get("USERPROFILE") or os.path.expanduser("~")
+            with open(os.path.join(home, ".silent", "api.json"), encoding="utf-8") as f:
+                tok = (json.load(f).get("token") or "").strip()
+        except (OSError, ValueError):
+            tok = ""
+    if not tok:
         raise RuntimeError(
             "Silent: falta token de API. Crea uno en Silent (Ajustes → API, "
             "scopes profiles:read+profiles:write) y ponlo en env SILENT_TOKEN "
