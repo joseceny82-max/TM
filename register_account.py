@@ -994,7 +994,9 @@ def fill_signup_form(page: Page, user: UserRow, run: 'RunState'):
       const errors = [];
       document.querySelectorAll('[role="alert"], [aria-invalid="true"], .error, [data-error]').forEach(e => {
         const t = (e.innerText || '').trim().slice(0, 100);
-        if (t) errors.push(t);
+        // TM lista los requisitos de password (12 chars/letra/número) en role=alert
+        // SIEMPRE, con sufijo "requirement met" cuando ya se cumplen — NO son errores.
+        if (t && !t.toLowerCase().includes('requirement met')) errors.push(t);
       });
       // Detectar mensajes de error específicos visibles
       const body = (document.body?.innerText || '').slice(0, 1500).toLowerCase();
@@ -1701,6 +1703,7 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             else:
                 PENDING_ORDERS_RECHECK.remove(prev)
         sms_resent = False
+        resend_hard_deadline = None  # tras el reenvío (2ª petición), ventana dura
         _rescued_orders = set()
         next_resend_probe = time.time() + 20
         next_resend_reprobe = None  # 2º probe ~30s tras el reenvío por si el click no registró
@@ -1711,6 +1714,12 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
         poll_interval = 2.0
         poll_round = 0
         while time.time() < deadline and not sms_code:
+            # Política usuario: si TM ya reenvió el SMS (2ª petición) y tampoco
+            # llega en su ventana, este número se da por muerto YA — cancelar y
+            # pedir OTRO, sin esperar el timeout completo del primer intento.
+            if sms_resent and resend_hard_deadline and time.time() > resend_hard_deadline:
+                log(f'  ⏰ reenvío consumido sin SMS ({SMS_RESEND_EXTRA_S}s) — número descartado, se pedirá OTRO')
+                break
             # TM a veces no entrega el primer SMS. Su enlace "puedes pedir uno
             # nuevo" solo se activa al acabar una cuenta atrás (~120 s): sondear
             # cada 5 s, pulsarlo una vez y dar SMS_RESEND_EXTRA_S más al reenvío.
@@ -1720,7 +1729,8 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                     hit = page.evaluate(SMS_RESEND_JS)
                     if hit:
                         sms_resent = True
-                        deadline = max(deadline, time.time() + SMS_RESEND_EXTRA_S)
+                        resend_hard_deadline = time.time() + SMS_RESEND_EXTRA_S
+                        deadline = max(deadline, resend_hard_deadline)
                         next_resend_reprobe = time.time() + 30
                         log(f'  🔁 SMS no llegó → reenvío pedido ("{hit}"), +{SMS_RESEND_EXTRA_S}s')
                 except Exception as e:
@@ -1880,8 +1890,7 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                     and avoid_provider != provider):
                 avoid_provider = provider
                 log(f'  🔀 failover: {provider} acumuló {provider_timeouts[provider]} timeouts '
-                    f'— próximos buys excluirán este provider (si otro tiene key+saldo; '
-                    f'si es el único usable se seguirá usando con aviso)')
+                    f'— próximos buys excluirán este provider')
             PENDING_ORDERS_RECHECK.append({'order': order, 'phone': phone,
                                            'ts': time.time(), 'provider': provider})
             continue
@@ -2444,11 +2453,29 @@ def _archive_abandoned(email: str, run: RunState, reason: str):
         archived['_abandoned_at'] = datetime.now(timezone.utc).isoformat()
         archived['_reason'] = reason[:200]
         archived['_run_id'] = run.run_id
+        # Mismo fix que remove_from_plantilla: los headers del archive y de la
+        # plantilla pueden divergir (plantilla tiene Seleccionado, archive viejo
+        # no). Escribir con las keys de `archived` desplaza columnas respecto al
+        # header existente → Email_TM acaba con el valor de Seleccionado.
         write_header = not os.path.isfile(abandoned_path) or os.path.getsize(abandoned_path) == 0
+        archive_fields = None
+        if not write_header:
+            try:
+                with open(abandoned_path, 'r', encoding='utf-8-sig', newline='') as f:
+                    archive_fields = next(_csv.reader(f), None)
+            except Exception:
+                archive_fields = None
+        if not archive_fields:
+            archive_fields = list(archived.keys())
+        else:
+            for k in ('_abandoned_at', '_reason', '_run_id'):
+                if k not in archive_fields:
+                    archive_fields.append(k)
+        safe_row = {k: archived.get(k, '') for k in archive_fields}
         with open(abandoned_path, 'a', encoding='utf-8-sig', newline='') as f:
-            w = _csv.DictWriter(f, fieldnames=list(archived.keys()))
+            w = _csv.DictWriter(f, fieldnames=archive_fields, extrasaction='ignore')
             if write_header: w.writeheader()
-            w.writerow(archived)
+            w.writerow(safe_row)
     _with_plantilla_lock(_do)
     _record_problem_in_tm_registrations(email, 'abandoned', reason, run)
 
