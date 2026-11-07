@@ -1132,11 +1132,12 @@ def _release_email_otp_lock():
 
 
 def _click_verificar_with_lock(page: Page) -> datetime:
-    """Lock cross-process serializa el click 'Verificar mi correo' + ESPACIO 12s para
+    """Lock cross-process serializa el click 'Verificar mi correo' + ESPACIO 3.5s para
     que iCloud HME digiera el envío antes de que otro proceso pida el suyo.
-    iCloud HME aplica throttle si recibe múltiples solicitudes <8s entre sí.
+    El throttle de iCloud es por CONEXIONES simultáneas, no por lecturas; como el lock
+    ya serializa los envíos, 3.5s de espacio son suficientes (antes 12s atascaba a 6 procs).
     Polling IMAP queda paralelo después de liberar lock."""
-    log('🔒 adquiriendo email_otp lock (12s espacio anti-iCloud-throttle)')
+    log('🔒 adquiriendo email_otp lock (3.5s espacio anti-iCloud-throttle)')
     got_lock = _acquire_email_otp_lock()
     if not got_lock:
         log('  ⚠ timeout lock — continuando sin él')
@@ -1147,12 +1148,12 @@ def _click_verificar_with_lock(page: Page) -> datetime:
         js_click(page, r'verificar mi correo|verify my email', exact=False)
         page.wait_for_timeout(400)
         sent_at = datetime.now(timezone.utc)
-        # Espaciado anti-throttle iCloud HME: 6s suficiente entre 2 peticiones.
-        page.wait_for_timeout(6000)
+        # Espaciado anti-throttle iCloud HME: 3.5s suficiente entre 2 peticiones (lock serializa).
+        page.wait_for_timeout(3500)
     finally:
         if got_lock:
             _release_email_otp_lock()
-            log('  🗝 lock liberado tras 6s (otros procs pueden ahora pedir OTP)')
+            log('  🗝 lock liberado tras 3.5s (otros procs pueden ahora pedir OTP)')
     return sent_at
 
 
@@ -1197,38 +1198,61 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     seen, otp = set(), None
 
     def _poll_imap_until(deadline_ts: float, sent_after: datetime) -> Optional[str]:
-        """Mantiene UNA conexión IMAP viva durante el ciclo. Filtro EXACTO por destinatario:
-        el email del user TIENE que ser uno de los `to:` (no substring) — evita cualquier
-        confusión entre alias parecidos en runs paralelos."""
+        """Mantiene UNA conexión IMAP viva durante el ciclo. El fetch va FILTRADO EN
+        SERVIDOR (SEARCH SINCE + TEXT destinatario) para no descargar/parsear todo el
+        mailbox — iCloud throttlea IMAP y re-escanear cientos de mails era el cuello de
+        botella con 6 procs en paralelo. Después se re-verifica con MATCH EXACTO por
+        destinatario en cliente (no substring) — evita confusión entre alias parecidos.
+        `seen` cachea UIDs ya procesados para no re-parsear mails antiguos."""
         nonlocal seen
         target_email = user.email.lower().strip()
+        # Criterio IMAP server-side: solo mensajes posteriores a sent_after y que
+        # mencionen el email del destinatario (TEXT busca en cabeceras+cuerpo).
+        # Si el search falla, caemos a fetch sin criterio (comportamiento antiguo).
+        since_str = sent_after.strftime('%d-%b-%Y')
+        try:
+            criteria = f'(SINCE {since_str} TEXT "{target_email}")'
+        except Exception:
+            criteria = 'ALL'
         try:
             with MailBox('imap.mail.me.com').login(user.contact_email, user.contact_pwd) as mb:
                 while time.time() < deadline_ts:
                     try:
-                        for m in mb.fetch(reverse=True, limit=8, mark_seen=False, bulk=False):
-                            if m.uid in seen: continue
-                            seen.add(m.uid)
-                            msg_dt = m.date or datetime.now(timezone.utc)
-                            msg_dt = (msg_dt.replace(tzinfo=timezone.utc) if msg_dt.tzinfo is None
-                                      else msg_dt.astimezone(timezone.utc))
-                            if msg_dt < sent_after: continue
-                            # MATCH EXACTO en lista de destinatarios — no substring
-                            to_emails = [t.lower().strip() for t in (m.to or [])]
-                            if target_email not in to_emails: continue
-                            fr = (m.from_ or '').lower()
-                            sj = (m.subject or '').lower()
-                            if 'ticketmaster' not in fr and 'ticketmaster' not in sj: continue
-                            g = re.search(r'\b(\d{6})\b', (m.subject or '') + ' ' + (m.text or m.html or '')[:1500])
-                            if g:
-                                log(f'  📧 OTP match exact: to={target_email} from={fr[:40]}')
-                                return g.group(1)
-                    except Exception as e:
-                        log(f'  imap fetch err (no fatal): {e}')
+                        msgs = list(mb.fetch(criteria, mark_seen=False, bulk=True,
+                                             limit=25, charset='UTF-8'))
+                    except Exception as e1:
+                        log(f'  imap fetch filtrado falló ({e1}) — fallback sin filtro')
+                        try:
+                            msgs = list(mb.fetch(reverse=True, limit=8, mark_seen=False, bulk=False))
+                        except Exception as e2:
+                            log(f'  imap fetch err (no fatal): {e2}')
+                            msgs = []
+                    for m in msgs:
+                        if m.uid in seen: continue
+                        seen.add(m.uid)
+                        msg_dt = m.date or datetime.now(timezone.utc)
+                        msg_dt = (msg_dt.replace(tzinfo=timezone.utc) if msg_dt.tzinfo is None
+                                  else msg_dt.astimezone(timezone.utc))
+                        if msg_dt < sent_after: continue
+                        # MATCH EXACTO en lista de destinatarios — no substring
+                        to_emails = [t.lower().strip() for t in (m.to or [])]
+                        if target_email not in to_emails: continue
+                        fr = (m.from_ or '').lower()
+                        sj = (m.subject or '').lower()
+                        if 'ticketmaster' not in fr and 'ticketmaster' not in sj: continue
+                        g = re.search(r'\b(\d{6})\b', (m.subject or '') + ' ' + (m.text or m.html or '')[:1500])
+                        if g:
+                            log(f'  📧 OTP match exact: to={target_email} from={fr[:40]}')
+                            return g.group(1)
                     time.sleep(0.7)
         except Exception as e:
             log(f'  imap login err: {e}')
         return None
+
+    # Pasada inicial CORTA (5s): la mayoría de OTPs llegan en 10-30s tras el click y
+    # TM a veces tarda en indexar; si ya está, ahorramos todo el ciclo largo.
+    log('  ⏳ primera pasada rápida email OTP (5s)')
+    otp = _poll_imap_until(time.time() + 5, first_sent_at)
 
     # Loop persistente: HASTA 24 ciclos × 30s + re-envío AGRESIVO TRAS CADA ciclo.
     # Total max ~12 min antes de rendir. Ciclos cortos = más reenvíos = más probabilidad
