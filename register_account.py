@@ -1725,10 +1725,9 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             log(f'  ❌ tipeo phone falló: {e}')
             sms_receiver.cancel_order(order); blocked.add(phone); save_blocked_phones(blocked); continue
 
-        sent_at = datetime.now(timezone.utc)
         clicked = js_click(page, r'a[ñn]ade n[uú]mero|a[ñn]ade tu n[uú]mero', blue_only=False, exact=False)
         sent_at = datetime.now(timezone.utc)
-        log(f'  click "{clicked}" @ {sent_at.strftime("%H:%M:%S")}')
+        log(f'  click "{clicked}" @ {sent_at.astimezone().strftime("%H:%M:%S")}')
         if not clicked:
             sms_receiver.cancel_order(order); blocked.add(phone); save_blocked_phones(blocked); continue
 
