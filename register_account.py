@@ -1084,6 +1084,12 @@ def fill_signin_form(page: Page, user: UserRow):
 EMAIL_OTP_LOCK_PATH = os.path.join(RUNS_DIR, 'email_otp.lock')
 EMAIL_OTP_LOCK_TIMEOUT = 360   # 6 min máximo esperando lock
 EMAIL_OTP_LOCK_STALE = 240     # locks > 4 min se consideran abandonados
+# Límite anti-tormenta: TM rate-limita el envío de OTPs si se le pide muchos en poco
+# tiempo (con 6 procs × reenvío cada ciclo dejó de enviar por completo). Máximo 2
+# solicitudes de nuevo código por run (incluido el primer 'Verificar mi correo'),
+# con ≥60s entre solicitudes. Tras agotarlas: solo polling pasivo del mailbox.
+EMAIL_OTP_MAX_RESENDS = 2
+EMAIL_OTP_RESEND_BACKOFF_S = 60
 
 
 def _acquire_email_otp_lock() -> bool:
@@ -1184,6 +1190,9 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
 
     sent_at = _click_verificar_with_lock(page)
     first_sent_at = sent_at   # guardar el timestamp del PRIMER click — usaremos en relajación final
+    # El primer click 'Verificar mi correo' CUENTA como solicitud #1 de código.
+    resends_used = 1
+    last_resend_ts = time.time()
 
     # Detectar bot_block después del click "Verificar mi correo"
     try:
@@ -1254,19 +1263,30 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     log('  ⏳ primera pasada rápida email OTP (5s)')
     otp = _poll_imap_until(time.time() + 5, first_sent_at)
 
-    # Loop persistente: HASTA 24 ciclos × 30s + re-envío AGRESIVO TRAS CADA ciclo.
-    # Total max ~12 min antes de rendir. Ciclos cortos = más reenvíos = más probabilidad
-    # de que TM acabe enviando uno (TM a veces ignora silenciosamente el primer envío).
+    # Loop persistente: HASTA 24 ciclos × 30s. El re-envío está CAPADO a
+    # EMAIL_OTP_MAX_RESENDS (el primer click ya contó como 1) con backoff mínimo de
+    # 60s entre solicitudes — antes el reenvío agresivo tras CADA ciclo generó una
+    # tormenta (12-16 clicks/proc) y TM dejó de enviar OTPs por completo. Tras
+    # agotar las solicitudes: polling pasivo del mailbox hasta el timeout normal
+    # (el código ya pedido puede llegar tarde por rate-limit de TM/iCloud).
     N_CYCLES = 24
     CICLO_S = 30      # antes 60 — el user pidió aún más rápido
     POST_RESEND_WAIT_MS = 3000   # antes 6000 — iCloud digesta en 3s, acelerar
+    exhausted_logged = False
     for cycle in range(1, N_CYCLES + 1):
         effective_sent_at = first_sent_at  # filtro siempre relajado al primer click
         log(f'  ⏳ polling email OTP ciclo {cycle}/{N_CYCLES} ({CICLO_S}s, since=first_click)')
         otp = _poll_imap_until(time.time() + CICLO_S, effective_sent_at)
         if otp: break
-        if cycle < N_CYCLES:
-            log(f'  🔁 OTP no llegó en {CICLO_S}s — solicitando nuevo código (lock anti-throttle)')
+        since_last = time.time() - last_resend_ts
+        can_resend = (resends_used < EMAIL_OTP_MAX_RESENDS
+                      and since_last >= EMAIL_OTP_RESEND_BACKOFF_S)
+        if resends_used >= EMAIL_OTP_MAX_RESENDS and not exhausted_logged:
+            log(f'  🚫 reenvíos agotados ({resends_used}/{EMAIL_OTP_MAX_RESENDS}) — solo polling pasivo del mailbox')
+            exhausted_logged = True
+        if cycle < N_CYCLES and can_resend:
+            log(f'  🔁 OTP no llegó en {CICLO_S}s — solicitando nuevo código '
+                f'({resends_used + 1}/{EMAIL_OTP_MAX_RESENDS}, backoff {since_last:.0f}s ok)')
             got_resend_lock = _acquire_email_otp_lock()
             try:
                 # JS unificado: prueba TODOS los selectores de reenvío en 1 round-trip
@@ -1301,6 +1321,8 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
                 page.wait_for_timeout(POST_RESEND_WAIT_MS)
             finally:
                 if got_resend_lock: _release_email_otp_lock()
+            resends_used += 1
+            last_resend_ts = time.time()
             sent_at = datetime.now(timezone.utc)
 
     # Last-chance scan extendido — aceptar OTPs últimos 10 min
