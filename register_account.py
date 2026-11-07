@@ -1653,7 +1653,20 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             if len(cands) >= 2: return cands[0]   # primero típicamente
             return None
 
-        # poll SMS — 0.5s interval (antes 0.7s) para detectar SMS apenas llega
+        # poll SMS — intervalo adaptativo 2s±jitter (rate-limit friendly).
+        # Mientras esperamos el SMS, vigilar el texto de la página: TM puede
+        # rechazar el NÚMERO al instante ("Su número de teléfono ha alcanzado
+        # el límite de intentos...") → cancelar, bloquear y pasar a OTRO número
+        # sin esperar el timeout completo.
+        PHONE_REJECT_PATTERNS = (
+            'alcanzado el límite de intentos', 'alcanzado el limite de intentos',
+            'número de teléfono ha alcanzado', 'numero de telefono ha alcanzado',
+            'ha alcanzado el límite', 'ha alcanzado el limite',
+            'reached the limit', 'reached the verification attempt limit',
+            'contacte', 'no podemos verificar', 'cannot verify this phone',
+            'número no es válido', 'numero no es valido', 'invalid phone number',
+        )
+        phone_rejected = False
         sms_code, sms_text = None, None
         deadline = time.time() + SMS_TIMEOUT_S
         # Re-check ROBUSTO: además de la orden actual, verificar las anteriores aún vivas.
@@ -1702,6 +1715,19 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                 except Exception as e:
                     log(f'  ⚠ 2º probe reenvío err (no fatal): {str(e)[:80]}')
             poll_round += 1
+            # Chequeo temprano de rechazo del NÚMERO por TM (~1 de cada 5 rondas,
+            # el body.evaluate cuesta ~50-100ms): si TM dice "límite de intentos"
+            # o similar, no esperar el timeout — saltar a OTRO número ya.
+            if poll_round % 5 == 1:
+                try:
+                    body_now = (page.evaluate('()=>document.body.innerText.slice(0,1200)') or '').lower()
+                    if any(p in body_now for p in PHONE_REJECT_PATTERNS):
+                        hit_p = next(p for p in PHONE_REJECT_PATTERNS if p in body_now)
+                        log(f'  🚫 TM rechazó el número durante la espera del SMS ("{hit_p}")')
+                        phone_rejected = True
+                except Exception as e:
+                    log(f'  ⚠ check rechazo err (no fatal): {str(e)[:80]}')
+            if phone_rejected: break
             # Orden actual CADA ronda; órdenes anteriores (PENDING_ORDERS_RECHECK)
             # solo 1 de cada 10 rondas (~cada 20s) para no multiplicar req/s.
             if poll_round % 10 == 1:
@@ -1773,6 +1799,26 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                         break
             except Exception as e:
                 log(f'  ⚠ último check pre-cancel err (no fatal): {e}')
+
+        if phone_rejected:
+            # TM rechazó el número (p.ej. "ha alcanzado el límite de intentos"):
+            # cancelar la orden, bloquearlo para siempre y pasar a OTRO número.
+            try:
+                sms_receiver.cancel_order(order, provider=provider)
+            except Exception as e:
+                log(f'    ⚠ cancel rechazo err: {e}')
+            blocked.add(phone); save_blocked_phones(blocked)
+            log(f'  🚫 número {phone} bloqueado (rechazado por TM: límite/inválido) — próximo ciclo usará otro')
+            # Cerrar el modal roto para que el próximo ciclo empiece con form limpio
+            try:
+                page.evaluate(r"""() => {
+                  const btns = Array.from(document.querySelectorAll('button')).filter(b => !b.disabled);
+                  const cancels = btns.filter(b => /^cancelar$/i.test((b.innerText||'').trim()));
+                  (cancels[cancels.length-1] || cancels[0])?.click();
+                }""")
+                page.wait_for_timeout(1200)
+            except Exception: pass
+            continue
 
         if not sms_code:
             log(f'  ⏰ SMS timeout {SMS_TIMEOUT_S}s — cancelando {provider} order={order}')
