@@ -1890,7 +1890,8 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                     and avoid_provider != provider):
                 avoid_provider = provider
                 log(f'  🔀 failover: {provider} acumuló {provider_timeouts[provider]} timeouts '
-                    f'— próximos buys excluirán este provider')
+                    f'— próximos buys excluirán este provider (si otro tiene key+saldo; '
+                    f'si es el único usable se seguirá usando con aviso)')
             PENDING_ORDERS_RECHECK.append({'order': order, 'phone': phone,
                                            'ts': time.time(), 'provider': provider})
             continue
