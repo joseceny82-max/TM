@@ -276,6 +276,11 @@ def human_type(loc, text: str, lo: int = 35, hi: int = 70):
     for ch in str(text): loc.type(ch, delay=random.randint(lo, hi))
 
 # ─────────────────── pipeline ───────────────────
+# Proveedor de proxy obligatorio para los perfiles (substring del host en MoreLogin).
+# Con filtro activo NO se crean perfiles AUTO-ES (llevan Quantum fijo). '' lo desactiva.
+PROXY_HOST_FILTER = os.environ.get('TM_PROXY_HOST', 'fast.froxy').strip().lower()
+
+
 def _pick_es_profile_smart(burned: set) -> Optional[dict]:
     """Pick perfil ES detectando país por countryCode O por username del proxy.
     Verifica proxy via HTTP request directo ANTES de devolver. Si falla, sigue."""
@@ -297,6 +302,8 @@ def _pick_es_profile_smart(burned: set) -> Optional[dict]:
                 user = p.get('username') or ''
                 is_es = (cc == 'ES') or ('cc-ES' in user) or ('-ES-' in user)
                 if not is_es: continue
+                if PROXY_HOST_FILTER and PROXY_HOST_FILTER not in (p.get('proxyIp') or '').lower():
+                    continue
                 check = p.get('proxyCheckStatus')
                 if check == 2: continue
                 exp_ip = p.get('exportIp') or ''
@@ -304,8 +311,10 @@ def _pick_es_profile_smart(burned: set) -> Optional[dict]:
                 # Verify proxy via HTTP — sin tocar MoreLogin
                 proxy_host = p.get('proxyIp') or 'residential.quantumproxies.net'
                 # MoreLogin guarda el host en proxyIp (string)
+                # Puerto real del perfil (Froxy 9000-9301, Quantum 8888); antes fijo a 8888.
+                proxy_port = int(p.get('proxyPort') or 8888)
                 real_ip = _verify_proxy_http(user, p.get('password',''),
-                                              proxy_host=proxy_host, proxy_port=8888)
+                                              proxy_host=proxy_host, proxy_port=proxy_port)
                 if not real_ip:
                     continue   # proxy no responde, siguiente
                 if real_ip in used_ips:
@@ -413,6 +422,18 @@ def _pick_and_claim_profile(country: str, burned_local: set) -> Optional[dict]:
     """NORMA USER 2026-05-13: por defecto CREA perfil FRESH con proxy custom
     Quantum + sessionid random. Si falla, fallback a pool existente.
     Garantiza IP nueva + perfil único cada registro."""
+    if getattr(bo, '__name__', '') == 'silent_engine':
+        prof = _create_silent_profile(country)
+        if prof:
+            all_burned = load_burned(); all_burned.add(prof['profile']); save_burned(all_burned)
+        return prof
+
+    if PROXY_HOST_FILTER:
+        prof = _create_profile_on_unused_proxy(PROXY_HOST_FILTER, country)
+        if prof:
+            all_burned = load_burned(); all_burned.add(prof['profile']); save_burned(all_burned)
+        return prof
+
     # ─── PRIMERO: crear perfil FRESH ───
     try:
         fresh = bo.create_fresh_profile(country_code=country)
@@ -523,16 +544,29 @@ def open_profile(country: str, burned: set, run: RunState) -> tuple[BrowserConte
             ml_pass = (prof.get('proxy') or {}).get('password') if prof.get('proxy') else None
             ml_host = (prof.get('proxy') or {}).get('proxyIp') if prof.get('proxy') else None
             ml_port = (prof.get('proxy') or {}).get('proxyPort', 8888) if prof.get('proxy') else 8888
+            ml_type = (prof.get('proxy') or {}).get('proxyType', 0) if prof.get('proxy') else 0
             if ml_user and ml_pass and ml_host:
-                proxy_url = f'http://{ml_user}:{ml_pass}@{ml_host}:{ml_port}'
+                proxy_url = _proxy_url(ml_user, ml_pass, ml_host, ml_port, ml_type)
                 proxies_arg = {'http': proxy_url, 'https': proxy_url}
         except Exception: pass
+        if not proxies_arg:
+            # Sin credenciales del proxy (Silent no las expone): el GET saldría desde la IP
+            # real del PC y no validaría nada. La IP ya se comprobó desde el navegador.
+            raise _SkipPreCheck()
         pre = http2_frame_match.request_via_curl_cffi(
             'GET', 'https://www.ticketmaster.es/', timeout=10,
             profile_name='chrome_131_windows',
             proxies=proxies_arg)
         if pre.get('ok'):
             body_low = (pre.get('body') or '').lower()
+            if 'not in the whitelist' in body_low:
+                # Fallo de configuración del proveedor, NO bot_block: no quemar la IP.
+                _warn_whitelist_once(prof.get('proxy', {}).get('proxyIp', '?'))
+                try: bo._close_profile_clean(run.env_id, run.port, run.profile)
+                except Exception: pass
+                try: _release_active_start(run.env_id)
+                except Exception: pass
+                raise RuntimeError('proxy_whitelist_denied')
             blockers = ('su sesión se ha suspendido', 'su sesion se ha suspendido',
                         'algo en su forma de navegar', 'session has been suspended',
                         'pardon our interruption', 'access denied',
@@ -548,6 +582,8 @@ def open_profile(country: str, burned: set, run: RunState) -> tuple[BrowserConte
                 raise RuntimeError(f'bot_block_detected: HTTP pre-check via_proxy ip={prof.get("ip")}')
             else:
                 log(f'  ✓ HTTP pre-check OK ({pre.get("status_code")}) ip={prof.get("ip")}')
+    except _SkipPreCheck:
+        log('  · HTTP pre-check omitido (proxy sin credenciales visibles, IP ya verificada)')
     except RuntimeError: raise
     except Exception as e:
         log(f'  ⚠ HTTP pre-check err (no fatal): {str(e)[:100]}')
@@ -710,6 +746,8 @@ def goto_signup(page: Page, user: UserRow, run: RunState) -> str:
         page.wait_for_timeout(random.randint(600, 1200))
     except Exception as e:
         log(f'  ⚠ idle scroll err (no fatal): {e}')
+
+    _wait_waiting_room(page)
 
     # Esperar input email visible — si no aparece, comprobar bot_block antes de fallar
     em = None
@@ -899,6 +937,7 @@ def fill_signup_form(page: Page, user: UserRow, run: 'RunState'):
       if (m) m.click();
       document.querySelectorAll('[id*=onetrust i]').forEach(e => e.remove());
     }""")
+    _dismiss_ketch_consent(page)
     page.wait_for_timeout(800)
     page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
     page.wait_for_timeout(1200)
@@ -2293,19 +2332,296 @@ def save_used_ip(ip: str, run_id: str):
 
 def _verify_proxy_http(proxy_user: str, proxy_pass: str,
                         proxy_host: str = 'residential.quantumproxies.net',
-                        proxy_port: int = 8888) -> Optional[str]:
+                        proxy_port: int = 8888, proxy_type: int = 0) -> Optional[str]:
     """Verifica que el proxy funciona haciendo GET https://api.ipify.org via requests.
     NO toca Playwright/MoreLogin. Devuelve IP o None."""
     if not (proxy_user and proxy_pass): return None
-    proxies = {
-        'http': f'http://{proxy_user}:{proxy_pass}@{proxy_host}:{proxy_port}',
-        'https': f'http://{proxy_user}:{proxy_pass}@{proxy_host}:{proxy_port}',
-    }
+    url = _proxy_url(proxy_user, proxy_pass, proxy_host, proxy_port, proxy_type)
     try:
-        r = requests.get('https://api.ipify.org/?format=json', proxies=proxies, timeout=15)
+        r = requests.get('https://api.ipify.org/?format=json',
+                         proxies={'http': url, 'https': url}, timeout=15)
         return r.json().get('ip') if r.status_code == 200 else None
-    except Exception:
+    except Exception as e:
+        if 'whitelist' in str(e).lower() or '422' in str(e):
+            _warn_whitelist_once(proxy_host)
         return None
+
+
+def _proxy_url(user: str, pwd: str, host: str, port, proxy_type: int = 0) -> str:
+    """URL de proxy con credenciales codificadas (Froxy usa ';' en la contraseña).
+    proxy_type MoreLogin: 0=http, 2=socks5 (socks5h: DNS resuelto por el proxy)."""
+    from urllib.parse import quote
+    scheme = 'socks5h' if int(proxy_type or 0) == 2 else 'http'
+    return f'{scheme}://{quote(user, safe="")}:{quote(pwd, safe="")}@{host}:{port}'
+
+
+USED_PROXY_IDS_PATH = os.path.join(RUNS_DIR, 'used_proxy_ids.json')
+BURNED_SUBNETS_PATH = os.path.join(RUNS_DIR, 'burned_subnets24.json')
+
+
+def is_subnet24_burned(ip: str) -> bool:
+    """True si la /24 de la IP está en burned_subnets24.json (quemada por bot_block)."""
+    parts = (ip or '').split('.')
+    if len(parts) != 4:
+        return False
+    try:
+        with open(BURNED_SUBNETS_PATH, encoding='utf-8') as f:
+            return '.'.join(parts[:3]) + '.0/24' in json.load(f)
+    except Exception:
+        return False
+
+
+def _load_used_proxy_ids() -> set:
+    try:
+        with open(USED_PROXY_IDS_PATH, encoding='utf-8') as f:
+            return set(json.load(f))
+    except Exception:
+        return set()
+
+
+def _save_used_proxy_ids(ids: set) -> None:
+    with open(USED_PROXY_IDS_PATH, 'w', encoding='utf-8') as f:
+        json.dump(sorted(ids), f, indent=2)
+
+
+SILENT_PROXY_HOST = os.environ.get('TM_SILENT_PROXY_HOST', 'lemonclub').strip().lower()
+KETCH_DISMISS_JS = r"""() => {
+  const root = document.querySelector('#lanyard_root, [id*=ketch i]');
+  if (!root) return 'none';
+  const btns = Array.from(root.querySelectorAll('button'));
+  const find = re => btns.find(b => re.test((b.innerText || '').trim()));
+  const reject = find(/^(rechazar todo|rechazar|reject all)$/i);
+  if (reject) reject.click();
+  const confirm = find(/^(confirmar|confirm|guardar|save)$/i);
+  if (confirm) confirm.click();
+  return reject ? 'rejected' : (confirm ? 'confirmed' : 'present');
+}"""
+
+
+def _dismiss_ketch_consent(page):
+    """Cierra el gestor de consentimiento Ketch de TM (rechaza lo no esencial).
+    Si sigue tapando el formulario tras los clics, se retira del DOM."""
+    try:
+        res = page.evaluate(KETCH_DISMISS_JS)
+        if res == 'none':
+            return
+        page.wait_for_timeout(1200)
+        if page.evaluate(KETCH_DISMISS_JS) != 'none':
+            page.evaluate("() => document.querySelectorAll('#lanyard_root, [id*=ketch i]').forEach(e => e.remove())")
+        log(f'  ✓ consentimiento Ketch cerrado ({res})')
+    except Exception as e:
+        log(f'  ⚠ consentimiento Ketch: {type(e).__name__}: {str(e)[:80]}')
+
+
+# Motor del navegador en Silent: 'brave' (por defecto), 'chromium' (Chromium
+# gestionado más reciente), 'chrome', 'edge', 'opera' o un engineId 'eng_...'.
+SILENT_ENGINE = os.environ.get('TM_SILENT_ENGINE', 'brave').strip().lower()
+
+
+def _version_key(v):
+    return tuple(int(x) for x in re.findall(r'\d+', v or '')[:4])
+
+
+def _silent_engine_id(se):
+    """Resuelve SILENT_ENGINE a un engineId de Silent (None = el de por defecto)."""
+    if SILENT_ENGINE.startswith('eng_'):
+        return SILENT_ENGINE
+    engines = se._get('/v1/engines') or []
+    if SILENT_ENGINE == 'chromium':
+        cands = [e for e in engines if e.get('kind') == 'managed-chromium']
+    else:
+        cands = [e for e in engines if (e.get('brand') or '').lower() == SILENT_ENGINE]
+    if not cands:
+        log(f'  ⚠ motor Silent "{SILENT_ENGINE}" no disponible; uso el de por defecto')
+        return None
+    best = max(cands, key=lambda e: _version_key(e.get('version')))
+    log(f'  motor Silent: {best.get("name")} (v{best.get("version")})')
+    return best['id']
+
+
+class _SkipPreCheck(Exception):
+    """Señal interna: omitir el pre-check HTTP de open_profile."""
+
+
+# Pantalla de espera de TM ("Casi terminado. No actualices la página...") en los
+# idiomas que puede servir según la huella del navegador.
+WAITING_ROOM_MARKERS = ('casi terminado', 'no actualices', 'quasi finito', 'non aggiornare',
+                        'almost there', 'do not refresh', "don't refresh", 'presque terminé',
+                        'fast geschafft', 'nicht aktualisieren')
+
+
+def _wait_waiting_room(page, max_s: int = 180) -> None:
+    """Si TM muestra la pantalla de espera, esperar a que pase (sin recargar)."""
+    t0 = time.time()
+    seen = False
+    while time.time() - t0 < max_s:
+        try:
+            txt = (page.evaluate('() => document.body ? document.body.innerText : ""') or '').lower()
+        except Exception:
+            txt = ''
+        if not any(m in txt for m in WAITING_ROOM_MARKERS):
+            if seen:
+                log(f'  ✓ pantalla de espera superada en {int(time.time() - t0)}s')
+            return
+        if not seen:
+            log('  ⏳ TM muestra pantalla de espera — esperando sin recargar')
+            seen = True
+        page.wait_for_timeout(3000)
+    log(f'  ⚠ pantalla de espera sigue tras {max_s}s')
+
+
+SPAIN_LOCALE = {'languages': ['es-ES', 'es', 'en'], 'timezone': 'Europe/Madrid',
+                'lat': 40.4168, 'lon': -3.7038}
+
+
+def _silent_set_spain_locale(se, env_id: str) -> None:
+    """Silent asigna idioma/zona/geo propios (p. ej. it-IT/Europe/Rome). Con IP
+    española eso es incoherente: se fija es-ES + Europe/Madrid + geo Madrid."""
+    fp = se._get(f'/v1/profiles/{env_id}').get('fingerprint') or {}
+    fp['languages'] = SPAIN_LOCALE['languages']
+    fp['timezone'] = SPAIN_LOCALE['timezone']
+    geo = fp.get('geo') or {}
+    geo.update({'latitude': SPAIN_LOCALE['lat'] + random.uniform(-0.05, 0.05),
+                'longitude': SPAIN_LOCALE['lon'] + random.uniform(-0.05, 0.05)})
+    fp['geo'] = geo
+    r = requests.patch(f'{se.SILENT_API}/v1/profiles/{env_id}', headers=se._headers(),
+                       json={'fingerprint': fp}, timeout=20)
+    r.raise_for_status()
+
+
+def _silent_browser_ip(port: int) -> Optional[dict]:
+    """IP/país de salida vistos DESDE el navegador del perfil (Silent no expone
+    las credenciales del proxy, así que no se puede probar con requests)."""
+    from playwright.sync_api import sync_playwright
+    v = requests.get(f'http://127.0.0.1:{port}/json/version', timeout=10).json()
+    with sync_playwright() as pw:
+        b = pw.chromium.connect_over_cdp(v['webSocketDebuggerUrl'])
+        ctx = b.contexts[0] if b.contexts else b.new_context()
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        page.goto('https://ipinfo.io/json', timeout=30000)
+        txt = page.evaluate('() => document.body.innerText')
+        # Dejar la pestaña en blanco: Brave restaura las pestañas al reabrir el
+        # perfil y la de ipinfo acababa en ctx.pages[0] durante el registro.
+        try:
+            page.goto('about:blank', timeout=5000)
+        except Exception:
+            pass
+        b.close()
+    return json.loads(txt[txt.find('{'):txt.rfind('}') + 1])
+
+
+def _create_silent_profile(country: str = 'ES', max_tries: int = 6) -> Optional[dict]:
+    """Perfil Silent NUEVO por registro, con un proxy (SILENT_PROXY_HOST) no usado.
+    Se abre una vez para comprobar desde el navegador que sale por el país pedido;
+    el proxy queda marcado como usado (una IP por cuenta) aunque se descarte."""
+    se = bo
+    used_ids = _load_used_proxy_ids()
+    used_ips = load_used_ips()
+    cands = [p for p in se._get('/v1/proxies')
+             if SILENT_PROXY_HOST in (p.get('host') or '').lower() and p.get('id') not in used_ids]
+    random.shuffle(cands)
+    log(f'  proxies "{SILENT_PROXY_HOST}" sin usar en Silent: {len(cands)}')
+    engine_id = _silent_engine_id(se)
+    for px in cands[:max_tries]:
+        used_ids.add(px['id'])
+        _save_used_proxy_ids(used_ids)
+        name = f'TM-{country.upper()}-{random.randint(100000, 999999)}'
+        env_id = None
+        info = None
+        try:
+            body = {'name': name, 'proxyId': px['id']}
+            if engine_id:
+                body['engineId'] = engine_id
+            env_id = se._post('/v1/profiles', body)['id']
+            _silent_set_spain_locale(se, env_id)
+            port = se._start_profile(env_id)
+            info = _silent_browser_ip(port) if port else None
+        except Exception as e:
+            log(f'  ⚠ Silent perfil/proxy {px["id"]} err: {str(e)[:120]}')
+        finally:
+            if env_id:
+                try: se._post(f'/v1/profiles/{env_id}/close', timeout=30)
+                except Exception: pass
+        ip = (info or {}).get('ip')
+        cc = (info or {}).get('country')
+        if not env_id or cc != country.upper() or not ip or ip in used_ips or is_subnet24_burned(ip):
+            log(f'  · {name} descartado (ip={ip} pais={cc})')
+            continue
+        with se._pick_lock:
+            se._active_profiles.add(name)
+        log(f'  + perfil Silent {name} proxy={px["id"]} ip={ip} ({(info or {}).get("org", "")})')
+        return {'profile': name, 'env_id': env_id, 'ip': ip, 'proxy_id': px['id'],
+                'verified': True}
+    log('  ⚠ ningún proxy Silent válido tras los intentos')
+    return None
+
+
+def _create_profile_on_unused_proxy(host_filter: str, country: str = 'ES') -> Optional[dict]:
+    """Crea un perfil MoreLogin nuevo con un proxy del proveedor `host_filter` que aún
+    no se haya usado. Un proxy = una cuenta (se marca en used_proxy_ids.json).
+    El proxy NO se borra al terminar (es del usuario); solo se marca como usado."""
+    bo = _load_engine()
+    api = bo.MORELOGIN_API
+    used_ids = _load_used_proxy_ids()
+    used_ips = load_used_ips()
+    for page_no in range(1, 40):
+        try:
+            d = requests.post(f'{api}/api/proxyInfo/page',
+                              json={'pageNo': page_no, 'pageSize': 200}, timeout=30).json()
+        except Exception:
+            break
+        items = (d.get('data') or {}).get('dataList') or []
+        if not items:
+            break
+        for x in items:
+            if host_filter not in (x.get('proxyIp') or '').lower():
+                continue
+            pid = str(x.get('id') or '')
+            if not pid or pid in used_ids:
+                continue
+            real_ip = _verify_proxy_http(x.get('username') or '', x.get('password') or '',
+                                         proxy_host=x.get('proxyIp'),
+                                         proxy_port=int(x.get('proxyPort') or 0),
+                                         proxy_type=int(x.get('proxyType') or 0))
+            used_ids.add(pid)
+            _save_used_proxy_ids(used_ids)   # consumido aunque falle: no reintentar uno roto
+            if not real_ip or real_ip in used_ips or is_subnet24_burned(real_ip):
+                log(f'  · proxy {x.get("proxyIp")}:{x.get("proxyPort")} descartado (ip={real_ip})')
+                continue
+            env_name = f'FX-{country.upper()}-{x.get("proxyPort")}-{random.randint(1000, 9999)}'
+            try:
+                r = requests.post(f'{api}/api/env/create/advanced', json={
+                    'browserTypeId': 1, 'operatorSystemId': 1, 'envName': env_name,
+                    'proxyId': pid, 'groupId': 0, 'uaVersion': 0}, timeout=20).json()
+            except Exception as e:
+                log(f'  ⚠ create env err: {e}')
+                continue
+            env_id = r.get('data') if r.get('code') == 0 else None
+            if not env_id:
+                log(f'  ⚠ create env falló: {r}')
+                continue
+            with bo._pick_lock:
+                bo._active_profiles.add(env_name)
+            log(f'  + perfil {env_name} creado con proxy {x.get("proxyIp")}:{x.get("proxyPort")} ip={real_ip}')
+            return {'profile': env_name, 'env_id': env_id, 'ip': real_ip,
+                    'proxy': x, 'proxy_id': pid, 'verified': True}
+    log(f'  ⚠ no quedan proxies "{host_filter}" sin usar')
+    return None
+
+
+_WHITELIST_WARNED = set()
+
+
+def _warn_whitelist_once(host: str) -> None:
+    if host in _WHITELIST_WARNED:
+        return
+    _WHITELIST_WARNED.add(host)
+    try:
+        my_ip = requests.get('https://api.ipify.org', timeout=8).text.strip()
+    except Exception:
+        my_ip = '?'
+    log(f'  ⚠ proxy {host} rechaza la conexión (422 IP no en whitelist). '
+        f'Añade la IP pública de este PC ({my_ip}) a la whitelist del proveedor.', level='WARN')
 
 def screenshot_on_error(page, run: RunState, label: str):
     """Captura pantalla de diagnóstico al fallar."""

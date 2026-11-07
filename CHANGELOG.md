@@ -12,6 +12,60 @@ y añade un bloque aquí. Nunca se reutiliza un número.
 
 ---
 
+## [1.1.2] - 2026-11-07
+
+**Registro con Silent + proxies Lemon (validado end-to-end, verify 16/16).**
+
+### Added
+- `register_account.py` con `--engine silent`: crea un perfil Silent NUEVO por
+  registro sobre un proxy Lemon no usado (`TM_SILENT_PROXY_HOST`, por defecto
+  `lemonclub`) y comprueba desde el navegador que la IP de salida es ES.
+- `TM_SILENT_ENGINE` (por defecto `brave`): motor del navegador del perfil
+  (`brave`, `chromium` = Chromium gestionado más reciente, `chrome`, `edge`,
+  `opera` o un `eng_...`).
+- Huella con idioma/zona/geo de España (`es-ES`, `Europe/Madrid`); los
+  perfiles de Silent nacían con huella italiana.
+- Detección multilingüe de la pantalla de espera de TM ("Casi terminado",
+  "Quasi finito", "Almost there"...).
+
+### Fixed
+- El gestor de consentimiento Ketch de TM tapaba el formulario de alta y
+  dejaba "Siguiente" desactivado (`siguiente_disabled`): ahora se rechaza lo
+  no esencial y se cierra.
+- La pestaña de comprobación de IP quedaba abierta y Brave la restauraba en el
+  registro: se deja en `about:blank` antes de cerrar.
+- Sin credenciales de proxy visibles (Silent) se omite el pre-check HTTP en
+  lugar de lanzarlo desde la IP de casa.
+
+---
+
+## [1.1.1] - 2026-11-07
+
+**Registro con perfiles Froxy + plantilla nueva.**
+
+### Fixed
+- `register_account.py`: la validación del proxy usaba el puerto 8888 fijo
+  (solo válido para Quantum); ahora usa el `proxyPort` real de cada perfil.
+- `register_account.py`: credenciales del proxy codificadas en la URL
+  (la contraseña de Froxy lleva `;`).
+- `register_account.py`: un rechazo por whitelist del proveedor ya no se
+  toma por bot-block (antes quemaba la IP); aborta con `proxy_whitelist_denied`
+  y avisa en el log de la IP que hay que autorizar.
+- `plantilla_tm.csv`: separador `;` (guardado de Excel) convertido a `,`.
+
+### Added
+- `TM_PROXY_HOST` (por defecto `froxy`): solo se usan perfiles MoreLogin cuyo
+  proxy sea de ese proveedor; con el filtro activo no se crean perfiles
+  AUTO-ES (llevaban Quantum caducado). `TM_PROXY_HOST=` lo desactiva.
+- `plantilla_tm.csv`: 276 cuentas nuevas rellenadas (DNI, nombre, dirección,
+  ZIP, tarjeta sintética); el teléfono se asigna al registrar.
+
+### Pendiente (configuración, no código)
+- Añadir la IP del PC a la whitelist de Froxy.
+- Descargar en MoreLogin el kernel del navegador de los perfiles Froxy.
+
+---
+
 ## [1.1.0] - 2026-11-05
 
 **Motor de perfiles Silent + auto-actualización + fixes de dashboard.**
