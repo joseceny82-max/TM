@@ -2867,9 +2867,10 @@ def _dismiss_ketch_consent(page):
         log(f'  ⚠ consentimiento Ketch: {type(e).__name__}: {str(e)[:80]}')
 
 
-# Motor del navegador en Silent: 'brave' (por defecto), 'chromium' (Chromium
-# gestionado más reciente), 'chrome', 'edge', 'opera' o un engineId 'eng_...'.
-SILENT_ENGINE = os.environ.get('TM_SILENT_ENGINE', 'brave').strip().lower()
+# Motor del navegador en Silent: 'chromium' (por defecto desde 2026-11-08, PROHIBIDO
+# volver a Brave salvo orden expresa — A/B: Chromium 4/4 en 6 min, Brave se caía y
+# tardaba 600s+), 'chrome', 'edge', 'opera' o un engineId 'eng_...'.
+SILENT_ENGINE = os.environ.get('TM_SILENT_ENGINE', 'chromium').strip().lower()
 # Operadores cuyas IPs TM bloquea siempre ("Su sesión se ha suspendido"):
 # AS200845 Avatel — 3 de 3 perfiles bloqueados el 2026-11-07.
 SILENT_BLOCKED_ASNS = tuple(a.strip().upper() for a in
