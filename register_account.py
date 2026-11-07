@@ -1262,6 +1262,8 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     # TM a veces tarda en indexar; si ya está, ahorramos todo el ciclo largo.
     log('  ⏳ primera pasada rápida email OTP (5s)')
     otp = _poll_imap_until(time.time() + 5, first_sent_at)
+    if otp:
+        log('  ⚡ OTP en pasada rápida — se salta el ciclo largo')
 
     # Loop persistente: HASTA 24 ciclos × 30s. El re-envío está CAPADO a
     # EMAIL_OTP_MAX_RESENDS (el primer click ya contó como 1) con backoff mínimo de
@@ -1274,6 +1276,8 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     POST_RESEND_WAIT_MS = 3000   # antes 6000 — iCloud digesta en 3s, acelerar
     exhausted_logged = False
     for cycle in range(1, N_CYCLES + 1):
+        if otp:
+            break  # ya venía de la pasada rápida — no quemar un ciclo de 30s
         effective_sent_at = first_sent_at  # filtro siempre relajado al primer click
         # SI LA PÁGINA MURIÓ (sesión TM caducada, pestaña caída), no tiene sentido
         # seguir haciendo polling del mailbox: el OTP llegaría a un navegador muerto
@@ -1288,7 +1292,12 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
         except Exception:
             pass
         log(f'  ⏳ polling email OTP ciclo {cycle}/{N_CYCLES} ({CICLO_S}s, since=first_click)')
-        otp = _poll_imap_until(time.time() + CICLO_S, effective_sent_at)
+        # No sobrescribir un OTP ya encontrado (p.ej. en la pasada rápida): el loop
+        # solo añade, nunca borra. Antes esto PERDÍA el OTP: match en pasada rápida
+        # → ciclo 1 lo pisaba a None → reenvío innecesario y timeout (log 20:40).
+        new_otp = _poll_imap_until(time.time() + CICLO_S, effective_sent_at)
+        if new_otp:
+            otp = new_otp
         if otp: break
         since_last = time.time() - last_resend_ts
         can_resend = (resends_used < EMAIL_OTP_MAX_RESENDS
