@@ -12,6 +12,41 @@ y añade un bloque aquí. Nunca se reutiliza un número.
 
 ---
 
+## [1.1.4] - 2026-11-07
+
+**Fix del paso de teléfono/SMS (fiabilidad + latencia) — validado en 2 batches
+(6/6 y 12/12 éxitos con Silent).**
+
+### Fixed
+- Pegado del código SMS/email OTP sobre el input exacto resuelto por Playwright
+  (antes `document.querySelector` genérico podía pegar en un input oculto o
+  equivocado con falso "pegado OK").
+- Timeout de espera del SMS 120s → 180s (SMSPool entrega legítimos a ~108s).
+- Reenvío de código de TM: 120s extra (antes 60s, insuficiente) + segundo
+  intento de click a los 30s.
+- Rotación de providers SMS activada y fallback por falta de stock en la misma
+  llamada (antes solo se usaba el provider activo; "stock agotado" quemaba los
+  6 ciclos).
+- Rate-limit autoinducido: polling de 0.5s × 4 procesos ≈ 16 req/s activaba el
+  throttling de los providers. Ahora polling a 2s + jitter + backoff
+  adaptativo, y `check_sms` con rate-limit por orden (1.5s, cacheado).
+- Balance-check de providers: solo del activo en el camino feliz (4 HTTP calls
+  → 1).
+
+### Added
+- Política "número problemático → cancelar y OTRO distinto": timeout de SMS y
+  modal de código roto bloquean el número; números bloqueados devueltos por el
+  provider se descartan sin consumir retries de stock.
+- Prefetch del número SMS en background en cuanto se verifica el OTP de email
+  (solapa la compra con la UI de TM; elimina la espera de minutos).
+- Auto-update: `_run_batch10.py` hace fetch+merge de `main` al arrancar; si hay
+  cambios nuevos subidos, el batch corre siempre la última versión.
+- Backoff de buy creciente (5,10,15,20s) con detección del rate-limit de SMSPool.
+- Rescate de órdenes canceladas vía `finish_order` (5sim/smsactivate) y último
+  `check_sms` antes de cancelar por timeout.
+
+---
+
 ## [1.1.3] - 2026-11-07
 
 ### Security
