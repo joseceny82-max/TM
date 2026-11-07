@@ -3112,6 +3112,24 @@ def api_cookies_optimize():
 # ==========================================
 #  API — ANALYTICS
 # ==========================================
+@app.route("/api/registrations/daily")
+@login_required
+def api_registrations_daily():
+    """Registros por día: conteo y detalle de los realizados (visibilidad diaria)."""
+    import collections
+    accs = account_manager.account_manager.list_accounts()
+    by_day = collections.Counter(str(a.get('created_at', ''))[:10] for a in accs
+                                 if a.get('created_at'))
+    recent = sorted(accs, key=lambda a: a.get('created_at') or '', reverse=True)[:50]
+    return jsonify({
+        "ok": True,
+        "total": len(accs),
+        "by_day": dict(sorted(by_day.items(), reverse=True)),
+        "recent": [{"email": a.get('tm_email'), "phone": a.get('phone') or a.get('phone_full'),
+                    "created_at": a.get('created_at'), "id": a.get('id')} for a in recent],
+    })
+
+
 @app.route("/api/analytics")
 @login_required
 def api_analytics():
