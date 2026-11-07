@@ -104,6 +104,16 @@ class UserRow:
     notes: str
 
     @staticmethod
+    def _norm_postal(zip_raw: str) -> str:
+        """Normaliza el código postal: siempre 5 dígitos. Los CSV que Excel
+        guardó como número pierden el cero inicial (08001 → 8001) y TM no deja
+        continuar. Rellenamos por la izquierda con '0' hasta 5 dígitos."""
+        z = (zip_raw or '').strip()
+        if z.isdigit() and len(z) < 5:
+            return z.zfill(5)
+        return z
+
+    @staticmethod
     def from_csv_row(idx: int, r: dict) -> 'UserRow':
         tel = r.get('Telefono', '+34000000000')
         prefix = '+34'
@@ -117,7 +127,7 @@ class UserRow:
             passport=r['Pasaporte'],
             phone_prefix=prefix, phone_local=local,
             address1=r['Direccion'], city=r['Ciudad'], state=r['Estado'],
-            postal=r['ZIP'], country=r['Pais'],
+            postal=UserRow._norm_postal(r['ZIP']), country=r['Pais'],
             card_number=r['Numero_Tarjeta'], card_holder=r['Titular'],
             card_month=r['Mes_Exp'], card_year=r['Anno_Exp'], card_cvv=r['CVV'],
             notes=r.get('Notas', '') or '',
