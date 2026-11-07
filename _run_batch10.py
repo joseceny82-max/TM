@@ -117,10 +117,45 @@ def verify(email: str) -> bool:
         return False
 
 
+def _auto_update():
+    """git pull de main antes de arrancar — el sistema siempre corre la versión
+    nueva si hay cambios subidos. Si el pull falla (sin red, conflicto, archivos
+    sucios), se lanza igual con el código local y se avisa en el log."""
+    try:
+        r = subprocess.run(['git', 'fetch', 'origin', 'main'],
+                           capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:
+            log(f'  ⚠ auto-update fetch falló (sigo con versión local): {r.stderr.strip()[:100]}')
+            return
+        behind = subprocess.run(['git', 'rev-list', '--count', 'HEAD..origin/main'],
+                                capture_output=True, text=True, timeout=15)
+        n = int((behind.stdout or '0').strip() or 0)
+        if n == 0:
+            return
+        log(f'  ⬇ auto-update: {n} commit(s) nuevos en main — actualizando...')
+        dirty = subprocess.run(['git', 'status', '--porcelain', 'register_account.py',
+                                'sms_receiver.py', '_run_batch10.py', 'silent_engine.py'],
+                               capture_output=True, text=True, timeout=15)
+        if dirty.stdout.strip():
+            log('  ⚠ auto-update: archivos clave con cambios locales sin commit — '
+                'NO actualizo (haz commit primero). Sigo con versión local.')
+            return
+        up = subprocess.run(['git', 'merge', '--ff-only', 'origin/main'],
+                            capture_output=True, text=True, timeout=60)
+        if up.returncode == 0:
+            log(f'  ✓ auto-update OK: {up.stdout.strip().splitlines()[-1] if up.stdout.strip() else "fast-forward"}')
+        else:
+            log(f'  ⚠ auto-update merge falló (sigo con versión local): {up.stderr.strip()[:100]}')
+    except Exception as e:
+        log(f'  ⚠ auto-update err (no fatal): {e}')
+
+
 def main():
     env = dict(os.environ)
     env['TM_IMAP_MADRE_PWD'] = 'jzny-tfyh-qtuq-feou'
     env['PYTHONIOENCODING'] = 'utf-8'
+
+    _auto_update()
 
     # Reap SMS órdenes stale ANTES de empezar (norma user 2026-05-09:
     # cancelar siempre tlf no usado o problemático para no acumular cargos).
