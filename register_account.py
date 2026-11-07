@@ -1275,6 +1275,18 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     exhausted_logged = False
     for cycle in range(1, N_CYCLES + 1):
         effective_sent_at = first_sent_at  # filtro siempre relajado al primer click
+        # SI LA PÁGINA MURIÓ (sesión TM caducada, pestaña caída), no tiene sentido
+        # seguir haciendo polling del mailbox: el OTP llegaría a un navegador muerto
+        # y el pegado fallaría tras quemar todo el timeout (visto en logs 20:09 —
+        # OTP recibido y perdido porque la page estaba closed). Abortar YA para que
+        # el retry arranque navegador nuevo en segundos, no en 12 min.
+        try:
+            if page.is_closed():
+                raise RuntimeError('browser_dead_during_email_otp')
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
         log(f'  ⏳ polling email OTP ciclo {cycle}/{N_CYCLES} ({CICLO_S}s, since=first_click)')
         otp = _poll_imap_until(time.time() + CICLO_S, effective_sent_at)
         if otp: break
@@ -1334,6 +1346,15 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
 
     if not otp:
         log(f'  ❌ email OTP timeout tras {N_CYCLES} ciclos × {CICLO_S}s + last-chance'); return False
+    # Si la página murió mientras el OTP viajaba, no intentar pegar en navegador
+    # cerrado: abortar para retry con navegador fresco (mismo criterio que arriba).
+    try:
+        if page.is_closed():
+            raise RuntimeError('browser_dead_after_email_otp')
+    except RuntimeError:
+        raise
+    except Exception:
+        pass
     log(f'  📧 OTP={otp}')
 
     # Buscar input OTP RÁPIDO — el modal suele estar visible cuando llega el OTP
