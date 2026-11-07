@@ -21,9 +21,11 @@ API pública:
   self_test()
 """
 from __future__ import annotations
-import os, re, time, threading
+import os, re, time, threading, logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+
+_log = logging.getLogger(__name__)
 
 import config
 import json_atomic
@@ -100,8 +102,9 @@ def _path(k: str) -> str:
 
 
 def _load_cfg() -> Dict[str, Any]:
-    # 5sim es el provider principal por defecto
-    return json_atomic.load(_path(_CFG_KEY), default={"active": "5sim", "keys": {}, "auto_rotate": False})
+    # 5sim es el provider principal por defecto; auto_rotate ON porque los
+    # logs muestran caídas por stock que se resolvían rotando de provider.
+    return json_atomic.load(_path(_CFG_KEY), default={"active": "5sim", "keys": {}, "auto_rotate": True})
 
 
 def _save_cfg(d: Dict[str, Any]) -> None:
@@ -125,7 +128,7 @@ def get_config() -> Dict[str, Any]:
         "active": cfg.get("active", "5sim"),
         "providers": PROVIDERS_META,
         "keys": safe_keys,
-        "auto_rotate": cfg.get("auto_rotate", False),
+        "auto_rotate": cfg.get("auto_rotate", True),
     }
 
 
@@ -399,17 +402,22 @@ def buy_number(country: str = "es", product: str = "ticketmaster",
     else:
         order = [p]
 
-    # OPTIMIZACIÓN: filtrar providers sin key/saldo ANTES de meternos en
-    # buys/retries que tardarían 30+ s en fallar. Si NINGUNO es usable
-    # devolvemos error explícito en <2s con el listado de razones.
+    # OPTIMIZACIÓN LATENCIA: en el camino feliz SOLO comprobamos balance del
+    # provider activo (1 HTTP call). Los demás se comprueban de forma perezosa
+    # solo si el buy falla y hay que rotar. Antes: 4 get_balance por buy.
     skipped = []
-    usable_order = []
-    for prov in order:
-        u = _provider_is_usable(prov)
-        if u.get("usable"):
-            usable_order.append(prov)
-        else:
-            skipped.append({"provider": prov, **u})
+    first = _provider_is_usable(order[0])
+    if first.get("usable"):
+        usable_order = [order[0]]
+    else:
+        skipped.append({"provider": order[0], **first})
+        usable_order = []
+        for prov in order[1:]:
+            u = _provider_is_usable(prov)
+            if u.get("usable"):
+                usable_order.append(prov)
+            else:
+                skipped.append({"provider": prov, **u})
     if not usable_order:
         return {"ok": False, "error": "no_usable_provider",
                 "skipped": skipped,
@@ -418,7 +426,10 @@ def buy_number(country: str = "es", product: str = "ticketmaster",
                          "o espera stock SMSPool."}
 
     last_err = None
-    for prov in usable_order:
+    i = 0
+    while i < len(usable_order):
+        prov = usable_order[i]
+        i += 1
         if prov == "5sim":         r = _buy_5sim(country, product)
         elif prov == "smsactivate": r = _buy_smsactivate(country, product)
         elif prov == "onlinesim":   r = _buy_onlinesim(country, product)
@@ -426,6 +437,7 @@ def buy_number(country: str = "es", product: str = "ticketmaster",
         else: continue
 
         if r.get("ok"):
+            r["provider"] = prov
             # Persistir
             with _lock:
                 d = json_atomic.load(_path(_ORDERS_KEY), default={"orders": []})
@@ -439,11 +451,34 @@ def buy_number(country: str = "es", product: str = "ticketmaster",
                 json_atomic.save(_path(_ORDERS_KEY), d)
             return r
         last_err = r
+        # Fallback por FALTA DE STOCK (no solo por key/saldo): si el provider
+        # activo no encontró número, probar el siguiente usable EN ESTA MISMA
+        # llamada aunque auto_rotate esté off en el cfg guardado.
+        blob = str(r.get("error") or '') + ' ' + str(r.get("raw") or '') + ' ' + str(r.get("msg") or '')
+        if re.search(r"couldn.?t find an available phone|no numbers? available|out of stock|no_provider_available|no free phones", blob, re.I):
+            nxt = [x for x in order if x not in usable_order and _provider_is_usable(x).get("usable")]
+            if nxt:
+                _log.info("  🔄 %s sin stock → rotando a %s en la misma llamada", prov, nxt[0])
+                usable_order.extend(nxt)
     return last_err or {"ok": False, "error": "no_provider_available",
                         "skipped": skipped}
 
 
 # ─── CHECK SMS ───
+# Rate-limit por orden: con N procesos en paralelo haciendo poll a 0.5s/orden se
+# activa el rate-limit de los providers (SMSPool "Please wait 5 minutes"). Si ha
+# pasado menos de _POLL_MIN_INTERVAL_S desde el último poll de la orden, devolvemos
+# el último resultado cacheado en vez de llamar a la API.
+_POLL_MIN_INTERVAL_S = 1.5
+_last_poll_ts: Dict[str, float] = {}
+_last_poll_result: Dict[str, Dict[str, Any]] = {}
+
+
+def _reset_poll(order_id) -> None:
+    _last_poll_ts.pop(str(order_id), None)
+    _last_poll_result.pop(str(order_id), None)
+
+
 def _check_5sim(order_id) -> Dict[str, Any]:
     r = _http("5sim", "GET", f"/user/check/{order_id}")
     d = r.get("data", {})
@@ -504,6 +539,21 @@ def _check_smspool(order_id) -> Dict[str, Any]:
     sid = d.get("status") or d.get("status_id")
     code = d.get("sms") or d.get("code") or ""
     full = d.get("full_sms") or d.get("full_code") or ""
+    # Normalizar contractos raros: 'sms' puede venir como lista/dict anidado
+    if isinstance(code, list):
+        for item in code:
+            if isinstance(item, dict):
+                code = item.get("code") or item.get("sms") or ""
+                full = full or item.get("sms_content") or item.get("text") or ""
+            else:
+                code = str(item)
+            if code: break
+        else:
+            code = ""
+    elif isinstance(code, dict):
+        full = full or code.get("sms_content") or code.get("text") or ""
+        code = code.get("code") or ""
+    _log.debug("smspool check order=%s raw=%s", order_id, str(d)[:400])
     codes: List[str] = []
     if code:
         codes.append(str(code))
@@ -528,6 +578,14 @@ def _check_smspool(order_id) -> Dict[str, Any]:
 def check_sms(order_id, provider: Optional[str] = None) -> Dict[str, Any]:
     if not order_id:
         return {"ok": False, "error": "order_id_required"}
+    # Rate-limit por orden: <1.5s desde el último poll → devolver cache
+    now = time.time()
+    oid = str(order_id)
+    prev_ts = _last_poll_ts.get(oid)
+    if prev_ts is not None and now - prev_ts < _POLL_MIN_INTERVAL_S:
+        cached = _last_poll_result.get(oid)
+        if cached is not None:
+            return cached
     # Buscar provider en orders locales si no se especifica
     if not provider:
         for o in list_orders():
@@ -552,6 +610,12 @@ def check_sms(order_id, provider: Optional[str] = None) -> Dict[str, Any]:
                     o["last_check"] = datetime.now().isoformat()
                     break
             json_atomic.save(_path(_ORDERS_KEY), d)
+    # Registrar poll y cachear resultado (reset al llegar SMS → permite poll
+    # inmediato siguiente para no perder latencia en la entrega)
+    _last_poll_ts[oid] = time.time()
+    _last_poll_result[oid] = r
+    if r.get("sms_count") or r.get("codes"):
+        _reset_poll(oid)
     return r
 
 
@@ -750,6 +814,7 @@ def finish_order(order_id, provider: Optional[str] = None) -> Dict[str, Any]:
 
 def cancel_order(order_id, provider: Optional[str] = None) -> Dict[str, Any]:
     if not order_id: return {"ok": False, "error": "order_id_required"}
+    _reset_poll(order_id)   # cancel libera el rate-limit de esa orden
     r = _finalize(order_id, "cancel", provider)
     # Auto-limpia canceladas viejas (mantiene la actual 1h por si el user quiere ver)
     auto_cleanup()
@@ -958,7 +1023,7 @@ def get_info() -> Dict[str, Any]:
         "version": 1,
         "active_provider": cfg.get("active", "5sim"),
         "providers": list(PROVIDERS_META.keys()),
-        "auto_rotate": cfg.get("auto_rotate", False),
+        "auto_rotate": cfg.get("auto_rotate", True),
         "orders_total": len(list_orders()),
         "active_orders": len(get_active_orders()),
     }
