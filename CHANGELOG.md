@@ -12,6 +12,25 @@ y añade un bloque aquí. Nunca se reutiliza un número.
 
 ---
 
+
+## [1.1.5] - 2026-11-07
+
+**Segunda pasada al paso de teléfono tras batch de prueba (12/12, agentes en vivo).**
+
+### Fixed
+- Recovery: `no_forgot_button` falso cuando la SPA estaba en transición — el
+  click de "has olvidado tu contraseña" reintenta hasta 6 pasadas con
+  networkidle entre ellas (account_recovery.py).
+- Detección temprana del rechazo de número por TM DURANTE la espera del SMS
+  ("ha alcanzado el límite de intentos", "número no válido", ...) → cancelar,
+  bloquear y pasar a OTRO número sin esperar el timeout completo.
+
+### Changed
+- `SMS_TIMEOUT_S` 180→240s (smspool Spain entrega a 120-200s en hora punta;
+  47% de timeouts en el batch con 180s).
+- Failover de provider: tras 2 timeouts consecutivos del mismo provider en una
+  fila, los buys siguientes lo excluyen y rotan a otro (`buy_number(exclude=)`).
+
 ## [1.1.4] - 2026-11-07
 
 **Fix del paso de teléfono/SMS (fiabilidad + latencia) — validado en 2 batches
