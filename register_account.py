@@ -18,7 +18,7 @@ Uso:
   python register_account.py --row 3 --burned P-170131,P-170130
 """
 from __future__ import annotations
-import argparse, csv, json, os, random, re, socket, sys, time
+import argparse, csv, json, os, random, re, socket, sys, threading, time
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
 from typing import Optional
@@ -56,8 +56,8 @@ PLANTILLA = os.path.join(ROOT, 'plantilla_tm.csv')
 RUNS_DIR = os.path.join(ROOT, 'datos', 'buy', 'runs')
 COOKIES_DIR = os.path.join(ROOT, 'datos', 'cookies')
 SESSIONS_DIR = os.path.join(ROOT, 'datos', 'sessions')
-SMS_TIMEOUT_S = 120  # antes 70s — TM Spain tarda 60-120s con virtual4/SMSPool, 70s perdía legítimos
-SMS_RESEND_EXTRA_S = 60  # espera extra tras pedir a TM que reenvíe el SMS al mismo número
+SMS_TIMEOUT_S = 180  # antes 120s — logs muestran SMS legítimos de SMSPool a ~108s; ~10-15% se perdían con 120s
+SMS_RESEND_EXTRA_S = 120  # espera extra tras pedir a TM que reenvíe el SMS al mismo número
 SMS_RESEND_JS = r"""() => {
   const re = /p(edir|ide) uno nuevo|solicita(r)? (uno|un) nuevo|reenviar|enviar de nuevo|resend|send.*new code/i;
   const byId = document.querySelector('#asvd-request-code-link, [data-bdd="asvd-request-code-link"]');
@@ -69,8 +69,15 @@ SMS_RESEND_JS = r"""() => {
 }"""
 PENDING_ORDERS_RECHECK = []  # órdenes timeoutadas que mantenemos vivas en background por si llega SMS tarde
 MAX_PHONE_CYCLES = 6
-BUY_NO_STOCK_RETRIES = 30
-BUY_BACKOFF_S = 8
+BUY_NO_STOCK_RETRIES = 10
+BUY_BACKOFF_S = 5   # backoff base creciente: min(5*(k+1), 20) → 5,10,15,20,20…
+
+# Prefetch del número SMS en background: la compra puede tardar minutos bajo
+# rate-limit de los providers, así que se lanza un hilo daemon en cuanto el
+# email OTP se verifica, solapando la espera con el resto del flow.
+PREFETCH_MAX_AGE_S = 180
+PREFETCHED_NUMBER: dict = {'lock': threading.Lock(), 'result': None,
+                           'ts': 0.0, 'discarded': False}
 DASHBOARD_LOGIN = ('admin', 'admin')
 
 for d in (RUNS_DIR, COOKIES_DIR, SESSIONS_DIR):
@@ -1290,10 +1297,7 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     pasted = False
     confirm_clicked = None
     try:
-        r = page.evaluate("""(args) => {
-            const sel = args.input_sel;
-            const code = args.code;
-            const inp = document.querySelector(sel);
+        r = inp.evaluate("""(inp, code) => {
             if (!inp) return {ok:false, reason:'no_input'};
             inp.focus();
             const proto = Object.getPrototypeOf(inp);
@@ -1312,7 +1316,7 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
             let confirmed = false;
             if (target) { target.click(); confirmed = true; }
             return {ok:true, value:inp.value, confirmed, btn:target?(target.innerText||'').trim():null};
-        }""", {"input_sel": 'input[autocomplete="one-time-code"], input[inputmode="numeric"], input[type="tel"], input[name*="code" i], input[name*="otp" i], input[type="text"]', "code": str(otp)})
+        }""", str(otp))
         if r and r.get('ok') and (r.get('value') or '').strip() == str(otp):
             pasted = True
             log(f'  ⚡ email OTP pegado vía JS @ {(time.time()-paste_t0)*1000:.0f}ms — value="{r["value"]}" confirm_inline={r.get("confirmed")}')
@@ -1356,6 +1360,7 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
             body_low = ''
         if not still_otp:
             log(f'  ✓ email OTP verificado (modal cerrado)')
+            _start_prefetch()   # comprar número SMS en background mientras TM habilita el form
             break
         if any(p in body_low for p in EMAIL_ERR_TEMP):
             log(f'  🔁 error temporal email OTP — re-click confirmar')
@@ -1370,23 +1375,31 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     return True
 
 def open_phone_modal(page: Page) -> Optional[object]:
-    # Esperar a que el botón "Añadir mi teléfono" esté ENABLED (post-email-OTP)
-    for i in range(15):
+    # Esperar a que el botón "Añadir mi teléfono" esté ENABLED (post-email-OTP).
+    # Poll ligero cada 300ms hasta 6s — responde en ms si el elemento ya está listo.
+    try:
+        page.wait_for_selector('text=/a[ñn]adir mi tel[eé]fono/i', timeout=6000, state='attached')
+    except Exception:
+        pass
+    for _ in range(20):
         clicked = js_click(page, r'a[ñn]adir mi tel[eé]fono', exact=True)
         if clicked:
             log(f'  click "{clicked}"')
             break
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(300)
     else:
-        log('  ⚠ botón "Añadir mi teléfono" no apareció en 15s')
+        log('  ⚠ botón "Añadir mi teléfono" no apareció en ~6s')
 
-    # Esperar input teléfono hasta 6s (modal abre con animación)
-    for _ in range(6):
-        inp, sel = find_visible_input(page, ['input[type="tel"]', 'input[autocomplete*="tel" i]'], 1500)
+    # Esperar input teléfono hasta ~6s total (modal abre con animación)
+    for _ in range(20):
+        try:
+            inp, sel = find_visible_input(page, ['input[type="tel"]', 'input[autocomplete*="tel" i]'], 400)
+        except Exception:
+            inp, sel = None, None
         if inp:
             log(f'  ✓ phone input via {sel}')
             return inp
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(300)
     return None
 
 def reset_phone_form_after_error(page: Page) -> Optional[object]:
@@ -1399,16 +1412,109 @@ def reset_phone_form_after_error(page: Page) -> Optional[object]:
     page.wait_for_timeout(1500)
     return open_phone_modal(page)
 
+# ─── PREFETCH número SMS en background ───
+def _prefetch_buy_number():
+    """Hilo daemon: compra el número en background. Nunca tumba el proceso
+    principal — captura todo y guarda el resultado en PREFETCHED_NUMBER."""
+    try:
+        r = sms_receiver.buy_number(country='es', product='ticketmaster')
+    except Exception as e:
+        log(f'  ⚠ prefetch buy err (no fatal): {str(e)[:120]}')
+        r = {'ok': False, 'error': str(e)[:160]}
+    with PREFETCHED_NUMBER['lock']:
+        discarded = PREFETCHED_NUMBER['discarded']
+        if not discarded:
+            PREFETCHED_NUMBER['result'] = r
+            PREFETCHED_NUMBER['ts'] = time.time()
+    # Si mientras comprábamos el proceso pidió descartar el prefetch, cancelar
+    # la orden para no quemar saldo del provider.
+    if discarded and isinstance(r, dict) and r.get('ok') and r.get('order_id'):
+        try:
+            c = sms_receiver.cancel_order(r['order_id'], provider=r.get('provider'))
+            log(f'  🧹 prefetch tardío cancelado order={r["order_id"]} ok={c.get("ok")}')
+        except Exception as e:
+            log(f'  ⚠ cancel prefetch tardío err: {e}')
+
+
+def _start_prefetch():
+    with PREFETCHED_NUMBER['lock']:
+        PREFETCHED_NUMBER['result'] = None
+        PREFETCHED_NUMBER['ts'] = time.time()
+        PREFETCHED_NUMBER['discarded'] = False
+    t = threading.Thread(target=_prefetch_buy_number, daemon=True, name='sms-prefetch')
+    t.start()
+    log('  🚀 prefetch número SMS lanzado en background (post email OTP)')
+
+
+def _take_prefetched(max_wait_s: int = 30) -> Optional[dict]:
+    """Espera al prefetch hasta max_wait_s y devuelve el resultado si es fresco."""
+    t0 = time.time()
+    while time.time() - t0 < max_wait_s:
+        with PREFETCHED_NUMBER['lock']:
+            r = PREFETCHED_NUMBER['result']
+            ts = PREFETCHED_NUMBER['ts']
+        if r is not None:
+            if time.time() - ts <= PREFETCH_MAX_AGE_S:
+                _discard_prefetched()
+                return r
+            _discard_prefetched()
+            return None
+        time.sleep(0.25)
+    return None   # aún no terminó: no bloquear más allá de max_wait_s
+
+
+def _discard_prefetched():
+    """Marca el holder como consumido/descartado: el hilo no sobreescribirá."""
+    with PREFETCHED_NUMBER['lock']:
+        PREFETCHED_NUMBER['result'] = None
+        PREFETCHED_NUMBER['discarded'] = True
+
+
+def _cancel_prefetched(reason: str):
+    """Cancela la orden prefetchada si no se usó (fin de intento/fallback)."""
+    with PREFETCHED_NUMBER['lock']:
+        r = PREFETCHED_NUMBER['result']
+        PREFETCHED_NUMBER['result'] = None
+        PREFETCHED_NUMBER['discarded'] = True
+    if isinstance(r, dict) and r.get('ok') and r.get('order_id'):
+        try:
+            c = sms_receiver.cancel_order(r['order_id'], provider=r.get('provider'))
+            log(f'  🧹 prefetch cancelado ({reason}) order={r["order_id"]} ok={c.get("ok")}')
+        except Exception as e:
+            log(f'  ⚠ cancel prefetch err: {e}')
+
+
 def buy_phone_skip_blocked(blocked: set, run: RunState) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    # Consumir prefetch del número (lanzado en background tras email OTP)
+    pf = _take_prefetched(max_wait_s=30)
+    if pf is not None:
+        if pf.get('ok'):
+            ph = pf.get('phone')
+            prov = pf.get('provider') or '5sim'
+            if ph not in blocked:
+                log(f'  ✓ número prefetcheado {ph} ({prov}) — sin espera de buy')
+                return ph, pf.get('order_id'), prov
+            log(f'  ⚠ prefetch {ph} está blocked → cancel + loop normal')
+            try: sms_receiver.cancel_order(pf['order_id'], provider=prov)
+            except Exception: pass
+        else:
+            log(f'  ⚠ prefetch falló ({str(pf.get("error"))[:100]}) — buy normal')
+    blocked_skips = 0
     for k in range(BUY_NO_STOCK_RETRIES):
         r = sms_receiver.buy_number(country='es', product='ticketmaster')
         if r.get('ok'):
             ph = r.get('phone')
             prov = r.get('provider') or '5sim'
             if ph in blocked:
-                log(f'  blocked {ph} → cancel + retry')
+                # El número devuelto ya dio problemas antes: cancelarlo y pedir OTRO.
+                # No descuenta de BUY_NO_STOCK_RETRIES — no es fallo de stock.
+                blocked_skips += 1
+                log(f'  🚫 provider devolvió número bloqueado {ph} → cancel + pedir otro (skip #{blocked_skips})')
                 try: sms_receiver.cancel_order(r['order_id'])
                 except Exception: pass
+                if blocked_skips >= 15:
+                    log('  ⚠ demasiados números bloqueados seguidos — abortando buy (pool contaminado)')
+                    break
                 time.sleep(2); continue
             return ph, r.get('order_id'), prov
         if k % 3 == 0:
@@ -1418,7 +1524,15 @@ def buy_phone_skip_blocked(blocked: set, run: RunState) -> tuple[Optional[str], 
             err = str(err)[:160]
             prov = r.get('provider') or 'n/a'
             log(f'  buy retry {k+1}/{BUY_NO_STOCK_RETRIES} via {prov}: {err}')
-        time.sleep(BUY_BACKOFF_S)
+        # Rate-limit SMSPool: "Please wait 5 minutes" / "too many failed requests".
+        # Abortar el ciclo rápido — martillear solo empeora el rate-limit.
+        blob = (str(r.get('error') or '') + ' ' +
+                str(r.get('raw') if isinstance(r.get('raw'), dict) else (r.get('raw') or '')) + ' ' +
+                str(r.get('msg') or ''))
+        if re.search(r'please wait \d+ minutes|too many failed requests', blob, re.I):
+            log('  🚫 rate-limit SMSPool detectado — abortando ciclo de buy (no martillar)')
+            break
+        time.sleep(min(BUY_BACKOFF_S * (k + 1), 20))
     return None, None, None
 
 def _drain_pending_orders_recheck(reason: str = 'cleanup'):
@@ -1445,6 +1559,8 @@ def phone_relentless(page: Page, user: UserRow, phone_inp, run: RunState) -> Opt
     try:
         return _phone_relentless_inner(page, user, phone_inp, run, blocked)
     finally:
+        try: _cancel_prefetched('phone_relentless_exit')
+        except Exception as _e: log(f'  cancel prefetch exception: {_e}')
         try: _drain_pending_orders_recheck('phone_relentless_exit')
         except Exception as _e: log(f'  drain exception: {_e}')
 
@@ -1550,7 +1666,15 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             else:
                 PENDING_ORDERS_RECHECK.remove(prev)
         sms_resent = False
+        _rescued_orders = set()
         next_resend_probe = time.time() + 20
+        next_resend_reprobe = None  # 2º probe ~30s tras el reenvío por si el click no registró
+        # Polling adaptativo: base 2.0s ± 0.5s jitter. Si la API devuelve
+        # rate-limit, duplicar intervalo (cap 8s) hasta el próximo éxito. Con
+        # 4 procesos en paralelo, polling a 0.5s ≈ 8-16 req/s activa el
+        # rate-limit de los providers y la compra del número tarda minutos.
+        poll_interval = 2.0
+        poll_round = 0
         while time.time() < deadline and not sms_code:
             # TM a veces no entrega el primer SMS. Su enlace "puedes pedir uno
             # nuevo" solo se activa al acabar una cuenta atrás (~120 s): sondear
@@ -1562,26 +1686,93 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                     if hit:
                         sms_resent = True
                         deadline = max(deadline, time.time() + SMS_RESEND_EXTRA_S)
+                        next_resend_reprobe = time.time() + 30
                         log(f'  🔁 SMS no llegó → reenvío pedido ("{hit}"), +{SMS_RESEND_EXTRA_S}s')
                 except Exception as e:
                     log(f'  ⚠ reenvío SMS err (no fatal): {str(e)[:80]}')
-            for ord_to_check in all_orders_to_check:
+            elif sms_resent and next_resend_reprobe and time.time() >= next_resend_reprobe:
+                # El primer click pudo no haber registrado (sin feedback visual):
+                # si el enlace sigue visible a los ~30s, pulsarlo otra vez.
+                next_resend_reprobe = None
+                try:
+                    hit2 = page.evaluate(SMS_RESEND_JS)
+                    if hit2:
+                        deadline = max(deadline, time.time() + SMS_RESEND_EXTRA_S)
+                        log(f'  🔁 2º probe reenvío — enlace aún visible, re-click ("{hit2}")')
+                except Exception as e:
+                    log(f'  ⚠ 2º probe reenvío err (no fatal): {str(e)[:80]}')
+            poll_round += 1
+            # Orden actual CADA ronda; órdenes anteriores (PENDING_ORDERS_RECHECK)
+            # solo 1 de cada 10 rondas (~cada 20s) para no multiplicar req/s.
+            if poll_round % 10 == 1:
+                orders_this_round = all_orders_to_check
+            else:
+                orders_this_round = [order]
+            for ord_to_check in orders_this_round:
                 try:
                     chk = sms_receiver.check_sms(ord_to_check)
+                    # Backoff adaptativo: rate-limit detectado (ok=False o texto
+                    # "wait"/"too many"/"retry later") → duplicar intervalo (cap 8s);
+                    # éxito limpio de la orden actual → reset a base 2.0s.
+                    chk_blob = (str(chk.get('error') or '') + ' ' +
+                                str(chk.get('raw') if isinstance(chk.get('raw'), dict) else (chk.get('raw') or '')) + ' ' +
+                                str(chk.get('msg') or ''))
+                    if not chk.get('ok') or re.search(r'wait|too many|retry later', chk_blob, re.I):
+                        poll_interval = min(poll_interval * 2, 8.0)
+                    elif ord_to_check == order:
+                        poll_interval = 2.0
+                    # Rescate: orden anterior que la API ya no reconoce (ok=False) —
+                    # intentar finish_order una vez para cerrarla limpio en vez de
+                    # dejarla pudrirse hasta el drain.
+                    if (not chk.get('ok') and ord_to_check != order
+                            and ord_to_check not in _rescued_orders):
+                        prev = next((p for p in PENDING_ORDERS_RECHECK
+                                     if p.get('order') == ord_to_check), None)
+                        if prev and prev.get('provider') in ('5sim', 'smsactivate'):
+                            _rescued_orders.add(ord_to_check)
+                            try:
+                                fin = sms_receiver.finish_order(ord_to_check, provider=prev.get('provider'))
+                                log(f'  🔧 rescue finish_order {ord_to_check} ok={fin.get("ok")}')
+                            except Exception as fe:
+                                log(f'  ⚠ rescue finish err: {fe}')
                     for s in (chk.get('sms') or []):
                         txt = s.get('text') or s.get('code') or ''
                         sms_text = txt
                         c = _extract_tm_code(txt)
                         if c:
-                            sms_code = c
                             if ord_to_check != order:
+                                # El número de la orden anterior debe COINCIDIR con el
+                                # que acabamos de meter en el modal — si no, el SMS
+                                # pertenece a otro flujo y no vale para este número.
+                                prev = next((p for p in PENDING_ORDERS_RECHECK
+                                             if p.get('order') == ord_to_check), None)
+                                if prev and prev.get('phone') != phone:
+                                    log(f'  ⚠ SMS de orden {ord_to_check} llegó tarde pero phone '
+                                        f'{prev.get("phone")} != {phone} actual — descartado')
+                                    continue
                                 log(f'  📱 SMS llegó tarde a orden anterior {ord_to_check} — reusar código')
+                            sms_code = c
                             break
                 except Exception as e:
                     log(f'  sms check err (no fatal): {e}')
                 if sms_code: break
             if sms_code: break
-            time.sleep(0.5)
+            time.sleep(max(0.2, poll_interval + random.uniform(-0.5, 0.5)))
+
+        if not sms_code:
+            # ÚLTIMO check justo antes de cancelar — el SMS puede llegar en el
+            # instante del timeout y cancelar encima lo mataría.
+            try:
+                chk = sms_receiver.check_sms(order)
+                for s in (chk.get('sms') or []):
+                    c = _extract_tm_code(s.get('text') or s.get('code') or '')
+                    if c:
+                        sms_code = c
+                        sms_text = s.get('text') or s.get('code') or ''
+                        log(f'  📱 SMS={sms_code} capturado en último check pre-cancel')
+                        break
+            except Exception as e:
+                log(f'  ⚠ último check pre-cancel err (no fatal): {e}')
 
         if not sms_code:
             log(f'  ⏰ SMS timeout {SMS_TIMEOUT_S}s — cancelando {provider} order={order}')
@@ -1594,12 +1785,28 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                     log(f'    ✓ cancel ok ({provider}) verified={cres.get("verified_status","?")}')
                 else:
                     log(f'    ⚠ cancel falló: {cres.get("friendly_error") or cres.get("error")}')
+                    # Rescate: si check_sms confirma que NO hay nada y la orden quedó
+                    # colgada, intentar finish_order como cierre limpio (5sim/smsactivate).
+                    if provider in ('5sim', 'smsactivate'):
+                        try:
+                            chk2 = sms_receiver.check_sms(order)
+                            if not chk2.get('ok'):
+                                fin = sms_receiver.finish_order(order, provider=provider)
+                                log(f'    🔧 rescue finish_order ok={fin.get("ok")}')
+                        except Exception as fe:
+                            log(f'    ⚠ rescue finish_order err: {fe}')
             except Exception as e:
                 log(f'    ⚠ cancel exception: {e}')
-            # Guardar para recheck por si llega SMS tarde antes de que SMSPool refunde
+            # Guardar para recheck por si llega SMS tarde antes de que SMSPool refunde.
+            # SÍ bloqueamos el número: si un número no recibió el SMS en 180s, no se
+            # reutiliza — el siguiente ciclo compra uno DIFERENTE (política del usuario:
+            # número problemático → cancelar y otro nuevo). El recheck sigue vivo por
+            # si el SMS llega tarde a esta orden cancelada.
+            blocked.add(phone); save_blocked_phones(blocked)
+            log(f'  🚫 número {phone} bloqueado (timeout SMS {SMS_TIMEOUT_S}s sin recibir) — próximo ciclo usará otro')
             PENDING_ORDERS_RECHECK.append({'order': order, 'phone': phone,
                                            'ts': time.time(), 'provider': provider})
-            blocked.add(phone); save_blocked_phones(blocked); continue
+            continue
         log(f'  📱 SMS={sms_code} ({(datetime.now(timezone.utc)-sent_at).total_seconds():.1f}s)')
 
         # Buscar input SMS — modal puede tardar 5-15s en renderizar tras SMS recibido.
@@ -1624,7 +1831,11 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
         if not code_inp:
             log(f'  ❌ no input SMS code tras 18s — SMS perdido, cancel + retry')
             screenshot_on_error(page, run, f'no_input_sms_cycle{cycle}')
-            sms_receiver.cancel_order(order); blocked.add(phone); save_blocked_phones(blocked); continue
+            # Aunque el SMS llegó, la experiencia del usuario es que este número dio
+            # problemas → cancelar y que el próximo ciclo use uno DIFERENTE.
+            sms_receiver.cancel_order(order); blocked.add(phone); save_blocked_phones(blocked)
+            log(f'  🚫 número {phone} bloqueado (modal código no apareció) — próximo ciclo usará otro')
+            continue
 
         # ULTRAFAST paste — JS directo en 1 round-trip + click confirm JS en mismo frame
         # Antes: ~155ms (click + fill + 80ms wait + verify).
@@ -1636,10 +1847,7 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             # en una sola llamada page.evaluate (1 round-trip a CDP).
             # React/Vue lee el value del fiber tras el input event, así que basta con
             # nativeInputValueSetter para forzar synthetic events React.
-            r = page.evaluate("""(args) => {
-                const sel_input = args.input_sel;
-                const code = args.code;
-                const inp = document.querySelector(sel_input);
+            r = code_inp.evaluate("""(inp, code) => {
                 if (!inp) return {ok:false, reason:'no_input'};
                 inp.focus();
                 // React strict mode: usar el setter nativo para que React detecte el cambio
@@ -1661,7 +1869,7 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                     confirmed = true;
                 }
                 return {ok:true, value:inp.value, confirmed};
-            }""", {"input_sel": 'input[autocomplete="one-time-code"], input[inputmode="numeric"], input[type="text"], input[type="tel"]', "code": str(sms_code)})
+            }""", str(sms_code))
 
             if r and r.get('ok') and (r.get('value') or '').strip() == sms_code:
                 pasted = True
@@ -3045,6 +3253,8 @@ def _attempt_browser_flow(user: UserRow, run: RunState, burned_acc: set) -> dict
     except Exception as _e:
         # Cleanup en caso de fallo (caller seguirá con OTRO perfil + OTRA IP)
         _err_str = str(_e).lower()
+        try: _cancel_prefetched('attempt_error')
+        except Exception: pass
         try: screenshot_on_error(page, run, 'attempt_error')
         except Exception: pass
         try: page._b.close(); page._pw.stop()
