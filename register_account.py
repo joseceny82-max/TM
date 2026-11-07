@@ -56,8 +56,11 @@ PLANTILLA = os.path.join(ROOT, 'plantilla_tm.csv')
 RUNS_DIR = os.path.join(ROOT, 'datos', 'buy', 'runs')
 COOKIES_DIR = os.path.join(ROOT, 'datos', 'cookies')
 SESSIONS_DIR = os.path.join(ROOT, 'datos', 'sessions')
-SMS_TIMEOUT_S = 180  # antes 120s — logs muestran SMS legítimos de SMSPool a ~108s; ~10-15% se perdían con 120s
+SMS_TIMEOUT_S = 240  # antes 180s — smspool Spain: cola actual entrega a 120-200s; 47% timeouts con 180s en batch 7-nov
 SMS_RESEND_EXTRA_S = 120  # espera extra tras pedir a TM que reenvíe el SMS al mismo número
+# Failover de provider: tras N timeouts consecutivos del MISMO provider en una
+# fila, forzar la rotación para que el siguiente buy use otro provider distinto.
+SMS_FAILOVER_AFTER_TIMEOUTS = 2
 SMS_RESEND_JS = r"""() => {
   const re = /p(edir|ide) uno nuevo|solicita(r)? (uno|un) nuevo|reenviar|enviar de nuevo|resend|send.*new code/i;
   const byId = document.querySelector('#asvd-request-code-link, [data-bdd="asvd-request-code-link"]');
@@ -1484,7 +1487,8 @@ def _cancel_prefetched(reason: str):
             log(f'  ⚠ cancel prefetch err: {e}')
 
 
-def buy_phone_skip_blocked(blocked: set, run: RunState) -> tuple[Optional[str], Optional[str], Optional[str]]:
+def buy_phone_skip_blocked(blocked: set, run: RunState,
+                           avoid_provider: Optional[str] = None) -> tuple[Optional[str], Optional[str], Optional[str]]:
     # Consumir prefetch del número (lanzado en background tras email OTP)
     pf = _take_prefetched(max_wait_s=30)
     if pf is not None:
@@ -1501,7 +1505,10 @@ def buy_phone_skip_blocked(blocked: set, run: RunState) -> tuple[Optional[str], 
             log(f'  ⚠ prefetch falló ({str(pf.get("error"))[:100]}) — buy normal')
     blocked_skips = 0
     for k in range(BUY_NO_STOCK_RETRIES):
-        r = sms_receiver.buy_number(country='es', product='ticketmaster')
+        # Failover por calidad: si este provider acumuló timeouts en esta fila,
+        # pedir el buy excluyéndolo (buy_number rotará a otro con stock).
+        r = sms_receiver.buy_number(country='es', product='ticketmaster',
+                                    exclude=avoid_provider)
         if r.get('ok'):
             ph = r.get('phone')
             prov = r.get('provider') or '5sim'
@@ -1566,11 +1573,16 @@ def phone_relentless(page: Page, user: UserRow, phone_inp, run: RunState) -> Opt
 
 
 def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState, blocked: set) -> Optional[dict]:
+    # Failover por calidad: timeouts consecutivos por provider en ESTA fila.
+    # Tras SMS_FAILOVER_AFTER_TIMEOUTS timeouts del mismo provider, los buys
+    # siguientes lo excluyen (buy_number rotará a otro provider con stock).
+    provider_timeouts: dict = {}
+    avoid_provider = None
     for cycle in range(1, MAX_PHONE_CYCLES + 1):
         log(f'cycle phone {cycle}/{MAX_PHONE_CYCLES}')
 
         # PRIMERO comprar (puede tardar 4 min si "no free phones")
-        phone, order, provider = buy_phone_skip_blocked(blocked, run)
+        phone, order, provider = buy_phone_skip_blocked(blocked, run, avoid_provider=avoid_provider)
         if not phone: log('  stock SMS provider agotado'); break
         digits = phone.lstrip('+')
         if digits.startswith('34'): digits = digits[2:]
@@ -1850,6 +1862,15 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             # si el SMS llega tarde a esta orden cancelada.
             blocked.add(phone); save_blocked_phones(blocked)
             log(f'  🚫 número {phone} bloqueado (timeout SMS {SMS_TIMEOUT_S}s sin recibir) — próximo ciclo usará otro')
+            # Failover: contar timeouts de ESTE provider; si acumula, el próximo
+            # buy lo excluye y fuerza otro provider (smspool con sequía de
+            # entrega no debe seguir quemando ciclos).
+            provider_timeouts[provider] = provider_timeouts.get(provider, 0) + 1
+            if (provider_timeouts[provider] >= SMS_FAILOVER_AFTER_TIMEOUTS
+                    and avoid_provider != provider):
+                avoid_provider = provider
+                log(f'  🔀 failover: {provider} acumuló {provider_timeouts[provider]} timeouts '
+                    f'— próximos buys excluirán este provider')
             PENDING_ORDERS_RECHECK.append({'order': order, 'phone': phone,
                                            'ts': time.time(), 'provider': provider})
             continue

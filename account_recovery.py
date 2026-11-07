@@ -485,12 +485,26 @@ def recover_inline(page, ctx, user, run, *, log=print,
 
     try:
         if not request_already_sent:
-            # 1. Click forgot-password
-            clicked = _click_button_by_text(page, [
-                r'has olvidado tu contrase', r'olvidaste.*contrase',
-                r'forgot.*password', r'restablecer.*contrase',
-                r'solicita uno nuevo',
-            ], timeout_ms=3000)
+            # 1. Click forgot-password — la SPA de TM puede seguir en transición
+            #    (title Sign In → Sign Up) justo al entrar al recovery; los
+            #    is_visible lanzan excepción rápida por contexto destruido y el
+            #    clic fallaba en <100ms dando no_forgot_button falso (row8,
+            #    2026-11-07). Reintentar con espera de estabilidad entre pasadas.
+            clicked = False
+            for stab_retry in range(6):
+                clicked = _click_button_by_text(page, [
+                    r'has olvidado tu contrase', r'olvidaste.*contrase',
+                    r'forgot.*password', r'restablecer.*contrase',
+                    r'solicita uno nuevo',
+                ], timeout_ms=3000)
+                if clicked:
+                    break
+                log(f'  ⏳ forgot-button no encontrado (stab retry {stab_retry+1}/6) — esperando SPA…')
+                time.sleep(2.0)
+                try:
+                    page.wait_for_load_state('networkidle', timeout=4000)
+                except Exception:
+                    pass
             if not clicked:
                 # Antes se navegaba a /account/forgot-password, pero esa URL da 404
                 # en TM y el flujo esperaba 300 s un email que nunca se pedía.

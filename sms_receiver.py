@@ -392,7 +392,8 @@ def usable_providers() -> Dict[str, Any]:
 
 
 def buy_number(country: str = "es", product: str = "ticketmaster",
-               provider: Optional[str] = None) -> Dict[str, Any]:
+               provider: Optional[str] = None,
+               exclude: Optional[str] = None) -> Dict[str, Any]:
     p = provider or _get_active()
 
     # Try active provider, si falla y auto_rotate activado → probar siguientes
@@ -401,6 +402,10 @@ def buy_number(country: str = "es", product: str = "ticketmaster",
         order = [p] + [x for x in PROVIDERS_META if x != p]
     else:
         order = [p]
+    # Failover por calidad (p.ej. provider con timeouts acumulados en la fila):
+    # excluirlo de la rotación — el buy caerá en el siguiente con stock.
+    if exclude:
+        order = [x for x in order if x != exclude]
 
     # OPTIMIZACIÓN LATENCIA: en el camino feliz SOLO comprobamos balance del
     # provider activo (1 HTTP call). Los demás se comprueban de forma perezosa
@@ -419,6 +424,10 @@ def buy_number(country: str = "es", product: str = "ticketmaster",
             else:
                 skipped.append({"provider": prov, **u})
     if not usable_order:
+        if exclude:
+            # El provider excluido era el único usable: mejor usarlo que fallar.
+            _log.info("  ⚠ solo %s usable (excluido por timeouts) — se usa igualmente", exclude)
+            return buy_number(country=country, product=product, provider=exclude)
         return {"ok": False, "error": "no_usable_provider",
                 "skipped": skipped,
                 "hint": "Ningún SMS provider tiene key+saldo. "
