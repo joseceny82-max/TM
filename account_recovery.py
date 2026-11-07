@@ -492,13 +492,15 @@ def recover_inline(page, ctx, user, run, *, log=print,
                 r'solicita uno nuevo',
             ], timeout_ms=3000)
             if not clicked:
-                # Fallback: navegar directo a /account/forgot-password
+                # Antes se navegaba a /account/forgot-password, pero esa URL da 404
+                # en TM y el flujo esperaba 300 s un email que nunca se pedía.
                 try:
-                    page.goto('https://www.ticketmaster.es/account/forgot-password',
-                              wait_until='domcontentloaded', timeout=20000)
-                    time.sleep(2)
-                except Exception as e:
-                    return {'ok': False, 'error': f'no_forgot_button_or_nav: {str(e)[:80]}'}
+                    body = (page.evaluate('() => document.body.innerText') or '').lower()
+                except Exception:
+                    body = ''
+                if 'suspendido' in body or 'suspended' in body:
+                    return {'ok': False, 'error': 'bot_block_detected: sesión suspendida (recovery)'}
+                return {'ok': False, 'error': 'no_forgot_button'}
 
             # 2. Tipear email (puede que ya esté pre-rellenado)
             time.sleep(2)

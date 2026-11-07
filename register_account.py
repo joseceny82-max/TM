@@ -57,6 +57,16 @@ RUNS_DIR = os.path.join(ROOT, 'datos', 'buy', 'runs')
 COOKIES_DIR = os.path.join(ROOT, 'datos', 'cookies')
 SESSIONS_DIR = os.path.join(ROOT, 'datos', 'sessions')
 SMS_TIMEOUT_S = 120  # antes 70s — TM Spain tarda 60-120s con virtual4/SMSPool, 70s perdía legítimos
+SMS_RESEND_EXTRA_S = 60  # espera extra tras pedir a TM que reenvíe el SMS al mismo número
+SMS_RESEND_JS = r"""() => {
+  const re = /p(edir|ide) uno nuevo|solicita(r)? (uno|un) nuevo|reenviar|enviar de nuevo|resend|send.*new code/i;
+  const byId = document.querySelector('#asvd-request-code-link, [data-bdd="asvd-request-code-link"]');
+  const el = (byId && byId.offsetParent !== null) ? byId : Array.from(document.querySelectorAll('button, a, [role=button]'))
+    .find(e => re.test((e.innerText || '').trim()) && e.offsetParent !== null && !e.disabled);
+  if (!el) return null;
+  el.click();
+  return (el.innerText || '').trim().slice(0, 40);
+}"""
 PENDING_ORDERS_RECHECK = []  # órdenes timeoutadas que mantenemos vivas en background por si llega SMS tarde
 MAX_PHONE_CYCLES = 6
 BUY_NO_STOCK_RETRIES = 30
@@ -800,6 +810,14 @@ def goto_signup(page: Page, user: UserRow, run: RunState) -> str:
     js_click(page, r'continuar', exact=True)
     page.wait_for_timeout(3500)
 
+    # La pantalla "Su sesión se ha suspendido" también se titula "Ticketmaster
+    # Sign In": sin este check se tomaba por cuenta existente y se lanzaba una
+    # recuperación inútil (fila 479, 2026-11-07).
+    blk = detect_bot_block(page)
+    if blk:
+        screenshot_on_error(page, run, 'bot_blocked_post_email')
+        raise RuntimeError(f'bot_block_detected: "{blk}" (tras email)')
+
     title = page.title().lower()
     mode = 'signup' if 'sign up' in title else ('signin' if 'sign in' in title else 'unknown')
     log(f'  modo={mode} title={page.title()}')
@@ -1000,12 +1018,9 @@ def fill_signup_form(page: Page, user: UserRow, run: 'RunState'):
             body = page.evaluate('()=>document.body.innerText.slice(0,500).toLowerCase()')
             url_now = page.url.lower()
         except Exception: continue
-        if 'verify' in ttl or 'verifica' in body or 'verificación' in body or 'pasos' in body:
-            log(f'  ✓ verify form (t+{(i+1)*1.5:.0f}s)'); return
-        # Heurística URL: si redirigió a /verify, /pasos o auth.* → ok
-        if any(k in url_now for k in ('/verify', '/pasos', '/auth', '/identify', '/account')):
-            log(f'  ✓ verify form via URL (t+{(i+1)*1.5:.0f}s, url contains expected path)'); return
-        # Detectar bot_block durante el wait — abortar inmediato si TM lo muestra
+        # bot_block ANTES de los éxitos heurísticos: la pantalla "Su sesión se ha
+        # suspendido" vive en auth.ticketmaster.com y la heurística de URL '/auth'
+        # la daba por formulario de verificación (fila 478, 2026-11-07).
         try:
             blk = detect_bot_block(page)
             if blk:
@@ -1013,6 +1028,11 @@ def fill_signup_form(page: Page, user: UserRow, run: 'RunState'):
                 raise RuntimeError(f'bot_block_detected: "{blk}" (post-Siguiente)')
         except RuntimeError: raise
         except Exception: pass
+        if 'verify' in ttl or 'verifica' in body or 'verificación' in body or 'pasos' in body:
+            log(f'  ✓ verify form (t+{(i+1)*1.5:.0f}s)'); return
+        # Heurística URL: si redirigió a /verify, /pasos o auth.* → ok
+        if any(k in url_now for k in ('/verify', '/pasos', '/auth', '/identify', '/account')):
+            log(f'  ✓ verify form via URL (t+{(i+1)*1.5:.0f}s, url contains expected path)'); return
         # Si TM mostró error tras click → log + abort
         if 'error' in body[:200] and 'verifica' not in body:
             try:
@@ -1529,7 +1549,22 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                 all_orders_to_check.append(prev['order'])
             else:
                 PENDING_ORDERS_RECHECK.remove(prev)
+        sms_resent = False
+        next_resend_probe = time.time() + 20
         while time.time() < deadline and not sms_code:
+            # TM a veces no entrega el primer SMS. Su enlace "puedes pedir uno
+            # nuevo" solo se activa al acabar una cuenta atrás (~120 s): sondear
+            # cada 5 s, pulsarlo una vez y dar SMS_RESEND_EXTRA_S más al reenvío.
+            if not sms_resent and time.time() >= next_resend_probe:
+                next_resend_probe = time.time() + 5
+                try:
+                    hit = page.evaluate(SMS_RESEND_JS)
+                    if hit:
+                        sms_resent = True
+                        deadline = max(deadline, time.time() + SMS_RESEND_EXTRA_S)
+                        log(f'  🔁 SMS no llegó → reenvío pedido ("{hit}"), +{SMS_RESEND_EXTRA_S}s')
+                except Exception as e:
+                    log(f'  ⚠ reenvío SMS err (no fatal): {str(e)[:80]}')
             for ord_to_check in all_orders_to_check:
                 try:
                     chk = sms_receiver.check_sms(ord_to_check)
@@ -2359,6 +2394,36 @@ USED_PROXY_IDS_PATH = os.path.join(RUNS_DIR, 'used_proxy_ids.json')
 BURNED_SUBNETS_PATH = os.path.join(RUNS_DIR, 'burned_subnets24.json')
 
 
+def _burn_subnet24(ip: str, run_id: str) -> None:
+    """Marca la /24 de la IP como quemada por bot_block (burned_subnets24.json)."""
+    parts = (ip or '').split('.')
+    if len(parts) != 4:
+        return
+    key = '.'.join(parts[:3]) + '.0/24'
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        try:
+            with open(BURNED_SUBNETS_PATH, encoding='utf-8') as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            data = {}
+        prev = data.get(key) or {'first_burned': now, 'ips': [], 'runs': []}
+        entry = {
+            **prev,
+            'last_burned': now,
+            'reason': 'bot_block_register',
+            'ips': sorted(set(prev.get('ips', [])) | {ip}),
+            'runs': (prev.get('runs', []) + [run_id])[-20:],
+        }
+        tmp = f'{BURNED_SUBNETS_PATH}.{os.getpid()}.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump({**data, key: entry}, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, BURNED_SUBNETS_PATH)
+        log(f'  🚫 subred {key} quemada por bot_block')
+    except Exception as e:
+        log(f'  ⚠ no se pudo quemar la /24 {key}: {type(e).__name__}: {e}')
+
+
 def is_subnet24_burned(ip: str) -> bool:
     """True si la /24 de la IP está en burned_subnets24.json (quemada por bot_block)."""
     parts = (ip or '').split('.')
@@ -2416,6 +2481,10 @@ def _dismiss_ketch_consent(page):
 # Motor del navegador en Silent: 'brave' (por defecto), 'chromium' (Chromium
 # gestionado más reciente), 'chrome', 'edge', 'opera' o un engineId 'eng_...'.
 SILENT_ENGINE = os.environ.get('TM_SILENT_ENGINE', 'brave').strip().lower()
+# Operadores cuyas IPs TM bloquea siempre ("Su sesión se ha suspendido"):
+# AS200845 Avatel — 3 de 3 perfiles bloqueados el 2026-11-07.
+SILENT_BLOCKED_ASNS = tuple(a.strip().upper() for a in
+                            os.environ.get('TM_BLOCKED_ASNS', 'AS200845').split(',') if a.strip())
 
 
 def _version_key(v):
@@ -2544,8 +2613,11 @@ def _create_silent_profile(country: str = 'ES', max_tries: int = 6) -> Optional[
                 except Exception: pass
         ip = (info or {}).get('ip')
         cc = (info or {}).get('country')
-        if not env_id or cc != country.upper() or not ip or ip in used_ips or is_subnet24_burned(ip):
-            log(f'  · {name} descartado (ip={ip} pais={cc})')
+        org = (info or {}).get('org') or ''
+        bad_asn = next((a for a in SILENT_BLOCKED_ASNS if org.upper().startswith(a)), None)
+        if (not env_id or cc != country.upper() or not ip or ip in used_ips
+                or is_subnet24_burned(ip) or bad_asn):
+            log(f'  · {name} descartado (ip={ip} pais={cc}' + (f' asn={bad_asn} vetado' if bad_asn else '') + ')')
             continue
         with se._pick_lock:
             se._active_profiles.add(name)
@@ -2922,7 +2994,12 @@ def _attempt_browser_flow(user: UserRow, run: RunState, burned_acc: set) -> dict
                     'page': page, 'ctx': ctx,
                 }
             else:
-                log(f'  ⚠ recovery falló ({rec.get("error","?")[:80]}) → archive abandoned')
+                rec_err = rec.get('error', '?')
+                if 'bot_block_detected' in rec_err:
+                    # No es cuenta existente: es un bloqueo → reintento con otro perfil/IP
+                    log(f'  ⚠ recovery falló por bot_block ({rec_err[:80]}) → otro perfil')
+                    raise RuntimeError(rec_err)
+                log(f'  ⚠ recovery falló ({rec_err[:80]}) → archive abandoned')
                 raise RuntimeError(f'tm_account_already_exists (signin mode, title={page.title()})')
         elif mode == 'unknown' and 'profile' in page.title().lower():
             screenshot_on_error(page, run, 'tm_already_exists')
@@ -2950,6 +3027,10 @@ def _attempt_browser_flow(user: UserRow, run: RunState, burned_acc: set) -> dict
                     phone_inp = open_phone_modal(page)
             except Exception: pass
         if not phone_inp:
+            blk = detect_bot_block(page)
+            if blk:
+                screenshot_on_error(page, run, 'bot_blocked_pre_phone')
+                raise RuntimeError(f'bot_block_detected: "{blk}" (sin form teléfono)')
             raise RuntimeError('no abrió form teléfono')
 
         phone_info = phone_relentless(page, user, phone_inp, run)
@@ -2980,6 +3061,7 @@ def _attempt_browser_flow(user: UserRow, run: RunState, burned_acc: set) -> dict
                 save_used_ip(run.ip, f'bot_block_burned_{run.run_id}')
                 log(f'  🚫 IP {run.ip} blacklisteada por bot_block — no se reusará en otro perfil')
             except Exception: pass
+            _burn_subnet24(run.ip, run.run_id)
         raise
 
 
