@@ -994,7 +994,9 @@ def fill_signup_form(page: Page, user: UserRow, run: 'RunState'):
       const errors = [];
       document.querySelectorAll('[role="alert"], [aria-invalid="true"], .error, [data-error]').forEach(e => {
         const t = (e.innerText || '').trim().slice(0, 100);
-        if (t) errors.push(t);
+        // TM lista los requisitos de password (12 chars/letra/número) en role=alert
+        // SIEMPRE, con sufijo "requirement met" cuando ya se cumplen — NO son errores.
+        if (t && !t.toLowerCase().includes('requirement met')) errors.push(t);
       });
       // Detectar mensajes de error específicos visibles
       const body = (document.body?.innerText || '').slice(0, 1500).toLowerCase();
@@ -2451,11 +2453,29 @@ def _archive_abandoned(email: str, run: RunState, reason: str):
         archived['_abandoned_at'] = datetime.now(timezone.utc).isoformat()
         archived['_reason'] = reason[:200]
         archived['_run_id'] = run.run_id
+        # Mismo fix que remove_from_plantilla: los headers del archive y de la
+        # plantilla pueden divergir (plantilla tiene Seleccionado, archive viejo
+        # no). Escribir con las keys de `archived` desplaza columnas respecto al
+        # header existente → Email_TM acaba con el valor de Seleccionado.
         write_header = not os.path.isfile(abandoned_path) or os.path.getsize(abandoned_path) == 0
+        archive_fields = None
+        if not write_header:
+            try:
+                with open(abandoned_path, 'r', encoding='utf-8-sig', newline='') as f:
+                    archive_fields = next(_csv.reader(f), None)
+            except Exception:
+                archive_fields = None
+        if not archive_fields:
+            archive_fields = list(archived.keys())
+        else:
+            for k in ('_abandoned_at', '_reason', '_run_id'):
+                if k not in archive_fields:
+                    archive_fields.append(k)
+        safe_row = {k: archived.get(k, '') for k in archive_fields}
         with open(abandoned_path, 'a', encoding='utf-8-sig', newline='') as f:
-            w = _csv.DictWriter(f, fieldnames=list(archived.keys()))
+            w = _csv.DictWriter(f, fieldnames=archive_fields, extrasaction='ignore')
             if write_header: w.writeheader()
-            w.writerow(archived)
+            w.writerow(safe_row)
     _with_plantilla_lock(_do)
     _record_problem_in_tm_registrations(email, 'abandoned', reason, run)
 
