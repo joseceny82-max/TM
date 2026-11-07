@@ -12,6 +12,16 @@ y añade un bloque aquí. Nunca se reutiliza un número.
 
 ---
 
+## [1.1.3] - 2026-11-07
+
+### Security
+- `proxies.txt` (credenciales de proxies) deja de estar en Git y se añade a
+  `.gitignore`. El archivo local se conserva. Sigue presente en commits
+  anteriores del historial (pendiente: reescritura del historial y rotación
+  de credenciales).
+
+---
+
 ## [1.1.2] - 2026-11-07
 
 **Registro con Silent + proxies Lemon (validado end-to-end, verify 16/16).**

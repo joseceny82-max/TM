@@ -92,3 +92,6 @@ runs/
 *.backup_*
 *.err
 _bot_engine_slot_counter.txt
+
+# Credenciales de proxies (nunca a Git)
+proxies.txt
