@@ -1084,6 +1084,12 @@ def fill_signin_form(page: Page, user: UserRow):
 EMAIL_OTP_LOCK_PATH = os.path.join(RUNS_DIR, 'email_otp.lock')
 EMAIL_OTP_LOCK_TIMEOUT = 360   # 6 min máximo esperando lock
 EMAIL_OTP_LOCK_STALE = 240     # locks > 4 min se consideran abandonados
+# Límite anti-tormenta: TM rate-limita el envío de OTPs si se le pide muchos en poco
+# tiempo (con 6 procs × reenvío cada ciclo dejó de enviar por completo). Máximo 2
+# solicitudes de nuevo código por run (incluido el primer 'Verificar mi correo'),
+# con ≥60s entre solicitudes. Tras agotarlas: solo polling pasivo del mailbox.
+EMAIL_OTP_MAX_RESENDS = 2
+EMAIL_OTP_RESEND_BACKOFF_S = 60
 
 
 def _acquire_email_otp_lock() -> bool:
@@ -1132,11 +1138,12 @@ def _release_email_otp_lock():
 
 
 def _click_verificar_with_lock(page: Page) -> datetime:
-    """Lock cross-process serializa el click 'Verificar mi correo' + ESPACIO 12s para
+    """Lock cross-process serializa el click 'Verificar mi correo' + ESPACIO 3.5s para
     que iCloud HME digiera el envío antes de que otro proceso pida el suyo.
-    iCloud HME aplica throttle si recibe múltiples solicitudes <8s entre sí.
+    El throttle de iCloud es por CONEXIONES simultáneas, no por lecturas; como el lock
+    ya serializa los envíos, 3.5s de espacio son suficientes (antes 12s atascaba a 6 procs).
     Polling IMAP queda paralelo después de liberar lock."""
-    log('🔒 adquiriendo email_otp lock (12s espacio anti-iCloud-throttle)')
+    log('🔒 adquiriendo email_otp lock (3.5s espacio anti-iCloud-throttle)')
     got_lock = _acquire_email_otp_lock()
     if not got_lock:
         log('  ⚠ timeout lock — continuando sin él')
@@ -1147,12 +1154,12 @@ def _click_verificar_with_lock(page: Page) -> datetime:
         js_click(page, r'verificar mi correo|verify my email', exact=False)
         page.wait_for_timeout(400)
         sent_at = datetime.now(timezone.utc)
-        # Espaciado anti-throttle iCloud HME: 6s suficiente entre 2 peticiones.
-        page.wait_for_timeout(6000)
+        # Espaciado anti-throttle iCloud HME: 3.5s suficiente entre 2 peticiones (lock serializa).
+        page.wait_for_timeout(3500)
     finally:
         if got_lock:
             _release_email_otp_lock()
-            log('  🗝 lock liberado tras 6s (otros procs pueden ahora pedir OTP)')
+            log('  🗝 lock liberado tras 3.5s (otros procs pueden ahora pedir OTP)')
     return sent_at
 
 
@@ -1183,6 +1190,9 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
 
     sent_at = _click_verificar_with_lock(page)
     first_sent_at = sent_at   # guardar el timestamp del PRIMER click — usaremos en relajación final
+    # El primer click 'Verificar mi correo' CUENTA como solicitud #1 de código.
+    resends_used = 1
+    last_resend_ts = time.time()
 
     # Detectar bot_block después del click "Verificar mi correo"
     try:
@@ -1197,52 +1207,107 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
     seen, otp = set(), None
 
     def _poll_imap_until(deadline_ts: float, sent_after: datetime) -> Optional[str]:
-        """Mantiene UNA conexión IMAP viva durante el ciclo. Filtro EXACTO por destinatario:
-        el email del user TIENE que ser uno de los `to:` (no substring) — evita cualquier
-        confusión entre alias parecidos en runs paralelos."""
+        """Mantiene UNA conexión IMAP viva durante el ciclo. El fetch va FILTRADO EN
+        SERVIDOR (SEARCH SINCE + TEXT destinatario) para no descargar/parsear todo el
+        mailbox — iCloud throttlea IMAP y re-escanear cientos de mails era el cuello de
+        botella con 6 procs en paralelo. Después se re-verifica con MATCH EXACTO por
+        destinatario en cliente (no substring) — evita confusión entre alias parecidos.
+        `seen` cachea UIDs ya procesados para no re-parsear mails antiguos."""
         nonlocal seen
         target_email = user.email.lower().strip()
+        # Criterio IMAP server-side: solo mensajes posteriores a sent_after y que
+        # mencionen el email del destinatario (TEXT busca en cabeceras+cuerpo).
+        # Si el search falla, caemos a fetch sin criterio (comportamiento antiguo).
+        since_str = sent_after.strftime('%d-%b-%Y')
+        try:
+            criteria = f'(SINCE {since_str} TEXT "{target_email}")'
+        except Exception:
+            criteria = 'ALL'
         try:
             with MailBox('imap.mail.me.com').login(user.contact_email, user.contact_pwd) as mb:
                 while time.time() < deadline_ts:
                     try:
-                        for m in mb.fetch(reverse=True, limit=8, mark_seen=False, bulk=False):
-                            if m.uid in seen: continue
-                            seen.add(m.uid)
-                            msg_dt = m.date or datetime.now(timezone.utc)
-                            msg_dt = (msg_dt.replace(tzinfo=timezone.utc) if msg_dt.tzinfo is None
-                                      else msg_dt.astimezone(timezone.utc))
-                            if msg_dt < sent_after: continue
-                            # MATCH EXACTO en lista de destinatarios — no substring
-                            to_emails = [t.lower().strip() for t in (m.to or [])]
-                            if target_email not in to_emails: continue
-                            fr = (m.from_ or '').lower()
-                            sj = (m.subject or '').lower()
-                            if 'ticketmaster' not in fr and 'ticketmaster' not in sj: continue
-                            g = re.search(r'\b(\d{6})\b', (m.subject or '') + ' ' + (m.text or m.html or '')[:1500])
-                            if g:
-                                log(f'  📧 OTP match exact: to={target_email} from={fr[:40]}')
-                                return g.group(1)
-                    except Exception as e:
-                        log(f'  imap fetch err (no fatal): {e}')
+                        msgs = list(mb.fetch(criteria, mark_seen=False, bulk=True,
+                                             limit=25, charset='UTF-8'))
+                    except Exception as e1:
+                        log(f'  imap fetch filtrado falló ({e1}) — fallback sin filtro')
+                        try:
+                            msgs = list(mb.fetch(reverse=True, limit=8, mark_seen=False, bulk=False))
+                        except Exception as e2:
+                            log(f'  imap fetch err (no fatal): {e2}')
+                            msgs = []
+                    for m in msgs:
+                        if m.uid in seen: continue
+                        seen.add(m.uid)
+                        msg_dt = m.date or datetime.now(timezone.utc)
+                        msg_dt = (msg_dt.replace(tzinfo=timezone.utc) if msg_dt.tzinfo is None
+                                  else msg_dt.astimezone(timezone.utc))
+                        if msg_dt < sent_after: continue
+                        # MATCH EXACTO en lista de destinatarios — no substring
+                        to_emails = [t.lower().strip() for t in (m.to or [])]
+                        if target_email not in to_emails: continue
+                        fr = (m.from_ or '').lower()
+                        sj = (m.subject or '').lower()
+                        if 'ticketmaster' not in fr and 'ticketmaster' not in sj: continue
+                        g = re.search(r'\b(\d{6})\b', (m.subject or '') + ' ' + (m.text or m.html or '')[:1500])
+                        if g:
+                            log(f'  📧 OTP match exact: to={target_email} from={fr[:40]}')
+                            return g.group(1)
                     time.sleep(0.7)
         except Exception as e:
             log(f'  imap login err: {e}')
         return None
 
-    # Loop persistente: HASTA 24 ciclos × 30s + re-envío AGRESIVO TRAS CADA ciclo.
-    # Total max ~12 min antes de rendir. Ciclos cortos = más reenvíos = más probabilidad
-    # de que TM acabe enviando uno (TM a veces ignora silenciosamente el primer envío).
+    # Pasada inicial CORTA (5s): la mayoría de OTPs llegan en 10-30s tras el click y
+    # TM a veces tarda en indexar; si ya está, ahorramos todo el ciclo largo.
+    log('  ⏳ primera pasada rápida email OTP (5s)')
+    otp = _poll_imap_until(time.time() + 5, first_sent_at)
+    if otp:
+        log('  ⚡ OTP en pasada rápida — se salta el ciclo largo')
+
+    # Loop persistente: HASTA 24 ciclos × 30s. El re-envío está CAPADO a
+    # EMAIL_OTP_MAX_RESENDS (el primer click ya contó como 1) con backoff mínimo de
+    # 60s entre solicitudes — antes el reenvío agresivo tras CADA ciclo generó una
+    # tormenta (12-16 clicks/proc) y TM dejó de enviar OTPs por completo. Tras
+    # agotar las solicitudes: polling pasivo del mailbox hasta el timeout normal
+    # (el código ya pedido puede llegar tarde por rate-limit de TM/iCloud).
     N_CYCLES = 24
     CICLO_S = 30      # antes 60 — el user pidió aún más rápido
     POST_RESEND_WAIT_MS = 3000   # antes 6000 — iCloud digesta en 3s, acelerar
+    exhausted_logged = False
     for cycle in range(1, N_CYCLES + 1):
+        if otp:
+            break  # ya venía de la pasada rápida — no quemar un ciclo de 30s
         effective_sent_at = first_sent_at  # filtro siempre relajado al primer click
+        # SI LA PÁGINA MURIÓ (sesión TM caducada, pestaña caída), no tiene sentido
+        # seguir haciendo polling del mailbox: el OTP llegaría a un navegador muerto
+        # y el pegado fallaría tras quemar todo el timeout (visto en logs 20:09 —
+        # OTP recibido y perdido porque la page estaba closed). Abortar YA para que
+        # el retry arranque navegador nuevo en segundos, no en 12 min.
+        try:
+            if page.is_closed():
+                raise RuntimeError('browser_dead_during_email_otp')
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
         log(f'  ⏳ polling email OTP ciclo {cycle}/{N_CYCLES} ({CICLO_S}s, since=first_click)')
-        otp = _poll_imap_until(time.time() + CICLO_S, effective_sent_at)
+        # No sobrescribir un OTP ya encontrado (p.ej. en la pasada rápida): el loop
+        # solo añade, nunca borra. Antes esto PERDÍA el OTP: match en pasada rápida
+        # → ciclo 1 lo pisaba a None → reenvío innecesario y timeout (log 20:40).
+        new_otp = _poll_imap_until(time.time() + CICLO_S, effective_sent_at)
+        if new_otp:
+            otp = new_otp
         if otp: break
-        if cycle < N_CYCLES:
-            log(f'  🔁 OTP no llegó en {CICLO_S}s — solicitando nuevo código (lock anti-throttle)')
+        since_last = time.time() - last_resend_ts
+        can_resend = (resends_used < EMAIL_OTP_MAX_RESENDS
+                      and since_last >= EMAIL_OTP_RESEND_BACKOFF_S)
+        if resends_used >= EMAIL_OTP_MAX_RESENDS and not exhausted_logged:
+            log(f'  🚫 reenvíos agotados ({resends_used}/{EMAIL_OTP_MAX_RESENDS}) — solo polling pasivo del mailbox')
+            exhausted_logged = True
+        if cycle < N_CYCLES and can_resend:
+            log(f'  🔁 OTP no llegó en {CICLO_S}s — solicitando nuevo código '
+                f'({resends_used + 1}/{EMAIL_OTP_MAX_RESENDS}, backoff {since_last:.0f}s ok)')
             got_resend_lock = _acquire_email_otp_lock()
             try:
                 # JS unificado: prueba TODOS los selectores de reenvío en 1 round-trip
@@ -1277,6 +1342,8 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
                 page.wait_for_timeout(POST_RESEND_WAIT_MS)
             finally:
                 if got_resend_lock: _release_email_otp_lock()
+            resends_used += 1
+            last_resend_ts = time.time()
             sent_at = datetime.now(timezone.utc)
 
     # Last-chance scan extendido — aceptar OTPs últimos 10 min
@@ -1288,6 +1355,15 @@ def email_otp(page: Page, user: UserRow, run: RunState) -> bool:
 
     if not otp:
         log(f'  ❌ email OTP timeout tras {N_CYCLES} ciclos × {CICLO_S}s + last-chance'); return False
+    # Si la página murió mientras el OTP viajaba, no intentar pegar en navegador
+    # cerrado: abortar para retry con navegador fresco (mismo criterio que arriba).
+    try:
+        if page.is_closed():
+            raise RuntimeError('browser_dead_after_email_otp')
+    except RuntimeError:
+        raise
+    except Exception:
+        pass
     log(f'  📧 OTP={otp}')
 
     # Buscar input OTP RÁPIDO — el modal suele estar visible cuando llega el OTP
@@ -1428,14 +1504,38 @@ def reset_phone_form_after_error(page: Page) -> Optional[object]:
     return open_phone_modal(page)
 
 # ─── PREFETCH número SMS en background ───
+# smspool a veces responde "We couldn't find an available phone number" en el
+# prefetch pero el buy normal sí consigue número 10-30s después (stock fluctuante
+# con 3 slots en paralelo). Reintentar con backoff corto en background cuesta
+# cero latencia de fila: el prefetch se lanza tras el email OTP y hay ~30-60s
+# de formulario por delante.
+_PREFETCH_MAX_TRIES = 3
+_PREFETCH_RETRY_DELAYS_S = (10, 15)
+_PREFETCH_STOCK_ERR_RE = re.compile(
+    r"couldn.?t find an available phone|no numbers? available|out of stock|"
+    r"no_provider_available|no free phones|try again later", re.I)
+
+
 def _prefetch_buy_number():
     """Hilo daemon: compra el número en background. Nunca tumba el proceso
     principal — captura todo y guarda el resultado en PREFETCHED_NUMBER."""
-    try:
-        r = sms_receiver.buy_number(country='es', product='ticketmaster')
-    except Exception as e:
-        log(f'  ⚠ prefetch buy err (no fatal): {str(e)[:120]}')
-        r = {'ok': False, 'error': str(e)[:160]}
+    r = None
+    for attempt in range(1, _PREFETCH_MAX_TRIES + 1):
+        with PREFETCHED_NUMBER['lock']:
+            if PREFETCHED_NUMBER['discarded']:
+                return
+        try:
+            r = sms_receiver.buy_number(country='es', product='ticketmaster')
+        except Exception as e:
+            log(f'  ⚠ prefetch buy err (no fatal): {str(e)[:120]}')
+            r = {'ok': False, 'error': str(e)[:160]}
+        if r.get('ok') or not _PREFETCH_STOCK_ERR_RE.search(
+                str(r.get('error') or '') + ' ' + str(r.get('raw') or '')):
+            break
+        if attempt < _PREFETCH_MAX_TRIES:
+            delay = _PREFETCH_RETRY_DELAYS_S[attempt - 1]
+            log(f'  🔄 prefetch sin stock (intento {attempt}/{_PREFETCH_MAX_TRIES}) — reintento en {delay}s')
+            time.sleep(delay)
     with PREFETCHED_NUMBER['lock']:
         discarded = PREFETCHED_NUMBER['discarded']
         if not discarded:
@@ -1649,10 +1749,9 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             log(f'  ❌ tipeo phone falló: {e}')
             sms_receiver.cancel_order(order); blocked.add(phone); save_blocked_phones(blocked); continue
 
-        sent_at = datetime.now(timezone.utc)
         clicked = js_click(page, r'a[ñn]ade n[uú]mero|a[ñn]ade tu n[uú]mero', blue_only=False, exact=False)
         sent_at = datetime.now(timezone.utc)
-        log(f'  click "{clicked}" @ {sent_at.strftime("%H:%M:%S")}')
+        log(f'  click "{clicked}" @ {sent_at.astimezone().strftime("%H:%M:%S")}')
         if not clicked:
             sms_receiver.cancel_order(order); blocked.add(phone); save_blocked_phones(blocked); continue
 
@@ -1691,6 +1790,7 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             'número no es válido', 'numero no es valido', 'invalid phone number',
         )
         phone_rejected = False
+        order_dead_early = False  # smspool marcó la orden CANCELED/EXPIRED antes del timeout
         sms_code, sms_text = None, None
         deadline = time.time() + SMS_TIMEOUT_S
         # Re-check ROBUSTO: además de la orden actual, verificar las anteriores aún vivas.
@@ -1759,7 +1859,7 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                         phone_rejected = True
                 except Exception as e:
                     log(f'  ⚠ check rechazo err (no fatal): {str(e)[:80]}')
-            if phone_rejected: break
+            if phone_rejected or order_dead_early: break
             # Orden actual CADA ronda; órdenes anteriores (PENDING_ORDERS_RECHECK)
             # solo 1 de cada 10 rondas (~cada 20s) para no multiplicar req/s.
             if poll_round % 10 == 1:
@@ -1811,6 +1911,15 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                                 log(f'  📱 SMS llegó tarde a orden anterior {ord_to_check} — reusar código')
                             sms_code = c
                             break
+                    # smspool puede marcar la orden CANCELED(4)/EXPIRED(6) en medio
+                    # de la espera (número muerto / refund automático): sin SMS no va
+                    # a llegar NUNCA, así que cortar YA y pedir otro número en vez de
+                    # quemar el timeout completo. La ruta de salida (cancel+block)
+                    # es la misma que la del timeout.
+                    if (ord_to_check == order and not sms_code
+                            and chk.get('status') in ('CANCELED', 'EXPIRED')):
+                        log(f'  ☠️ orden {order} ya {chk.get("status")} en {provider} — número muerto, se pedirá OTRO sin esperar al timeout')
+                        order_dead_early = True
                 except Exception as e:
                     log(f'  sms check err (no fatal): {e}')
                 if sms_code: break
@@ -1853,7 +1962,10 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             continue
 
         if not sms_code:
-            log(f'  ⏰ SMS timeout {SMS_TIMEOUT_S}s — cancelando {provider} order={order}')
+            if order_dead_early:
+                log(f'  ☠️ número muerto (orden {provider} {order} CANCELED/EXPIRED antes del timeout) — cancelando y pidiendo OTRO')
+            else:
+                log(f'  ⏰ SMS timeout {SMS_TIMEOUT_S}s — cancelando {provider} order={order}')
             # Para SMSPool especialmente: cancelar SIEMPRE al timeout para liberar el número
             # y que la API marque refunded. Si llega SMS tarde, el rechecker leerá y
             # SMSPool rechazará el cancel posterior — no nos importa.
@@ -2792,9 +2904,10 @@ def _dismiss_ketch_consent(page):
         log(f'  ⚠ consentimiento Ketch: {type(e).__name__}: {str(e)[:80]}')
 
 
-# Motor del navegador en Silent: 'brave' (por defecto), 'chromium' (Chromium
-# gestionado más reciente), 'chrome', 'edge', 'opera' o un engineId 'eng_...'.
-SILENT_ENGINE = os.environ.get('TM_SILENT_ENGINE', 'brave').strip().lower()
+# Motor del navegador en Silent: 'chromium' (por defecto desde 2026-11-08, PROHIBIDO
+# volver a Brave salvo orden expresa — A/B: Chromium 4/4 en 6 min, Brave se caía y
+# tardaba 600s+), 'chrome', 'edge', 'opera' o un engineId 'eng_...'.
+SILENT_ENGINE = os.environ.get('TM_SILENT_ENGINE', 'chromium').strip().lower()
 # Operadores cuyas IPs TM bloquea siempre ("Su sesión se ha suspendido"):
 # AS200845 Avatel — 3 de 3 perfiles bloqueados el 2026-11-07.
 SILENT_BLOCKED_ASNS = tuple(a.strip().upper() for a in
