@@ -3071,6 +3071,11 @@ def _create_silent_profile(country: str = 'ES', max_tries: int = 6) -> Optional[
     used_ips = load_used_ips()
     cands = [p for p in se._get('/v1/proxies')
              if SILENT_PROXY_HOST in (p.get('host') or '').lower() and p.get('id') not in used_ids]
+    if not cands:
+        cands = [p for p in se._get('/v1/proxies') if p.get('id') not in used_ids]
+        if cands:
+            hosts = sorted({(p.get('host') or '') for p in cands})
+            log(f'  ⚠ pool "{SILENT_PROXY_HOST}" agotado — fallback a otros hosts: {hosts}')
     random.shuffle(cands)
     log(f'  proxies "{SILENT_PROXY_HOST}" sin usar en Silent: {len(cands)}')
     engine_id = _silent_engine_id(se)
