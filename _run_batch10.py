@@ -63,9 +63,15 @@ def _list_accounts():
         return []
 
 
-def _account_created_in_window(started_at: float) -> tuple:
+def _account_created_in_window(started_at: float, exclude: set = frozenset()) -> tuple:
     """Busca cuenta creada en accounts.json con created_at >= started_at - 5s.
     Devuelve (email, ok_bool) si encuentra una verificada al 16/16, sino (None, False).
+
+    exclude: emails ya contados por otro slot — se saltan y se sigue buscando
+    candidatos más antiguos en la ventana. Sin esto, cuando dos procesos
+    terminan en el mismo ciclo de poll, el primer slot reivindica la cuenta
+    más nueva aunque sea del otro proceso, y el segundo slot recibe FAIL
+    pese a haber persistido una cuenta real (falso FAIL + refill innecesario).
 
     Se ocupa del bug del email pool claim: el script puede registrar un email
     distinto al pasado por --row. Verificamos por timestamp.
@@ -92,7 +98,7 @@ def _account_created_in_window(started_at: float) -> tuple:
         candidates.sort(key=lambda x: x[0], reverse=True)
         for ts, a in candidates:
             em = (a.get('tm_email') or a.get('email') or '').strip()
-            if not em: continue
+            if not em or em in exclude: continue
             r = register_verify.verify_account(email=em)
             if r.get('ok'):
                 return em, True
@@ -214,10 +220,9 @@ def main():
             log(f"  ◀ EXIT  fila {slot['row']} · {slot['email'][:30]} · rc={rc} · {elapsed}s")
             # Verify por timestamp accounts.json — el script puede registrar un
             # email distinto al --row pasado por bug del email pool claim.
-            real_em, ok = _account_created_in_window(slot['started_at'])
-            # Evitar contar la misma cuenta dos veces si 2 slots ven el mismo nuevo email
-            if ok and real_em in completed_emails:
-                ok = False
+            # Se excluyen cuentas ya contadas por otros slots para evitar el
+            # falso FAIL cuando dos procesos terminan en el mismo ciclo.
+            real_em, ok = _account_created_in_window(slot['started_at'], completed_emails)
             if ok:
                 completed_emails.add(real_em)
                 successes += 1
