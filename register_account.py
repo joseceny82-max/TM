@@ -2819,9 +2819,19 @@ def _proxy_url(user: str, pwd: str, host: str, port, proxy_type: int = 0) -> str
 USED_PROXY_IDS_PATH = os.path.join(RUNS_DIR, 'used_proxy_ids.json')
 BURNED_SUBNETS_PATH = os.path.join(RUNS_DIR, 'burned_subnets24.json')
 
+# Cooldown (horas) tras el que una /24 quemada se considera recuperada.
+SUBNET24_BURN_TTL_H = 48
+# Nº de strikes (bot_block en la misma /24) necesarios para excluir la subred.
+SUBNET24_BURN_STRIKES = 2
+
 
 def _burn_subnet24(ip: str, run_id: str) -> None:
-    """Marca la /24 de la IP como quemada por bot_block (burned_subnets24.json)."""
+    """Registra un strike de bot_block en la /24 de la IP (burned_subnets24.json).
+
+    La subred solo se excluye a partir de SUBNET24_BURN_STRIKES strikes: el
+    primer strike solo queda registrado. Entradas antiguas (formato previo,
+    sin 'strikes') se conservan tal cual: siguen quemadas de forma permanente.
+    """
     parts = (ip or '').split('.')
     if len(parts) != 4:
         return
@@ -2833,33 +2843,79 @@ def _burn_subnet24(ip: str, run_id: str) -> None:
                 data = json.load(f)
         except FileNotFoundError:
             data = {}
-        prev = data.get(key) or {'first_burned': now, 'ips': [], 'runs': []}
+        prev = data.get(key)
+        if prev is not None and not isinstance(prev, dict):
+            # Formato legacy (string/None): permanente, no tocar.
+            log(f'  ⚠ subred {key} ya quemada (formato legacy, permanente)')
+            return
+        if isinstance(prev, dict) and 'strikes' not in prev:
+            # Dict legacy sin strikes: permanente, no tocar.
+            log(f'  ⚠ subred {key} ya quemada (entrada legacy, permanente)')
+            return
+        strikes = (prev or {}).get('strikes', 0) + 1
         entry = {
-            **prev,
+            'strikes': strikes,
+            'first_burned': (prev or {}).get('first_burned') or now,
             'last_burned': now,
             'reason': 'bot_block_register',
-            'ips': sorted(set(prev.get('ips', [])) | {ip}),
-            'runs': (prev.get('runs', []) + [run_id])[-20:],
+            'ips': sorted(set((prev or {}).get('ips', [])) | {ip}),
+            'runs': ((prev or {}).get('runs', []) + [run_id])[-20:],
         }
         tmp = f'{BURNED_SUBNETS_PATH}.{os.getpid()}.tmp'
         with open(tmp, 'w', encoding='utf-8') as f:
             json.dump({**data, key: entry}, f, indent=2, ensure_ascii=False)
         os.replace(tmp, BURNED_SUBNETS_PATH)
-        log(f'  🚫 subred {key} quemada por bot_block')
+        if strikes >= SUBNET24_BURN_STRIKES:
+            log(f'  🚫 subred {key} quemada por bot_block (strike {strikes})')
+        else:
+            log(f'  ⚠ subred {key}: strike {strikes}/{SUBNET24_BURN_STRIKES} (aún no excluida)')
     except Exception as e:
         log(f'  ⚠ no se pudo quemar la /24 {key}: {type(e).__name__}: {e}')
 
 
 def is_subnet24_burned(ip: str) -> bool:
-    """True si la /24 de la IP está en burned_subnets24.json (quemada por bot_block)."""
+    """True si la /24 de la IP está quemada por bot_block.
+
+    Reglas: entrada legacy (no dict, o dict sin 'strikes') = quemada
+    permanente. Entrada nueva: quemada si strikes >= SUBNET24_BURN_STRIKES y
+    no ha pasado SUBNET24_BURN_TTL_H desde last_burned; si el TTL expiró, la
+    entrada se borra perezosamente (subred recuperada).
+    """
     parts = (ip or '').split('.')
     if len(parts) != 4:
         return False
+    key = '.'.join(parts[:3]) + '.0/24'
     try:
         with open(BURNED_SUBNETS_PATH, encoding='utf-8') as f:
-            return '.'.join(parts[:3]) + '.0/24' in json.load(f)
+            data = json.load(f)
     except Exception:
         return False
+    entry = data.get(key)
+    if entry is None:
+        return False
+    if not isinstance(entry, dict) or 'strikes' not in entry:
+        return True   # legacy: permanente
+    if entry.get('strikes', 0) < SUBNET24_BURN_STRIKES:
+        return False
+    last = entry.get('last_burned')
+    try:
+        last_ts = datetime.fromisoformat(last) if last else None
+    except ValueError:
+        last_ts = None
+    if last_ts is not None:
+        age_h = (datetime.now(timezone.utc) - last_ts).total_seconds() / 3600
+        if age_h > SUBNET24_BURN_TTL_H:
+            # Recuperada: borrado perezoso del dict.
+            try:
+                data.pop(key, None)
+                tmp = f'{BURNED_SUBNETS_PATH}.{os.getpid()}.tmp'
+                with open(tmp, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                os.replace(tmp, BURNED_SUBNETS_PATH)
+            except Exception:
+                pass
+            return False
+    return True
 
 
 def _load_used_proxy_ids() -> set:

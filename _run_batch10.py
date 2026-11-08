@@ -185,6 +185,11 @@ def main():
     log(f"Pool de {SLOTS} slots · TARGET={TARGET_SUCCESSES} éxitos · {len(pending)} candidatas en buffer")
     log(f"  (verify por timestamp accounts.json — corrige bug email-pool-claim)")
 
+    pool_exhaust_consec = 0   # fallos consecutivos por agotamiento de pool
+    last_success_ts = time.time()   # se resetea con cada éxito
+    POOL_EXHAUST_MAX_CONSEC = 10
+    POOL_EXHAUST_MAX_MIN = 15
+
     while successes < TARGET_SUCCESSES:
         # Llenar slots hasta SLOTS
         while len(in_flight) < SLOTS and pending and successes + len(in_flight) < TARGET_SUCCESSES:
@@ -224,6 +229,8 @@ def main():
             # falso FAIL cuando dos procesos terminan en el mismo ciclo.
             real_em, ok = _account_created_in_window(slot['started_at'], completed_emails)
             if ok:
+                pool_exhaust_consec = 0
+                last_success_ts = time.time()
                 completed_emails.add(real_em)
                 successes += 1
                 if real_em.lower() == slot['email'].lower():
@@ -233,11 +240,36 @@ def main():
             else:
                 failures.append(slot['email'])
                 log(f"     ❌ FAIL · {slot['email']} · refill nueva fila")
+                # ¿Fallo por agotamiento del pool de perfiles/proxies?
+                exhaust = False
+                try:
+                    with open(slot['log_path'], encoding='utf-8', errors='ignore') as _lf:
+                        _tail = _lf.read()[-8000:].lower()
+                    exhaust = ('no hay ningún perfil disponible' in _tail
+                               or 'sin usar en silent: 0' in _tail)
+                except Exception:
+                    pass
+                if exhaust:
+                    pool_exhaust_consec += 1
+                    log(f"     ⚠ pool agotado ({pool_exhaust_consec} consecutivos)")
+                else:
+                    pool_exhaust_consec = 0
                 # Refill: añadir 1 nueva fila al buffer
                 more = fresh_rows(queued_emails, want=1)
                 if more:
                     pending.append(more[0])
                     log(f"     ↻ refill candidata: fila {more[0][0]} {more[0][1][:30]}")
+                # Abortar si el pool está agotado: 10 fallos consecutivos o
+                # 15 min sin ningún éxito nuevo.
+                if pool_exhaust_consec >= POOL_EXHAUST_MAX_CONSEC \
+                        or time.time() - last_success_ts > POOL_EXHAUST_MAX_MIN * 60:
+                    log("")
+                    log("═══ ABORT: pool de perfiles agotado ═══")
+                    log(f"  ({pool_exhaust_consec} fallos consecutivos por agotamiento · "
+                        f"{int((time.time() - last_success_ts) / 60)} min sin éxito)")
+                    in_flight.clear()
+                    pending.clear()
+                    break
 
     log("")
     log("═══ FIN ═══")
