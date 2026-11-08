@@ -1504,14 +1504,38 @@ def reset_phone_form_after_error(page: Page) -> Optional[object]:
     return open_phone_modal(page)
 
 # ─── PREFETCH número SMS en background ───
+# smspool a veces responde "We couldn't find an available phone number" en el
+# prefetch pero el buy normal sí consigue número 10-30s después (stock fluctuante
+# con 3 slots en paralelo). Reintentar con backoff corto en background cuesta
+# cero latencia de fila: el prefetch se lanza tras el email OTP y hay ~30-60s
+# de formulario por delante.
+_PREFETCH_MAX_TRIES = 3
+_PREFETCH_RETRY_DELAYS_S = (10, 15)
+_PREFETCH_STOCK_ERR_RE = re.compile(
+    r"couldn.?t find an available phone|no numbers? available|out of stock|"
+    r"no_provider_available|no free phones|try again later", re.I)
+
+
 def _prefetch_buy_number():
     """Hilo daemon: compra el número en background. Nunca tumba el proceso
     principal — captura todo y guarda el resultado en PREFETCHED_NUMBER."""
-    try:
-        r = sms_receiver.buy_number(country='es', product='ticketmaster')
-    except Exception as e:
-        log(f'  ⚠ prefetch buy err (no fatal): {str(e)[:120]}')
-        r = {'ok': False, 'error': str(e)[:160]}
+    r = None
+    for attempt in range(1, _PREFETCH_MAX_TRIES + 1):
+        with PREFETCHED_NUMBER['lock']:
+            if PREFETCHED_NUMBER['discarded']:
+                return
+        try:
+            r = sms_receiver.buy_number(country='es', product='ticketmaster')
+        except Exception as e:
+            log(f'  ⚠ prefetch buy err (no fatal): {str(e)[:120]}')
+            r = {'ok': False, 'error': str(e)[:160]}
+        if r.get('ok') or not _PREFETCH_STOCK_ERR_RE.search(
+                str(r.get('error') or '') + ' ' + str(r.get('raw') or '')):
+            break
+        if attempt < _PREFETCH_MAX_TRIES:
+            delay = _PREFETCH_RETRY_DELAYS_S[attempt - 1]
+            log(f'  🔄 prefetch sin stock (intento {attempt}/{_PREFETCH_MAX_TRIES}) — reintento en {delay}s')
+            time.sleep(delay)
     with PREFETCHED_NUMBER['lock']:
         discarded = PREFETCHED_NUMBER['discarded']
         if not discarded:
@@ -1766,6 +1790,7 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             'número no es válido', 'numero no es valido', 'invalid phone number',
         )
         phone_rejected = False
+        order_dead_early = False  # smspool marcó la orden CANCELED/EXPIRED antes del timeout
         sms_code, sms_text = None, None
         deadline = time.time() + SMS_TIMEOUT_S
         # Re-check ROBUSTO: además de la orden actual, verificar las anteriores aún vivas.
@@ -1834,7 +1859,7 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                         phone_rejected = True
                 except Exception as e:
                     log(f'  ⚠ check rechazo err (no fatal): {str(e)[:80]}')
-            if phone_rejected: break
+            if phone_rejected or order_dead_early: break
             # Orden actual CADA ronda; órdenes anteriores (PENDING_ORDERS_RECHECK)
             # solo 1 de cada 10 rondas (~cada 20s) para no multiplicar req/s.
             if poll_round % 10 == 1:
@@ -1886,6 +1911,15 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                                 log(f'  📱 SMS llegó tarde a orden anterior {ord_to_check} — reusar código')
                             sms_code = c
                             break
+                    # smspool puede marcar la orden CANCELED(4)/EXPIRED(6) en medio
+                    # de la espera (número muerto / refund automático): sin SMS no va
+                    # a llegar NUNCA, así que cortar YA y pedir otro número en vez de
+                    # quemar el timeout completo. La ruta de salida (cancel+block)
+                    # es la misma que la del timeout.
+                    if (ord_to_check == order and not sms_code
+                            and chk.get('status') in ('CANCELED', 'EXPIRED')):
+                        log(f'  ☠️ orden {order} ya {chk.get("status")} en {provider} — número muerto, se pedirá OTRO sin esperar al timeout')
+                        order_dead_early = True
                 except Exception as e:
                     log(f'  sms check err (no fatal): {e}')
                 if sms_code: break
@@ -1928,7 +1962,10 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
             continue
 
         if not sms_code:
-            log(f'  ⏰ SMS timeout {SMS_TIMEOUT_S}s — cancelando {provider} order={order}')
+            if order_dead_early:
+                log(f'  ☠️ número muerto (orden {provider} {order} CANCELED/EXPIRED antes del timeout) — cancelando y pidiendo OTRO')
+            else:
+                log(f'  ⏰ SMS timeout {SMS_TIMEOUT_S}s — cancelando {provider} order={order}')
             # Para SMSPool especialmente: cancelar SIEMPRE al timeout para liberar el número
             # y que la API marque refunded. Si llega SMS tarde, el rechecker leerá y
             # SMSPool rechazará el cancel posterior — no nos importa.
