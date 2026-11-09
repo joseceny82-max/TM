@@ -316,9 +316,11 @@ def _buy_onlinesim(country: str, product: str) -> Dict[str, Any]:
     return {"ok": False, "provider": "onlinesim", "raw": str(d)[:120]}
 
 
-# Prefijos ES bloqueados: el usuario reportó que los números 754XX dan error
-# SIEMPRE en TM — se cancelan (reembolso) y se pide otro.
-SMSPOOL_BLOCKED_PREFIXES_ES = ("754",)
+# Prefijos ES bloqueados: el usuario reportó que TODOS los números que empiezan
+# por 7 fallan siempre en TM (700-799 son prefijos móviles nuevos) — se cancelan
+# (reembolso) y se pide otro. Ojo: solo aplica a compras ES; los móviles FR/PT
+# empiezan por 6/7 de forma normal y no entran en esta regla.
+SMSPOOL_BLOCKED_PREFIXES_ES = ("7",)
 
 
 def _buy_smspool_es_clean(product: str) -> Dict[str, Any]:
