@@ -317,6 +317,29 @@ def _buy_onlinesim(country: str, product: str) -> Dict[str, Any]:
 
 
 def _buy_smspool(country: str, product: str) -> Dict[str, Any]:
+    r = _buy_smspool_once(country, product)
+    if r.get("ok"):
+        return r
+    # Fallback de país: si ES está sin stock (transitorio), probar otros
+    # países con stock antes de rendirse — TM acepta SMS a números extranjeros.
+    blob = str(r.get("error") or '') + ' ' + str(r.get("raw") or '')
+    if (country or "").lower() == "es" and re.search(
+            r"couldn.?t find an available phone|no numbers? available|out of stock", blob, re.I):
+        for fb in SMSPOOL_COUNTRY_FALLBACK:
+            r2 = _buy_smspool_once(fb, product)
+            if r2.get("ok"):
+                r2["country_used"] = fb
+                _log.info("  🌍 smspool ES sin stock → número %s desde %s", r2.get("phone"), fb)
+                return r2
+            r = r2
+    return r
+
+
+# Países de fallback para smspool cuando ES está OUT_OF_STOCK (orden de preferencia).
+SMSPOOL_COUNTRY_FALLBACK = ["us", "de", "fr", "it", "mx", "pt", "uk"]
+
+
+def _buy_smspool_once(country: str, product: str) -> Dict[str, Any]:
     # POST /purchase/sms — body: key, country, service [, pool, max_price]
     p_id = PRODUCT_MAP.get(product, {}).get("smspool", product)
     c_id = COUNTRY_MAP.get(country, {}).get("smspool", country)
