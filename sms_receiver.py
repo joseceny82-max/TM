@@ -316,8 +316,35 @@ def _buy_onlinesim(country: str, product: str) -> Dict[str, Any]:
     return {"ok": False, "provider": "onlinesim", "raw": str(d)[:120]}
 
 
+# Prefijos ES bloqueados: el usuario reportó que los números 754XX dan error
+# SIEMPRE en TM — se cancelan (reembolso) y se pide otro.
+SMSPOOL_BLOCKED_PREFIXES_ES = ("754",)
+
+
+def _buy_smspool_es_clean(product: str) -> Dict[str, Any]:
+    """Compra ES descartando prefijos bloqueados (cancel+reembolso y reintenta)."""
+    last = None
+    for _ in range(4):
+        r = _buy_smspool_once("es", product)
+        last = r
+        if not r.get("ok"):
+            return r
+        ph = str(r.get("phone") or "")
+        if ph.startswith(SMSPOOL_BLOCKED_PREFIXES_ES):
+            _log.info("  🚫 número %s con prefijo bloqueado %s* (falla siempre) — cancel + otro",
+                      ph, SMSPOOL_BLOCKED_PREFIXES_ES[0])
+            try:
+                cancel_order(r.get("order_id"))
+            except Exception as e:
+                _log.info("  ⚠ cancel de prefijo bloqueado err (no fatal): %s", e)
+            continue
+        return r
+    return last or {"ok": False, "error": "prefijo_bloqueado_reintentos"}
+
+
 def _buy_smspool(country: str, product: str) -> Dict[str, Any]:
-    r = _buy_smspool_once(country, product)
+    r = _buy_smspool_es_clean(product) if (country or "").lower() == "es" \
+        else _buy_smspool_once(country, product)
     if r.get("ok"):
         return r
     # Fallback de país: si ES está sin stock (transitorio), probar otros
