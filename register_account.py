@@ -1847,6 +1847,16 @@ def _phone_relentless_inner(page: Page, user: UserRow, phone_inp, run: RunState,
                 except Exception as e:
                     log(f'  ⚠ 2º probe reenvío err (no fatal): {str(e)[:80]}')
             poll_round += 1
+            # Navegador muerto/cerrado durante la espera (Silent cerró el perfil,
+            # crash...): los page.evaluate fallan en bucle "no fatal" y se quema
+            # todo el timeout. Detectarlo y abortar el ciclo YA para reintentar.
+            try:
+                if page.is_closed():
+                    log('  ☠️ navegador cerrado durante la espera del SMS — ciclo abortado')
+                    break
+            except Exception:
+                log('  ☠️ navegador caído durante la espera del SMS — ciclo abortado')
+                break
             # Chequeo temprano de rechazo del NÚMERO por TM (~1 de cada 5 rondas,
             # el body.evaluate cuesta ~50-100ms): si TM dice "límite de intentos"
             # o similar, no esperar el timeout — saltar a OTRO número ya.
