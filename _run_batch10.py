@@ -156,12 +156,56 @@ def _auto_update():
         log(f'  ⚠ auto-update err (no fatal): {e}')
 
 
+def _cleanup_silent_profiles():
+    """Borra perfiles TM-* de Silent con más de 6h (los abiertos/in-flight son
+    recientes y se conservan). Evita la acumulación de miles de perfiles que
+    inestabilizaba Silent y provocaba cierres aleatorios de navegador."""
+    try:
+        if os.environ.get('TM_ENGINE', 'silent') != 'silent':
+            return
+        import silent_engine as se
+        import requests as _rq
+        from datetime import datetime, timezone, timedelta
+        h = {'Authorization': 'Bearer ' + se._token()}
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
+        deleted = 0
+        for page in range(1, 31):
+            d = se._get(f'/v1/profiles?page={page}&limit=100')
+            items = d if isinstance(d, list) else (d.get('items') or d.get('data') or [])
+            if not items:
+                break
+            for p in items:
+                name = str(p.get('name') or '')
+                ca = p.get('createdAt') or ''
+                if not name.startswith('TM-'):
+                    continue
+                try:
+                    created = datetime.fromisoformat(ca.replace('Z', '+00:00'))
+                except ValueError:
+                    continue
+                if created >= cutoff:
+                    continue
+                try:
+                    r = _rq.delete(f'{se.SILENT_API}/v1/profiles/{p["id"]}', headers=h, timeout=10)
+                    if r.ok and r.json().get('deleted'):
+                        deleted += 1
+                except Exception:
+                    pass
+            if len(items) < 100:
+                break
+        if deleted:
+            log(f'  🧹 cleanup Silent: {deleted} perfiles TM antiguos borrados')
+    except Exception as e:
+        log(f'  ⚠ cleanup Silent err (no fatal): {e}')
+
+
 def main():
     env = dict(os.environ)
     env['TM_IMAP_MADRE_PWD'] = 'jzny-tfyh-qtuq-feou'
     env['PYTHONIOENCODING'] = 'utf-8'
 
     _auto_update()
+    _cleanup_silent_profiles()
 
     # Reap SMS órdenes stale ANTES de empezar (norma user 2026-05-09:
     # cancelar siempre tlf no usado o problemático para no acumular cargos).
