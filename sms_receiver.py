@@ -336,7 +336,9 @@ def _buy_smspool(country: str, product: str) -> Dict[str, Any]:
 
 
 # Países de fallback para smspool cuando ES está OUT_OF_STOCK (orden de preferencia).
-SMSPOOL_COUNTRY_FALLBACK = ["us", "de", "fr", "it", "mx", "pt", "uk"]
+# SOLO países con números nacionales de 9 dígitos: el campo de teléfono de TM
+# España acepta máx. 9 dígitos y trunca los de 10 (US/UK/DE/MX rompen el registro).
+SMSPOOL_COUNTRY_FALLBACK = ["fr", "pt"]
 
 
 def _buy_smspool_once(country: str, product: str) -> Dict[str, Any]:
