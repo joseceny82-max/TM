@@ -179,6 +179,12 @@ def _cleanup_silent_profiles():
                 ca = p.get('createdAt') or ''
                 if not name.startswith('TM-'):
                     continue
+                # Cerrar ventana del perfil si sigue abierta (batches matados
+                # dejan navegadores huérfanos acumulados; close es idempotente).
+                try:
+                    _rq.post(f'{se.SILENT_API}/v1/profiles/{p["id"]}/close', headers=h, timeout=10)
+                except Exception:
+                    pass
                 try:
                     created = datetime.fromisoformat(ca.replace('Z', '+00:00'))
                 except ValueError:
